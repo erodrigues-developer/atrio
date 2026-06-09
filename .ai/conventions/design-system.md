@@ -174,6 +174,144 @@ Exemplo:
 123456
 ```
 
+## Comportamento de teclado em telas com formulário
+
+Toda tela mobile com campos de texto deve permitir que o usuário recolha o teclado ao tocar fora do input.
+
+Esse comportamento é obrigatório em telas com:
+
+- inputs de texto;
+- inputs numéricos;
+- OTP Input;
+- campos de busca;
+- campos de observação;
+- formulários com CTA no rodapé.
+
+### Regra principal
+
+```txt
+Ao tocar fora de qualquer campo, o teclado deve ser recolhido.
+```
+
+O teclado não pode bloquear ou dificultar o acesso ao CTA principal da tela.
+
+### Aplicação obrigatória
+
+Essa regra deve ser aplicada em telas como:
+
+```txt
+Identificação da estadia
+Confirmação por SMS
+Solicitação rápida
+Room service
+Carrinho
+Concierge
+Check-out
+Qualquer formulário futuro
+```
+
+### Implementação recomendada
+
+Criar um comportamento reutilizável no componente base de tela.
+
+Exemplo de propriedade no componente `Screen`:
+
+```tsx
+<Screen dismissKeyboardOnPressOutside>
+  ...
+</Screen>
+```
+
+Quando `dismissKeyboardOnPressOutside` estiver ativo, tocar em áreas vazias da tela deve executar:
+
+```tsx
+Keyboard.dismiss()
+```
+
+### Requisitos de implementação
+
+A solução deve:
+
+- funcionar em iOS e Android;
+- não impedir clique em inputs;
+- não impedir clique em botões;
+- não quebrar links e CTAs;
+- não prejudicar o foco automático do OTP Input;
+- não gerar comportamento estranho em telas com scroll;
+- respeitar Safe Area;
+- funcionar com teclado aberto.
+
+### Comportamento esperado por campo
+
+#### Input comum
+
+Ao tocar fora do input:
+
+```txt
+teclado fecha
+input perde foco
+CTA fica acessível
+```
+
+#### Campo numérico
+
+Ao tocar fora do campo:
+
+```txt
+teclado numérico fecha
+CTA fica acessível
+```
+
+#### OTP Input
+
+Ao tocar fora do OTP:
+
+```txt
+teclado fecha
+código digitado permanece
+foco visual pode ser removido
+```
+
+### Return key
+
+Sempre que fizer sentido, configurar os inputs com comportamento adequado:
+
+```tsx
+returnKeyType="next"
+```
+
+para avançar entre campos, e:
+
+```tsx
+returnKeyType="done"
+```
+
+no último campo.
+
+No último campo do formulário, `onSubmitEditing` pode executar:
+
+```tsx
+Keyboard.dismiss()
+```
+
+ou acionar a ação principal, se isso fizer sentido para a tela.
+
+### Critério de qualidade
+
+Uma tela com formulário só pode ser considerada aprovada quando:
+
+```txt
+1. O teclado fecha ao tocar fora do input.
+2. O CTA principal continua acessível com o teclado aberto ou após recolhê-lo.
+3. O usuário não fica preso no teclado.
+4. O comportamento funciona no dispositivo físico, não apenas no simulador.
+```
+
+### Regra final
+
+Em mobile, o teclado faz parte da experiência da tela.
+Se ele bloqueia a ação principal, a tela está incompleta.
+
 ## Tela de Identificação da Estadia — Diretriz validada
 
 A Tela de Identificação da Estadia deve ser funcional, discreta e segura, sem parecer login tradicional.

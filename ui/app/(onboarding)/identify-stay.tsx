@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Alert, TextInput } from 'react-native';
+import { Alert, Keyboard, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { YStack, XStack } from 'tamagui';
 
@@ -24,10 +24,13 @@ type StayFieldProps = {
   autoCorrect?: boolean;
   editable: boolean;
   error?: string;
-  keyboardType?: 'default' | 'numeric';
+  inputRef?: RefObject<TextInput | null>;
+  keyboardType?: 'default' | 'number-pad';
   label: string;
   onChangeText: (value: string) => void;
+  onSubmitEditing?: () => void;
   placeholder: string;
+  returnKeyType?: 'done' | 'next';
   value: string;
 };
 
@@ -36,10 +39,13 @@ function StayField({
   autoCorrect = false,
   editable,
   error,
+  inputRef,
   keyboardType = 'default',
   label,
   onChangeText,
+  onSubmitEditing,
   placeholder,
+  returnKeyType,
   value,
 }: StayFieldProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -53,12 +59,15 @@ function StayField({
         autoCapitalize={autoCapitalize}
         autoCorrect={autoCorrect}
         editable={editable}
+        ref={inputRef}
         keyboardType={keyboardType}
         onBlur={() => setIsFocused(false)}
         onChangeText={onChangeText}
         onFocus={() => setIsFocused(true)}
+        onSubmitEditing={onSubmitEditing}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
+        returnKeyType={returnKeyType}
         selectionColor={colors.accent}
         style={{
           backgroundColor: colors.surface,
@@ -86,6 +95,7 @@ export default function IdentifyStayScreen() {
   const [lastName, setLastName] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const lastNameInputRef = useRef<TextInput | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -119,6 +129,8 @@ export default function IdentifyStayScreen() {
   };
 
   const handleContinue = () => {
+    Keyboard.dismiss();
+
     const { isValid, trimmedLastName, trimmedRoomNumber } = validateFields();
 
     if (!isValid) {
@@ -135,7 +147,7 @@ export default function IdentifyStayScreen() {
   };
 
   return (
-    <Screen>
+    <Screen dismissKeyboardOnPressOutside>
       <YStack flex={1} justifyContent="space-between">
         <YStack gap={spacing.huge}>
           <Button
@@ -170,7 +182,7 @@ export default function IdentifyStayScreen() {
               <StayField
                 editable={!isLoading}
                 error={errors.roomNumber}
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 label="Número do quarto"
                 onChangeText={(value) => {
                   setRoomNumber(value);
@@ -178,7 +190,9 @@ export default function IdentifyStayScreen() {
                     setErrors((current) => ({ ...current, roomNumber: undefined }));
                   }
                 }}
+                onSubmitEditing={() => lastNameInputRef.current?.focus()}
                 placeholder="Ex: 304"
+                returnKeyType="next"
                 value={roomNumber}
               />
 
@@ -186,6 +200,7 @@ export default function IdentifyStayScreen() {
                 autoCapitalize="words"
                 editable={!isLoading}
                 error={errors.lastName}
+                inputRef={lastNameInputRef}
                 label="Sobrenome"
                 onChangeText={(value) => {
                   setLastName(value);
@@ -193,7 +208,9 @@ export default function IdentifyStayScreen() {
                     setErrors((current) => ({ ...current, lastName: undefined }));
                   }
                 }}
+                onSubmitEditing={() => Keyboard.dismiss()}
                 placeholder="Ex: Silva"
+                returnKeyType="done"
                 value={lastName}
               />
 
@@ -220,9 +237,10 @@ export default function IdentifyStayScreen() {
             alignSelf="center"
             disabled={isLoading}
             minHeight={44}
-            onPress={() =>
-              Alert.alert('Preciso de ajuda', 'Nossa equipe poderá ajudar você a acessar sua estadia.')
-            }
+            onPress={() => {
+              Keyboard.dismiss();
+              Alert.alert('Preciso de ajuda', 'Nossa equipe poderá ajudar você a acessar sua estadia.');
+            }}
             variant="ghost">
             <Text colorToken="textSecondary" variant="bodySmall">
               Preciso de ajuda
