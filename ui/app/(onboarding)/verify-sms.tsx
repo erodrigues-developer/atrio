@@ -21,7 +21,7 @@ export default function VerifySmsScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendCooldownSeconds, setResendCooldownSeconds] = useState(60);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -43,15 +43,19 @@ export default function VerifySmsScreen() {
     }
 
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
   }, [resendCooldownSeconds]);
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimeoutRef.current) {
+        clearTimeout(confirmTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChangeCode = (nextCode: string) => {
     setCode(nextCode);
@@ -64,15 +68,17 @@ export default function VerifySmsScreen() {
   const handleConfirm = () => {
     Keyboard.dismiss();
 
-    if (code.length < 6) {
+    const normalizedCode = code.replace(/\D/g, '').slice(0, 6);
+
+    if (normalizedCode.length < 6) {
       setErrorMessage('Informe o código de 6 dígitos.');
       return;
     }
 
     setIsLoading(true);
 
-    timeoutRef.current = setTimeout(() => {
-      if (code !== VALID_CODE) {
+    confirmTimeoutRef.current = setTimeout(() => {
+      if (normalizedCode !== VALID_CODE) {
         setIsLoading(false);
         setErrorMessage('Código incorreto. Verifique o SMS recebido e tente novamente.');
         return;
@@ -87,7 +93,12 @@ export default function VerifySmsScreen() {
         guestName: 'Everton Rodrigues',
       });
 
-      router.replace('/(guest)/today');
+      try {
+        router.replace('/(guest)/today');
+      } catch {
+        setIsLoading(false);
+        setErrorMessage('Nao foi possivel abrir sua area da estadia agora. Tente novamente.');
+      }
     }, LOADING_DELAY_MS);
   };
 

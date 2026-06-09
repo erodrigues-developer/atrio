@@ -1293,9 +1293,15 @@ CTA discreto
 
 ---
 
-## 19. Bottom tabs
+## 19. Shell do App / Navegação Principal — Diretriz validada
 
-### 19.1 Abas
+A área principal do app do hóspede deve usar navegação inferior com bottom tabs.
+
+Essa navegação sustenta a experiência após a confirmação por SMS e deve aparecer apenas para o hóspede com estadia acessada.
+
+### 19.1 Abas aprovadas
+
+A navegação principal deve ter exatamente cinco abas, nesta ordem:
 
 ```txt
 Hoje
@@ -1305,24 +1311,190 @@ Estadia
 Concierge
 ```
 
-### 19.2 Visual
+Não adicionar abas extras como:
 
 ```txt
-Fundo: surface
+index
+Home
+Explorar
+Pedidos
+Minha conta
+Chat
+```
+
+### 19.2 Função de cada aba
+
+#### Hoje
+
+Tela principal do app.
+
+Deve funcionar como o concierge contextual da estadia, exibindo o que importa agora: ações rápidas, sugestões, solicitações, reservas e informações relevantes.
+
+#### Descobrir
+
+Área de curadoria de experiências, gastronomia, spa, passeios e momentos especiais.
+
+Não deve parecer marketplace genérico.
+
+#### Serviços
+
+Área funcional para solicitações práticas: toalhas, limpeza, amenities, manutenção, lavanderia, bagagem e room service.
+
+#### Estadia
+
+Área de controle da hospedagem: quarto, Wi-Fi, check-out, reservas, solicitações e informações úteis.
+
+#### Concierge
+
+Canal direto com o hotel, incluindo atendimento, recomendações e suporte.
+
+### 19.3 Visual aprovado da tab bar
+
+A tab bar deve ser discreta, limpa e premium.
+
+Usar:
+
+```txt
+Fundo: surface / branco quente
+Borda superior: borderSoft
 Ícone ativo: accent
 Texto ativo: accent
 Ícone inativo: textMuted
 Texto inativo: textMuted
-Altura confortável
-Borda superior suave
-Sem cores excessivas
 ```
 
-### 19.3 Regra
+Evitar:
 
-A tab bar não deve competir com o conteúdo.
+```txt
+sombra pesada
+background color no item ativo
+pill ativo
+ícone preenchido
+animação exagerada
+cores chamativas
+efeito Material Design pesado
+```
 
-Ela deve ser clara, discreta e nativa.
+### 19.4 Ícones aprovados
+
+Usar ícones lineares do `lucide-react-native`.
+
+Sugestão aprovada:
+
+```txt
+Hoje: House
+Descobrir: Compass
+Serviços: Bell
+Estadia: BedDouble
+Concierge: MessageCircle
+```
+
+Regras:
+
+```txt
+Tamanho visual: 21px a 23px
+Stroke width: 1.8 a 2
+Ativo: accent
+Inativo: textMuted
+```
+
+### 19.5 Safe Area
+
+A tab bar deve respeitar a Safe Area inferior do dispositivo.
+
+Critérios obrigatórios:
+
+```txt
+nenhum ícone cortado
+nenhum label cortado
+altura confortável
+área de toque adequada
+labels legíveis
+```
+
+A tab bar não pode ficar grudada ou cortada no rodapé.
+
+### 19.6 Header
+
+O shell principal com tabs não deve exibir header global padrão.
+
+Usar:
+
+```txt
+headerShown: false
+```
+
+Cada tela futura deve definir seu próprio cabeçalho contextual quando necessário.
+
+### 19.7 Rota inicial
+
+Após confirmação por SMS, o app deve abrir diretamente na aba:
+
+```txt
+Hoje
+```
+
+Rota esperada:
+
+```txt
+(guest)/today
+```
+
+### 19.8 Estrutura esperada de rotas
+
+```txt
+app/
+├── (guest)/
+│   ├── _layout.tsx
+│   ├── today/
+│   │   └── index.tsx
+│   ├── discover/
+│   │   └── index.tsx
+│   ├── services/
+│   │   └── index.tsx
+│   ├── stay/
+│   │   └── index.tsx
+│   └── concierge/
+│       └── index.tsx
+```
+
+### 19.9 Regra sobre rotas extras
+
+Qualquer rota auxiliar dentro de `(guest)` que não deva aparecer como aba precisa ser ocultada ou movida para uma estrutura adequada.
+
+Exemplo:
+
+```txt
+index
+details
+modal
+settings
+```
+
+não devem aparecer automaticamente como tabs.
+
+### 19.10 Critério de aceite
+
+O shell estará correto quando:
+
+```txt
+1. Existirem exatamente 5 abas.
+2. A ordem for Hoje, Descobrir, Serviços, Estadia, Concierge.
+3. Não existir aba index visível.
+4. A aba ativa estiver clara sem ser chamativa.
+5. A tab bar respeitar Safe Area.
+6. Ícones e labels estiverem visíveis e bem espaçados.
+7. A navegação usar tokens do design system.
+8. O visual for discreto, premium e coerente com o app.
+```
+
+### 19.11 Regra final
+
+A tab bar é parte da identidade do produto.
+
+Ela deve ser silenciosa, previsível e refinada.
+
+Não deve competir com o conteúdo das telas.
 
 ---
 
