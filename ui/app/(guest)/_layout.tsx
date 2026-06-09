@@ -71,6 +71,7 @@ const hiddenGuestRoutes = [
   'stay/wifi',
   'discover/experience/[experienceId]',
   'services/request/[type]',
+  'services/request/[type]/confirmation',
 ] as const;
 
 export default function GuestLayout() {

@@ -1583,6 +1583,186 @@ Horário
 Próximo passo
 ```
 
+---
+
+## Solicitações e acompanhamento de status
+
+Solicitações feitas pelo hóspede devem ser tratadas como parte da experiência de hospitalidade, não como tickets, chamados ou protocolos.
+
+A linguagem, os componentes e os status devem transmitir cuidado, clareza e acompanhamento pelo hotel.
+
+### Regra de linguagem
+
+Usar:
+
+```txt
+Solicitação
+Pedido
+Acompanhamento
+Recebido
+Em preparo
+A caminho
+Concluído
+Precisa de atenção
+```
+
+Evitar:
+
+```txt
+Ticket
+Chamado
+Protocolo
+Ocorrência
+SLA
+Fila
+Aberto
+Fechado
+Em tratamento
+```
+
+### Status aprovados
+
+Os status iniciais das solicitações são:
+
+```txt
+Recebido
+Em preparo
+A caminho
+Concluído
+Precisa de atenção
+```
+
+#### Recebido
+
+Indica que o hotel recebeu a solicitação.
+
+#### Em preparo
+
+Indica que a equipe está preparando, separando ou organizando o atendimento.
+
+#### A caminho
+
+Indica que a solicitação está sendo levada ao quarto ou executada pela equipe.
+
+#### Concluído
+
+Indica que a solicitação foi finalizada.
+
+#### Precisa de atenção
+
+Indica que a equipe precisa de alguma informação ou ação adicional.
+
+### StatusBadge
+
+Status devem ser exibidos com badges discretos.
+
+Usar cores suaves:
+
+```txt
+Recebido → accentSoft / accent
+Em preparo → warningSoft / warning
+A caminho → accentSoft / accent
+Concluído → successSoft / success
+Precisa de atenção → dangerSoft / danger
+```
+
+Os badges não devem parecer etiquetas administrativas.
+
+Evitar:
+
+- cores saturadas;
+- badges grandes demais;
+- aparência de sistema operacional;
+- linguagem técnica.
+
+### RequestStatusCard
+
+O card de solicitação deve exibir, no mínimo:
+
+```txt
+Título da solicitação
+Status
+Detalhes principais
+Horário ou referência temporal
+```
+
+Exemplo aprovado:
+
+```txt
+Toalhas extras                         A caminho
+
+Quantidade: 2
+Quarto 304
+Solicitado às 14:20
+```
+
+Visual:
+
+- fundo `surface`;
+- borda `borderSoft`;
+- radius alto;
+- padding confortável;
+- sem sombra pesada;
+- título em `textPrimary`;
+- detalhes em `textSecondary`;
+- status em badge discreto.
+
+### Tela Minhas Solicitações
+
+A tela `Minhas solicitações` deve existir em:
+
+```txt
+(guest)/stay/requests
+```
+
+Objetivo:
+
+```txt
+Permitir que o hóspede acompanhe os pedidos feitos ao hotel durante a estadia.
+```
+
+Copy aprovada:
+
+```txt
+Minhas solicitações
+
+Acompanhe os pedidos feitos ao hotel durante a sua estadia.
+```
+
+A tela deve listar as solicitações de forma simples e clara.
+
+Não usar filtros, abas internas ou timeline complexa no MVP.
+
+### Estado vazio
+
+Quando não houver solicitações, usar:
+
+```txt
+Você ainda não tem solicitações em andamento.
+
+Quando precisar de algo, faça uma solicitação em Serviços.
+
+Ir para Serviços
+```
+
+O estado vazio deve orientar o hóspede, não parecer erro.
+
+### Regra final
+
+A tela de solicitações existe para reduzir ansiedade.
+
+Ela deve comunicar:
+
+```txt
+Seu pedido está sendo acompanhado pelo hotel.
+```
+
+Não deve comunicar:
+
+```txt
+Você abriu um ticket no sistema.
+```
+
 ### 18.6 ReservationCard
 
 Uso:
@@ -2816,6 +2996,8 @@ A partir da Tela Serviços, os seguintes componentes passam a fazer parte do des
 ServiceListItem
 ServicesGroup
 SupportCallout / ConciergeCallout
+StatusBadge
+RequestStatusCard
 ```
 
 Esses componentes devem ser reutilizados em telas futuras com listas funcionais.

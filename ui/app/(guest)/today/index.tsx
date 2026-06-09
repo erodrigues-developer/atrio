@@ -24,8 +24,8 @@ import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { featuredExperienceMock } from '../../../src/mocks/experiences.mock';
 import { guestMock } from '../../../src/mocks/guest.mock';
-import { requestsMock } from '../../../src/mocks/requests.mock';
 import { reservationsMock } from '../../../src/mocks/reservations.mock';
+import { useRequests } from '../../../src/stores/requests.store';
 import { todayMock, usefulInfoMock, type UsefulInfoId } from '../../../src/mocks/today.mock';
 
 type SectionBlockProps = {
@@ -96,6 +96,7 @@ function SectionBlock({ children, description, title }: SectionBlockProps) {
 
 export default function TodayScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const requests = useRequests();
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -149,9 +150,9 @@ export default function TodayScreen() {
 
           <YStack marginTop={SECTION_SPACING.featuredToRequests}>
             <SectionBlock title="Solicitações em andamento">
-              {requestsMock.length > 0 ? (
+              {requests.length > 0 ? (
                 <YStack gap={spacing.md}>
-                  {requestsMock.map((request) => (
+                  {requests.map((request) => (
                     <RequestStatusCard
                       key={request.id}
                       status={request.status}
