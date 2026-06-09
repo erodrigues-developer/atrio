@@ -1,45 +1,240 @@
-import { ArrowRight, Hotel } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Alert, TextInput } from 'react-native';
+import { router } from 'expo-router';
 import { YStack, XStack } from 'tamagui';
 
-import { Card } from '@/src/design-system/components/Card';
+import { Button } from '@/src/design-system/components/Button';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 
+const INPUT_HEIGHT = 56;
+const LOADING_DELAY_MS = 650;
+
+type FieldErrors = {
+  roomNumber?: string;
+  lastName?: string;
+};
+
+type StayFieldProps = {
+  autoCapitalize?: 'none' | 'words';
+  autoCorrect?: boolean;
+  editable: boolean;
+  error?: string;
+  keyboardType?: 'default' | 'numeric';
+  label: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  value: string;
+};
+
+function StayField({
+  autoCapitalize = 'none',
+  autoCorrect = false,
+  editable,
+  error,
+  keyboardType = 'default',
+  label,
+  onChangeText,
+  placeholder,
+  value,
+}: StayFieldProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <YStack gap={spacing.sm}>
+      <Text colorToken="textSecondary" variant="bodySmall">
+        {label}
+      </Text>
+      <TextInput
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        editable={editable}
+        keyboardType={keyboardType}
+        onBlur={() => setIsFocused(false)}
+        onChangeText={onChangeText}
+        onFocus={() => setIsFocused(true)}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        selectionColor={colors.accent}
+        style={{
+          backgroundColor: colors.surface,
+          borderColor: error ? colors.danger : isFocused ? colors.accent : colors.border,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          color: colors.textPrimary,
+          fontSize: 16,
+          height: INPUT_HEIGHT,
+          paddingHorizontal: spacing.lg,
+        }}
+        value={value}
+      />
+      {error ? (
+        <Text colorToken="danger" variant="caption">
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
+  );
+}
+
 export default function IdentifyStayScreen() {
+  const [roomNumber, setRoomNumber] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const validateFields = () => {
+    const trimmedRoomNumber = roomNumber.trim();
+    const trimmedLastName = lastName.trim();
+    const nextErrors: FieldErrors = {};
+
+    if (!trimmedRoomNumber) {
+      nextErrors.roomNumber = 'Informe o número do quarto.';
+    }
+
+    if (!trimmedLastName) {
+      nextErrors.lastName = 'Informe o sobrenome usado na reserva.';
+    }
+
+    setErrors(nextErrors);
+
+    return {
+      isValid: Object.keys(nextErrors).length === 0,
+      trimmedLastName,
+      trimmedRoomNumber,
+    };
+  };
+
+  const handleContinue = () => {
+    const { isValid, trimmedLastName, trimmedRoomNumber } = validateFields();
+
+    if (!isValid) {
+      return;
+    }
+
+    setRoomNumber(trimmedRoomNumber);
+    setLastName(trimmedLastName);
+    setIsLoading(true);
+
+    timeoutRef.current = setTimeout(() => {
+      router.push('/(onboarding)/verify-sms');
+    }, LOADING_DELAY_MS);
+  };
+
   return (
     <Screen>
-      <YStack flex={1} gap={spacing.xxxl} justifyContent="center">
-        <YStack gap={spacing.md}>
-          <Text maxWidth="84%" variant="title2">
-            Identificação da estadia
-          </Text>
-          <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-            Na próxima etapa, você informará o número do quarto e o sobrenome para acessar sua estadia.
-          </Text>
-        </YStack>
+      <YStack flex={1} justifyContent="space-between">
+        <YStack gap={spacing.huge}>
+          <Button
+            accessibilityLabel="Voltar para a tela de boas-vindas"
+            alignSelf="flex-start"
+            borderRadius={radius.pill}
+            disabled={isLoading}
+            height={44}
+            justifyContent="center"
+            onPress={() => router.replace('/(onboarding)/welcome')}
+            paddingHorizontal={0}
+            pressStyle={{
+              backgroundColor: colors.surfaceSoft,
+              opacity: 1,
+            }}
+            width={44}
+            variant="ghost">
+            <MaterialIcons color={colors.textSecondary} name="chevron-left" size={22} />
+          </Button>
 
-        <Card>
-          <XStack alignItems="center" gap={spacing.md}>
-            <YStack
-              alignItems="center"
-              backgroundColor={colors.surfaceSoft}
-              borderRadius={radius.pill}
-              justifyContent="center"
-              padding={spacing.md}>
-              <Hotel color={colors.accent} size={18} strokeWidth={1.9} />
-            </YStack>
-            <YStack flex={1} gap={spacing.xs}>
-              <Text variant="bodyMedium">Próxima tela em construção</Text>
-              <Text colorToken="textSecondary" variant="bodySmall">
-                Vamos preparar esse fluxo completo na próxima task, mantendo o mesmo padrão visual da recepção digital.
+          <YStack gap={spacing.xxxl}>
+            <YStack gap={spacing.md}>
+              <Text maxWidth="88%" variant="title1">
+                Identifique sua estadia
+              </Text>
+              <Text colorToken="textSecondary" maxWidth="94%" variant="body">
+                Informe o número do quarto e o sobrenome usado na reserva.
               </Text>
             </YStack>
-            <ArrowRight color={colors.textMuted} size={18} strokeWidth={1.8} />
-          </XStack>
-        </Card>
+
+            <YStack gap={spacing.xl}>
+              <StayField
+                editable={!isLoading}
+                error={errors.roomNumber}
+                keyboardType="numeric"
+                label="Número do quarto"
+                onChangeText={(value) => {
+                  setRoomNumber(value);
+                  if (errors.roomNumber) {
+                    setErrors((current) => ({ ...current, roomNumber: undefined }));
+                  }
+                }}
+                placeholder="Ex: 304"
+                value={roomNumber}
+              />
+
+              <StayField
+                autoCapitalize="words"
+                editable={!isLoading}
+                error={errors.lastName}
+                label="Sobrenome"
+                onChangeText={(value) => {
+                  setLastName(value);
+                  if (errors.lastName) {
+                    setErrors((current) => ({ ...current, lastName: undefined }));
+                  }
+                }}
+                placeholder="Ex: Silva"
+                value={lastName}
+              />
+
+              <XStack
+                alignItems="flex-start"
+                backgroundColor={colors.accentSoft}
+                borderColor={colors.borderSoft}
+                borderRadius={18}
+                borderWidth={1}
+                gap={spacing.sm}
+                paddingHorizontal={spacing.md}
+                paddingVertical={14}>
+                <MaterialIcons color={colors.accent} name="verified-user" size={15} />
+                <Text colorToken="textSecondary" flex={1} variant="bodySmall">
+                  Enviaremos um código de confirmação para o telefone vinculado à reserva.
+                </Text>
+              </XStack>
+            </YStack>
+          </YStack>
+        </YStack>
+
+        <YStack gap={spacing.lg} paddingBottom={spacing.sm}>
+          <Button
+            alignSelf="center"
+            disabled={isLoading}
+            minHeight={44}
+            onPress={() =>
+              Alert.alert('Preciso de ajuda', 'Nossa equipe poderá ajudar você a acessar sua estadia.')
+            }
+            variant="ghost">
+            <Text colorToken="textSecondary" variant="bodySmall">
+              Preciso de ajuda
+            </Text>
+          </Button>
+
+          <Button disabled={isLoading} onPress={handleContinue}>
+            <Text colorToken="textInverse" variant="bodyMedium">
+              {isLoading ? 'Localizando estadia...' : 'Continuar'}
+            </Text>
+          </Button>
+        </YStack>
       </YStack>
     </Screen>
   );

@@ -174,6 +174,199 @@ Exemplo:
 123456
 ```
 
+## Tela de Identificação da Estadia — Diretriz validada
+
+A Tela de Identificação da Estadia deve ser funcional, discreta e segura, sem parecer login tradicional.
+
+Ela deve servir como ponte entre a Tela de Boas-vindas, que apresenta o hotel, e a Tela de Confirmação por SMS, que valida o acesso.
+
+### Objetivo
+
+Identificar o hóspede usando apenas:
+
+- número do quarto;
+- sobrenome usado na reserva.
+
+Não usar:
+
+- email;
+- senha;
+- usuário;
+- login;
+- cadastro;
+- autenticação como linguagem principal.
+
+### Estrutura aprovada
+
+```txt
+Botão voltar
+
+Identifique sua estadia
+
+Informe o número do quarto e o sobrenome usado na reserva.
+
+Número do quarto
+Ex: 304
+
+Sobrenome
+Ex: Silva
+
+Enviaremos um código de confirmação para o telefone vinculado à reserva.
+
+Preciso de ajuda
+
+Continuar
+```
+
+### Copy aprovada
+
+Título:
+
+```txt
+Identifique sua estadia
+```
+
+Subtítulo:
+
+```txt
+Informe o número do quarto e o sobrenome usado na reserva.
+```
+
+Campo 1:
+
+```txt
+Número do quarto
+Ex: 304
+```
+
+Campo 2:
+
+```txt
+Sobrenome
+Ex: Silva
+```
+
+Bloco informativo:
+
+```txt
+Enviaremos um código de confirmação para o telefone vinculado à reserva.
+```
+
+CTA principal:
+
+```txt
+Continuar
+```
+
+Ação secundária:
+
+```txt
+Preciso de ajuda
+```
+
+Loading:
+
+```txt
+Localizando estadia...
+```
+
+### Diretrizes visuais
+
+A tela deve ser mais funcional que a Tela de Boas-vindas, mas ainda precisa manter a percepção premium.
+
+Usar:
+
+- fundo quente do app;
+- margem lateral padrão;
+- título forte alinhado à esquerda;
+- inputs grandes e confortáveis;
+- bordas suaves;
+- radius alto;
+- botão principal no rodapé;
+- link de ajuda próximo ao botão;
+- bloco informativo discreto sobre SMS.
+
+Evitar:
+
+- hero;
+- logo grande;
+- imagem;
+- card promocional;
+- excesso de texto;
+- linguagem técnica;
+- aparência de formulário corporativo.
+
+### Inputs
+
+Os inputs devem ter:
+
+```txt
+Altura aproximada: 56
+Radius: 16
+Fundo: surface
+Borda: border
+Placeholder: textMuted
+Label: textSecondary
+Foco: borda accent ou destaque sutil
+```
+
+### Bloco informativo
+
+O bloco de SMS deve parecer uma informação de confiança, não um alerta.
+
+Usar:
+
+```txt
+Fundo: accentSoft ou variação muito suave
+Radius: 16 ou 18
+Padding: 14 a 16
+Ícone pequeno e discreto
+Texto em textSecondary ou accent escurecido
+```
+
+Evitar:
+
+- aparência de warning;
+- aparência de erro;
+- cor muito forte;
+- card pesado.
+
+### Comportamento mockado
+
+No MVP mockado:
+
+```txt
+1. Usuário informa número do quarto.
+2. Usuário informa sobrenome.
+3. Usuário toca em Continuar.
+4. App valida campos não vazios.
+5. App exibe loading curto.
+6. App navega para a tela de confirmação por SMS.
+```
+
+Não chamar API real.
+Não validar reserva real.
+Não enviar SMS real nesta etapa.
+
+### Validações
+
+Se o quarto estiver vazio:
+
+```txt
+Informe o número do quarto.
+```
+
+Se o sobrenome estiver vazio:
+
+```txt
+Informe o sobrenome usado na reserva.
+```
+
+### Regra final
+
+Esta tela não deve vender nem promover o hotel.
+A função dela é localizar a estadia com clareza, segurança e baixa fricção.
+
 ---
 
 ### 4.2 Navegação principal
