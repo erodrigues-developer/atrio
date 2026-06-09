@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 import { YStack, type YStackProps } from 'tamagui';
 
 import { DismissKeyboardView } from '@/src/design-system/components/DismissKeyboardView';
@@ -9,9 +9,15 @@ import { spacing } from '@/src/design-system/tokens/spacing';
 type Props = YStackProps & {
   children: ReactNode;
   dismissKeyboardOnPressOutside?: boolean;
+  safeAreaEdges?: Edge[];
 };
 
-export function Screen({ children, dismissKeyboardOnPressOutside = false, ...props }: Props) {
+export function Screen({
+  children,
+  dismissKeyboardOnPressOutside = false,
+  safeAreaEdges = ['top', 'bottom'],
+  ...props
+}: Props) {
   const content = (
     <YStack
       backgroundColor={colors.background}
@@ -25,7 +31,7 @@ export function Screen({ children, dismissKeyboardOnPressOutside = false, ...pro
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={safeAreaEdges}>
       {dismissKeyboardOnPressOutside ? <DismissKeyboardView>{content}</DismissKeyboardView> : content}
     </SafeAreaView>
   );

@@ -551,6 +551,316 @@ Objetivo: atendimento, recomendações e suporte.
 
 ---
 
+## Tela Hoje — Diretriz validada
+
+A Tela Hoje é a Home principal do app e deve funcionar como a recepção digital do hotel durante a estadia.
+
+Ela deve comunicar imediatamente:
+
+```txt
+Estou hospedado.
+Tenho controle da estadia.
+Consigo pedir ajuda rapidamente.
+O hotel está cuidando de mim.
+Há algo selecionado para hoje.
+```
+
+### Estrutura aprovada
+
+A Tela Hoje deve conter, nesta ordem:
+
+```txt
+StayContextBar
+
+Saudação contextual
+Ações rápidas
+Selecionado para hoje
+Solicitações em andamento
+Próximas reservas
+Informações úteis
+```
+
+A informação de hotel, quarto e check-out não deve ficar como bloco solto dentro da Home. Ela pertence à `StayContextBar`.
+
+### StayContextBar
+
+A `StayContextBar` é um contexto global da estadia.
+
+Deve exibir:
+
+```txt
+Copacabana Palace
+Quarto 304 · Check-out às 12:00
+```
+
+A função dela é responder silenciosamente:
+
+```txt
+Em qual estadia estou?
+```
+
+A `StayContextBar` deve ser discreta, contextual e premium.
+
+Usar:
+
+- texto pequeno;
+- fundo claro;
+- borda inferior suave, se necessário;
+- chevron discreto caso seja clicável;
+- Safe Area corretamente tratada.
+
+Evitar:
+
+- header grande;
+- avatar;
+- notificações;
+- menu hambúrguer;
+- logo grande;
+- card elevado;
+- fundo escuro;
+- aparência administrativa.
+
+### Saudação contextual
+
+A saudação deve ser o primeiro bloco emocional da Home.
+
+Copy aprovada:
+
+```txt
+Boa tarde, Everton
+Esperamos que sua estadia esteja sendo especial.
+```
+
+A saudação deve ser simples, humana e contextual.
+Não colocar a saudação dentro da `StayContextBar`.
+
+### Ações rápidas
+
+As ações rápidas devem aparecer em grade 2x2 compacta.
+
+Ações aprovadas:
+
+```txt
+Pedir algo
+Room service
+Wi-Fi
+Concierge
+```
+
+Não usar cards grandes em lista vertical para ações rápidas na Home.
+
+Os cards devem ser compactos, com:
+
+- ícone discreto;
+- título curto;
+- sem descrição;
+- fundo `surface`;
+- borda `borderSoft`;
+- radius alto;
+- altura confortável, mas sem dominar a tela.
+
+A função das ações rápidas é dar acesso imediato, não ser o conteúdo principal da Home.
+
+### Selecionado para hoje
+
+O bloco “Selecionado para hoje” é o principal ponto de curadoria da Home.
+
+Ele deve representar uma recomendação do hotel, não uma oferta agressiva.
+
+Estrutura aprovada:
+
+```txt
+Selecionado para hoje
+Texto contextual curto
+
+Card com imagem no topo
+Badge
+Título
+Descrição
+Metadados
+CTA discreto
+```
+
+Copy aprovada:
+
+```txt
+Selecionado para hoje
+
+O fim de tarde é uma boa oportunidade para aproveitar uma experiência selecionada pelo hotel.
+
+Jantar ao pôr do sol
+Uma experiência à mesa para encerrar o dia com vista, cuidado e tranquilidade.
+Hoje, a partir das 19h · Sob consulta
+Ver detalhes
+```
+
+### Imagens editoriais em experiências
+
+O card “Selecionado para hoje” deve suportar imagem opcional.
+
+Quando houver imagem de boa qualidade, usar imagem no topo do card.
+
+A imagem deve:
+
+- ser realista;
+- parecer premium;
+- provocar desejo;
+- estar alinhada ao hotel/destino;
+- ter boa resolução e peso controlado;
+- usar `resizeMode="cover"`.
+
+Para cards de experiência na Home, medida recomendada:
+
+```txt
+900 × 525 px
+```
+
+Formato recomendado:
+
+```txt
+.webp
+```
+
+Peso recomendado:
+
+```txt
+80 KB a 180 KB
+```
+
+Peso máximo aceitável:
+
+```txt
+250 KB
+```
+
+Evitar:
+
+- imagem genérica ruim;
+- ilustração ou placeholder;
+- imagem de outro destino reconhecível;
+- baixa resolução;
+- PNG pesado;
+- 1920x1080 desnecessário;
+- imagem acima de 500 KB.
+
+Se não houver imagem boa, manter fallback sem imagem.
+
+### Solicitações em andamento
+
+Bloco aprovado:
+
+```txt
+Solicitações em andamento
+
+Toalhas extras
+A caminho
+Solicitado às 14:20
+```
+
+O objetivo é reduzir ansiedade do hóspede.
+
+Status devem usar badges discretos, não etiquetas chamativas.
+
+Status possíveis:
+
+```txt
+Recebido
+Em preparo
+A caminho
+Concluído
+Precisa de atenção
+```
+
+### Próximas reservas
+
+Bloco aprovado:
+
+```txt
+Próximas reservas
+
+Spa & bem-estar
+Hoje, 17:30
+Confirmada
+```
+
+Deve mostrar compromissos próximos da estadia de forma clara e compacta.
+
+### Informações úteis
+
+Bloco aprovado em formato de lista agrupada:
+
+```txt
+Informações úteis
+
+Wi-Fi
+Rede e senha da internet
+
+Horário do café
+Disponível até 10:30
+
+Check-out
+Até 12:00
+
+Regras do hotel
+Informações importantes da estadia
+```
+
+Usar:
+
+- ícones discretos;
+- divisórias suaves;
+- chevron discreto;
+- card único agrupador;
+- sem cards grandes separados.
+
+### Regra de hierarquia da Home
+
+A primeira dobra da Home deve mostrar pelo menos:
+
+```txt
+StayContextBar
+Saudação
+Ações rápidas
+Início de Selecionado para hoje
+```
+
+A Home não pode exigir muito scroll antes de mostrar a recomendação do dia.
+
+### Regra final
+
+A Tela Hoje não deve parecer dashboard, marketplace ou lista de cards.
+
+Ela deve parecer uma recepção digital contextual, combinando:
+
+```txt
+cuidado
+controle
+curadoria
+hospitalidade
+clareza
+```
+
+---
+
+## Componentes validados na Home
+
+A partir da Tela Hoje, os seguintes componentes passam a fazer parte do design system do produto:
+
+```txt
+StayContextBar
+QuickActionCard
+FeaturedExperienceCard
+RequestStatusCard
+ReservationCard
+InfoListItem
+```
+
+Esses componentes devem ser reutilizados nas próximas telas sempre que fizer sentido.
+
+Evitar recriar variações visuais sem necessidade.
+
+---
+
 ## 5. Biblioteca de componentes e stack visual
 
 ### 5.1 Decisão
@@ -2367,7 +2677,158 @@ Se a tela parecer um marketplace, cardápio digital ou dashboard, ela deve ser r
 
 ---
 
-## 30. Regra de ouro
+## 30. Tela Serviços — Diretriz validada
+
+A Tela Serviços é a área prática do app para solicitações durante a estadia.
+
+Ela deve ser rápida, clara e funcional, sem parecer formulário administrativo, central de chamados ou dashboard operacional.
+
+### Objetivo
+
+Permitir que o hóspede encontre rapidamente o que precisa solicitar ao hotel.
+
+A sensação esperada é:
+
+```txt
+Se eu precisar de algo no hotel, encontro aqui sem esforço.
+```
+
+### Estrutura aprovada
+
+```txt
+StayContextBar
+
+Serviços
+Solicite itens, apoio ou cuidados para sua estadia.
+
+Lista agrupada de serviços
+
+Precisa de algo diferente?
+Fale com o concierge e conte o que você precisa.
+Falar com o concierge
+```
+
+### Categorias aprovadas
+
+```txt
+Toalhas
+Limpeza
+Amenities
+Manutenção
+Lavanderia
+Bagagem
+Room service
+Solicitações especiais
+```
+
+### Copy aprovada
+
+```txt
+Toalhas
+Solicite toalhas extras para o quarto.
+
+Limpeza
+Peça arrumação ou limpeza adicional.
+
+Amenities
+Itens de conforto para a sua estadia.
+
+Manutenção
+Informe algo que precise de atenção no quarto.
+
+Lavanderia
+Solicite coleta ou informações sobre lavanderia.
+
+Bagagem
+Peça apoio com malas ou volumes.
+
+Room service
+Peça alimentos e bebidas no quarto.
+
+Solicitações especiais
+Conte ao hotel o que você precisa.
+```
+
+### Padrão visual aprovado
+
+As categorias devem aparecer em uma **lista agrupada dentro de um card único**, não em cards grandes separados.
+
+Usar em cada item:
+
+- ícone discreto à esquerda;
+- título;
+- descrição curta;
+- chevron à direita;
+- divisor suave entre itens;
+- sem divisor no último item.
+
+Evitar:
+
+- grid;
+- cards grandes para cada categoria;
+- aparência de menu administrativo;
+- excesso de cor;
+- sombra pesada;
+- textos longos.
+
+### Bloco “Precisa de algo diferente?”
+
+O bloco final deve oferecer uma saída elegante para casos fora das categorias.
+
+Copy aprovada:
+
+```txt
+Precisa de algo diferente?
+Fale com o concierge e conte o que você precisa.
+Falar com o concierge
+```
+
+Visual:
+
+- fundo `accentSoft` ou equivalente suave;
+- radius alto;
+- CTA em `accent`;
+- sem ícone grande;
+- sem aparência de alerta.
+
+### Navegação
+
+Cada serviço deve navegar para sua rota de solicitação correspondente ou placeholder:
+
+```txt
+Toalhas → /services/request/towels
+Limpeza → /services/request/cleaning
+Amenities → /services/request/amenities
+Manutenção → /services/request/maintenance
+Lavanderia → /services/request/laundry
+Bagagem → /services/request/luggage
+Room service → /services/room-service ou placeholder
+Solicitações especiais → /services/request/special
+```
+
+Rotas internas não devem aparecer como abas na bottom navigation.
+
+### Componentes validados
+
+A partir da Tela Serviços, os seguintes componentes passam a fazer parte do design system:
+
+```txt
+ServiceListItem
+ServicesGroup
+SupportCallout / ConciergeCallout
+```
+
+Esses componentes devem ser reutilizados em telas futuras com listas funcionais.
+
+### Regra final
+
+A Tela Serviços deve resolver, não impressionar.
+
+Ela deve ser objetiva, premium e fácil de escanear.
+
+---
+
+## 31. Regra de ouro
 
 A regra de ouro do produto é:
 

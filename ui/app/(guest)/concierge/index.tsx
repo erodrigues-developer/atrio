@@ -6,7 +6,7 @@ import { spacing } from '@/src/design-system/tokens/spacing';
 
 export default function ConciergeScreen() {
   return (
-    <Screen>
+    <Screen safeAreaEdges={['bottom']}>
       <YStack flex={1} gap={spacing.md} justifyContent="center">
         <Text variant="title1">Concierge</Text>
         <Text colorToken="textSecondary" variant="body">

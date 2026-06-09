@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, router } from 'expo-router';
 import {
   BedDouble,
   Bell,
@@ -7,10 +7,13 @@ import {
   MessageCircle,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { YStack } from 'tamagui';
 
+import { StayContextBar } from '@/src/design-system/product/StayContextBar';
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
+import { stayMock } from '@/src/mocks/stay.mock';
 import { useSession } from '@/src/stores/session.store';
 
 const TAB_ICON_SIZE = 22;
@@ -64,6 +67,12 @@ const guestTabs: GuestTabConfig[] = [
   },
 ];
 
+const hiddenGuestRoutes = [
+  'stay/wifi',
+  'discover/experience/[experienceId]',
+  'services/request/[type]',
+] as const;
+
 export default function GuestLayout() {
   const session = useSession();
   const insets = useSafeAreaInsets();
@@ -78,52 +87,72 @@ export default function GuestLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: {
-          backgroundColor: colors.background,
-        },
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarHideOnKeyboard: false,
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
-        tabBarItemStyle: {
-          height: 56,
-          justifyContent: 'center',
-          paddingTop: spacing.xs,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-          lineHeight: 16,
-          marginTop: 1,
-        },
-        tabBarLabelPosition: 'below-icon',
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderSoft,
-          borderTopWidth: 1,
-          height: tabBarHeight,
-          paddingTop: 10,
-          paddingBottom: tabBarBottomPadding,
-        },
-      }}>
-      {guestTabs.map(({ accessibilityLabel, icon: Icon, label, name }) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{
-            title: label,
-            tabBarAccessibilityLabel: accessibilityLabel,
-            tabBarIcon: ({ color }) => (
-              <Icon color={color} size={TAB_ICON_SIZE} strokeWidth={TAB_ICON_STROKE_WIDTH} />
-            ),
-          }}
+    <YStack backgroundColor={colors.background} flex={1}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
+        <StayContextBar
+          checkOutTime={stayMock.checkOutTime}
+          hotelName={stayMock.hotelName}
+          onPress={() => router.push('/(guest)/stay')}
+          roomNumber={stayMock.roomNumber}
         />
-      ))}
-    </Tabs>
+      </SafeAreaView>
+
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          sceneStyle: {
+            backgroundColor: colors.background,
+          },
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarHideOnKeyboard: false,
+          tabBarIconStyle: {
+            marginBottom: 2,
+          },
+          tabBarItemStyle: {
+            height: 56,
+            justifyContent: 'center',
+            paddingTop: spacing.xs,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+            lineHeight: 16,
+            marginTop: 1,
+          },
+          tabBarLabelPosition: 'below-icon',
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.borderSoft,
+            borderTopWidth: 1,
+            height: tabBarHeight,
+            paddingTop: 10,
+            paddingBottom: tabBarBottomPadding,
+          },
+        }}>
+        {guestTabs.map(({ accessibilityLabel, icon: Icon, label, name }) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              title: label,
+              tabBarAccessibilityLabel: accessibilityLabel,
+              tabBarIcon: ({ color }) => (
+                <Icon color={color} size={TAB_ICON_SIZE} strokeWidth={TAB_ICON_STROKE_WIDTH} />
+              ),
+            }}
+          />
+        ))}
+        {hiddenGuestRoutes.map((name) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              href: null,
+            }}
+          />
+        ))}
+      </Tabs>
+    </YStack>
   );
 }
