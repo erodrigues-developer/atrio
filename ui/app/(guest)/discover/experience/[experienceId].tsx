@@ -7,33 +7,33 @@ import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { featuredExperienceMock } from '../../../../src/mocks/experiences.mock';
+import { getExperienceById } from '../../../../src/mocks/experiences.mock';
 
 export default function ExperienceDetailPlaceholderScreen() {
   const params = useLocalSearchParams<{ experienceId?: string | string[] }>();
   const experienceId = Array.isArray(params.experienceId) ? params.experienceId[0] : params.experienceId;
-  const experienceTitle =
-    experienceId === featuredExperienceMock.id ? featuredExperienceMock.title : 'Experiência selecionada';
+  const experience = getExperienceById(experienceId);
+  const experienceTitle = experience?.title ?? 'Detalhe da experiência';
 
   return (
     <Screen safeAreaEdges={['bottom']}>
       <YStack flex={1} gap={spacing.xxxl}>
-        <BackButton accessibilityLabel="Voltar para Hoje" onPress={() => router.back()} />
+        <BackButton accessibilityLabel="Voltar para Descobrir" onPress={() => router.back()} />
 
         <YStack gap={spacing.md}>
-          <Text variant="title1">{experienceTitle}</Text>
+          <Text variant="title1">Detalhe da experiência</Text>
           <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-            Esta área será expandida em uma próxima etapa com detalhes, horários e solicitação de reserva.
+            Em breve você poderá conhecer os detalhes desta experiência.
           </Text>
         </YStack>
 
         <Card borderRadius={radius.xl} gap={spacing.lg}>
-          <Text variant="bodyMedium">{featuredExperienceMock.timeLabel}</Text>
+          <Text variant="bodyMedium">{experienceTitle}</Text>
           <Text colorToken="textSecondary" variant="body">
-            {featuredExperienceMock.description}
+            {experience?.description ?? 'Esta experiência será apresentada com mais contexto em uma próxima etapa.'}
           </Text>
           <Text colorToken="textSecondary" variant="bodySmall">
-            {featuredExperienceMock.priceLabel}
+            {[experience?.timeLabel, experience?.priceLabel].filter(Boolean).join(' · ') || 'Mais informações em breve'}
           </Text>
         </Card>
       </YStack>
