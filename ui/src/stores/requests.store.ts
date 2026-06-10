@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from 'react';
 
-import { requestsMock, type RequestItem, type RequestStatus } from '@/src/mocks/requests.mock';
+import {
+  requestsMock,
+  type RequestItem,
+  type RequestStatus,
+  type RequestStatusType,
+} from '@/src/mocks/requests.mock';
 import type { ServiceType } from '@/src/mocks/services.mock';
 
 export type CreateRequestInput = {
@@ -9,6 +14,7 @@ export type CreateRequestInput = {
   quantity?: number;
   roomNumber: string;
   status: RequestStatus;
+  statusType: RequestStatusType;
   timeLabel: string;
   title: string;
   type: ServiceType;

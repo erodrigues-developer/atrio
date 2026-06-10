@@ -5,7 +5,7 @@ import { radius } from '@/src/design-system/tokens/radius';
 
 type Variant = 'primary' | 'ghost';
 
-type Props = Omit<TamaguiButtonProps, 'variant'> & {
+export type ButtonProps = Omit<TamaguiButtonProps, 'variant'> & {
   variant?: Variant;
 };
 
@@ -30,7 +30,7 @@ const variantStyles: Record<Variant, TamaguiButtonProps> = {
   },
 };
 
-export function Button({ children, variant = 'primary', ...props }: Props) {
+export function Button({ children, variant = 'primary', ...props }: ButtonProps) {
   const styles = variantStyles[variant];
 
   return (

@@ -52,11 +52,23 @@ export default function ServiceRequestConfirmationScreen() {
                   Quantidade: {latestRequest.quantity}
                 </Text>
               ) : null}
+              <Text colorToken="textSecondary" variant="bodySmall">
+                {latestRequest.timeLabel}
+              </Text>
             </Card>
           ) : null}
         </YStack>
 
-        <Button onPress={() => router.replace('/(guest)/today')}>Voltar para Hoje</Button>
+        <YStack gap={spacing.sm}>
+          <Button onPress={() => router.replace('/(guest)/stay/requests')}>
+            Acompanhar solicitação
+          </Button>
+          <Button onPress={() => router.replace('/(guest)/today')} variant="ghost">
+            <Text colorToken="textSecondary" variant="bodyMedium">
+              Voltar para Hoje
+            </Text>
+          </Button>
+        </YStack>
       </YStack>
     </Screen>
   );

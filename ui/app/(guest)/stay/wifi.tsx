@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
-import { ArrowLeft, Copy, Wifi } from 'lucide-react-native';
+import { Copy, Wifi } from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { XStack, YStack } from 'tamagui';
 
+import { BackButton } from '@/src/design-system/components/BackButton';
 import { Button } from '@/src/design-system/components/Button';
 import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { colors } from '@/src/design-system/tokens/colors';
-import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '../../../src/mocks/stay.mock';
 
@@ -20,22 +20,7 @@ export default function WifiScreen() {
   return (
     <Screen safeAreaEdges={['bottom']}>
       <YStack flex={1} gap={spacing.xxxl}>
-        <Button
-          accessibilityLabel="Voltar para Hoje"
-          alignSelf="flex-start"
-          borderRadius={radius.pill}
-          height={44}
-          justifyContent="center"
-          onPress={() => router.back()}
-          paddingHorizontal={0}
-          pressStyle={{
-            backgroundColor: colors.surfaceSoft,
-            opacity: 1,
-          }}
-          width={44}
-          variant="ghost">
-          <ArrowLeft color={colors.textSecondary} size={20} strokeWidth={1.9} />
-        </Button>
+        <BackButton accessibilityLabel="Voltar para Hoje" onPress={() => router.back()} />
 
         <YStack gap={spacing.md}>
           <Text variant="title1">Wi-Fi</Text>

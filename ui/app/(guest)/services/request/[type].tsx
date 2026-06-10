@@ -1,17 +1,16 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
+import { BackButton } from '@/src/design-system/components/BackButton';
 import { Button } from '@/src/design-system/components/Button';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { TextArea } from '@/src/design-system/components/TextArea';
 import { QuantitySelector } from '@/src/design-system/components/QuantitySelector';
 import { Card } from '@/src/design-system/components/Card';
-import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '@/src/mocks/stay.mock';
@@ -90,13 +89,19 @@ export default function ServiceRequestScreen() {
 
     await new Promise((resolve) => setTimeout(resolve, 650));
 
+    const requestedAt = new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date());
+
     createRequest({
-      createdAt: 'Agora',
+      createdAt: `Solicitado às ${requestedAt}`,
       note: note.trim(),
       quantity,
       roomNumber,
       status: 'Recebido',
-      timeLabel: 'Agora',
+      statusType: 'received',
+      timeLabel: `Solicitado às ${requestedAt}`,
       title: towelsRequestContent.title,
       type: 'towels',
     });
@@ -125,21 +130,7 @@ export default function ServiceRequestScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <YStack gap={spacing.xxl}>
-            <Pressable
-              accessibilityLabel="Voltar para Serviços"
-              accessibilityRole="button"
-              hitSlop={10}
-              onPress={() => router.push('/(guest)/services')}
-              style={({ pressed }) => ({
-                alignItems: 'center',
-                borderRadius: radius.pill,
-                height: 44,
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                width: 44,
-              })}>
-              <ChevronLeft color={colors.textSecondary} size={20} strokeWidth={2} />
-            </Pressable>
+            <BackButton accessibilityLabel="Voltar para Serviços" onPress={() => router.push('/(guest)/services')} />
 
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.5} variant="title1">

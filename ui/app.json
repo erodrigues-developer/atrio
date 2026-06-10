@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "ui",
-    "slug": "ui",
+    "name": "Atrio",
+    "slug": "atrio",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ui",
+    "scheme": "atrio",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

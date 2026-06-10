@@ -24,6 +24,7 @@ import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { featuredExperienceMock } from '../../../src/mocks/experiences.mock';
 import { guestMock } from '../../../src/mocks/guest.mock';
+import { getRequestDetails } from '../../../src/mocks/requests.mock';
 import { reservationsMock } from '../../../src/mocks/reservations.mock';
 import { useRequests } from '../../../src/stores/requests.store';
 import { todayMock, usefulInfoMock, type UsefulInfoId } from '../../../src/mocks/today.mock';
@@ -97,6 +98,7 @@ function SectionBlock({ children, description, title }: SectionBlockProps) {
 export default function TodayScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const requests = useRequests();
+  const requestsRoute: Href = '/(guest)/stay/requests';
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -154,8 +156,11 @@ export default function TodayScreen() {
                 <YStack gap={spacing.md}>
                   {requests.map((request) => (
                     <RequestStatusCard
+                      details={getRequestDetails(request)}
                       key={request.id}
+                      onPress={() => router.push(requestsRoute)}
                       status={request.status}
+                      statusType={request.statusType}
                       timeLabel={request.timeLabel}
                       title={request.title}
                     />

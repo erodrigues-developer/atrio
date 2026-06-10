@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Alert, Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import { YStack } from 'tamagui';
 
+import { BackButton } from '@/src/design-system/components/BackButton';
 import { Button } from '@/src/design-system/components/Button';
 import { OtpInput } from '@/src/design-system/components/OtpInput';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
-import { colors } from '@/src/design-system/tokens/colors';
-import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { saveSession } from '@/src/stores/session.store';
 
@@ -121,23 +119,11 @@ export default function VerifySmsScreen() {
     <Screen dismissKeyboardOnPressOutside>
       <YStack flex={1} justifyContent="space-between">
         <YStack gap={spacing.huge}>
-          <Button
+          <BackButton
             accessibilityLabel="Voltar para identificação da estadia"
-            alignSelf="flex-start"
-            borderRadius={radius.pill}
             disabled={isLoading}
-            height={44}
-            justifyContent="center"
             onPress={() => router.replace('/(onboarding)/identify-stay')}
-            paddingHorizontal={0}
-            pressStyle={{
-              backgroundColor: colors.surfaceSoft,
-              opacity: 1,
-            }}
-            width={44}
-            variant="ghost">
-            <MaterialIcons color={colors.textSecondary} name="chevron-left" size={22} />
-          </Button>
+          />
 
           <YStack gap={spacing.xxxl}>
             <YStack gap={spacing.md}>
