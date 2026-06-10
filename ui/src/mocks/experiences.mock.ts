@@ -51,14 +51,16 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'relax',
     title: 'Para relaxar',
+    description: 'Experiências selecionadas para desacelerar durante a estadia.',
     items: [
       {
         id: 'spa-wellness',
         title: 'Spa & bem-estar',
         description: 'Uma pausa para desacelerar com cuidado e tranquilidade.',
         category: 'Spa',
-        timeLabel: 'Hoje, 17:30',
+        timeLabel: '60 min',
         priceLabel: 'Sob consulta',
+        badge: 'Disponível hoje',
         imageSource: spaImage,
       },
       {
@@ -66,8 +68,9 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         title: 'Massagem relaxante',
         description: 'Um momento de descanso preparado pela equipe do spa.',
         category: 'Bem-estar',
-        timeLabel: 'Horários disponíveis',
+        timeLabel: '50 min',
         priceLabel: 'Sob consulta',
+        badge: 'Sob agendamento',
         imageSource: massageImage,
       },
     ],
@@ -75,6 +78,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'gastronomy',
     title: 'Gastronomia',
+    description: 'Sugestões à mesa para aproveitar sabores e momentos especiais.',
     items: [
       {
         id: 'special-breakfast',
@@ -83,6 +87,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Gastronomia',
         timeLabel: 'Amanhã, a partir das 7h',
         priceLabel: 'Sob consulta',
+        badge: 'Selecionado pelo hotel',
         imageSource: specialBreakfastImage,
       },
       {
@@ -92,6 +97,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Restaurante',
         timeLabel: 'Hoje, 20:00',
         priceLabel: 'Sob consulta',
+        badge: 'Disponível hoje',
         imageSource: dinnerWithViewImage,
       },
     ],
@@ -99,6 +105,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'romantic',
     title: 'Experiências românticas',
+    description: 'Momentos preparados para celebrar com calma e discrição.',
     items: [
       {
         id: 'special-night',
@@ -107,6 +114,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Experiência a dois',
         timeLabel: 'Sob agendamento',
         priceLabel: 'Sob consulta',
+        badge: 'Exclusivo do hotel',
         imageSource: specialNightImage,
       },
       {
@@ -116,13 +124,15 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Gastronomia',
         timeLabel: 'Hoje, 21:00',
         priceLabel: 'Sob consulta',
+        badge: 'Selecionado pelo hotel',
         imageSource: privateDinnerImage,
       },
     ],
   },
   {
-    id: 'family',
+    id: 'families',
     title: 'Para famílias',
+    description: 'Atividades e sugestões para aproveitar melhor a estadia juntos.',
     items: [
       {
         id: 'family-pool',
@@ -131,6 +141,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Lazer',
         timeLabel: 'Hoje, durante a tarde',
         priceLabel: 'Incluído na estadia',
+        badge: 'Disponível hoje',
         imageSource: familyPoolImage,
       },
       {
@@ -140,6 +151,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Família',
         timeLabel: 'Programação do dia',
         priceLabel: 'Sob consulta',
+        badge: 'Selecionado pelo hotel',
         imageSource: kidsActivitiesImage,
       },
     ],
@@ -147,6 +159,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'tours',
     title: 'Passeios',
+    description: 'Experiências para conhecer a cidade com leveza e tranquilidade.',
     items: [
       {
         id: 'rio-at-dusk',
@@ -164,6 +177,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Cidade',
         timeLabel: 'Saídas pela manhã',
         priceLabel: 'Sob consulta',
+        badge: 'Sob agendamento',
         imageSource: boardwalkTourImage,
       },
     ],
@@ -171,6 +185,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'most-booked',
     title: 'Mais reservadas',
+    description: 'As experiências mais procuradas pelos hóspedes.',
     items: [
       {
         id: 'most-booked-spa',
@@ -179,6 +194,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Spa',
         timeLabel: 'Hoje, 17:30',
         priceLabel: 'Sob consulta',
+        badge: 'Mais reservada',
         imageSource: spaImage,
       },
       {
@@ -188,6 +204,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Gastronomia',
         timeLabel: 'Hoje, a partir das 19h',
         priceLabel: 'Sob consulta',
+        badge: 'Mais reservada',
         imageSource: sunsetDinnerImage,
       },
     ],
@@ -195,6 +212,17 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
 ];
 
 export const featuredExperienceMock: ExperienceItem = discoverCollectionsMock[0].items[0];
+export const discoverEditorialCollectionsMock = discoverCollectionsMock.filter(
+  (collection) => !collection.featured,
+);
+
+export function getDiscoverCollectionById(collectionId?: string) {
+  if (!collectionId) {
+    return undefined;
+  }
+
+  return discoverEditorialCollectionsMock.find((collection) => collection.id === collectionId);
+}
 
 export function getExperienceById(experienceId?: string) {
   if (!experienceId) {

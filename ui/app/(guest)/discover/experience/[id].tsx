@@ -7,18 +7,38 @@ import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getExperienceById } from '../../../../src/mocks/experiences.mock';
+import { getExperienceById } from '@/src/mocks/experiences.mock';
 
 export default function ExperienceDetailPlaceholderScreen() {
-  const params = useLocalSearchParams<{ experienceId?: string | string[] }>();
-  const experienceId = Array.isArray(params.experienceId) ? params.experienceId[0] : params.experienceId;
+  const params = useLocalSearchParams<{
+    collectionId?: string | string[];
+    from?: string | string[];
+    id?: string | string[];
+  }>();
+  const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
+  const collectionId = Array.isArray(params.collectionId) ? params.collectionId[0] : params.collectionId;
   const experience = getExperienceById(experienceId);
   const experienceTitle = experience?.title ?? 'Detalhe da experiência';
+
+  function handleGoBack() {
+    if (from === 'today') {
+      router.replace('/(guest)/today');
+      return;
+    }
+
+    if (from === 'collection' && collectionId) {
+      router.replace(`/(guest)/discover/collection/${collectionId}`);
+      return;
+    }
+
+    router.replace('/(guest)/discover');
+  }
 
   return (
     <Screen safeAreaEdges={['bottom']}>
       <YStack flex={1} gap={spacing.xxxl}>
-        <BackButton accessibilityLabel="Voltar para Descobrir" onPress={() => router.back()} />
+        <BackButton accessibilityLabel="Voltar" label="Voltar" onPress={handleGoBack} />
 
         <YStack gap={spacing.md}>
           <Text variant="title1">Detalhe da experiência</Text>

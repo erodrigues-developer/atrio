@@ -1452,6 +1452,36 @@ Texto: accent ou textSecondary
 Altura: variável
 ```
 
+### 16.4 BackButton
+
+Uso:
+
+- telas internas;
+- etapas de onboarding;
+- fluxos secundários;
+- detalhes e confirmações.
+
+Padrão obrigatório:
+
+```txt
+< Voltar
+```
+
+Regras:
+
+- o botão voltar deve usar ícone discreto à esquerda e texto `Voltar`;
+- não usar botão voltar somente com ícone;
+- usar aparência leve, sem header pesado;
+- manter área de toque confortável;
+- usar cor discreta, preferencialmente `textSecondary`;
+- alinhar no topo do conteúdo, abaixo da `StayContextBar` quando ela existir.
+
+Objetivo:
+
+```txt
+O hóspede deve entender imediatamente como voltar, sem depender de um ícone isolado.
+```
+
 ---
 
 ## 17. Inputs

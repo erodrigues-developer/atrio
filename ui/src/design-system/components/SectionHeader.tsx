@@ -25,7 +25,7 @@ export function SectionHeader({ actionLabel, description, onPressAction, title }
 
       {actionLabel && onPressAction ? (
         <Button alignSelf="flex-start" onPress={onPressAction} variant="ghost">
-          <Text colorToken="accent" variant="bodySmall">
+          <Text colorToken="accent" variant="caption">
             {actionLabel}
           </Text>
         </Button>

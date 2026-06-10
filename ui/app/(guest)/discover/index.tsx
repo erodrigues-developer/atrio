@@ -9,12 +9,14 @@ import { Text } from '@/src/design-system/components/Text';
 import { FeaturedExperienceCard } from '@/src/design-system/product/FeaturedExperienceCard';
 import { HorizontalExperienceList } from '@/src/design-system/product/HorizontalExperienceList';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { discoverCollectionsMock } from '@/src/mocks/experiences.mock';
+import {
+  discoverCollectionsMock,
+  discoverEditorialCollectionsMock,
+} from '@/src/mocks/experiences.mock';
 
 export default function DiscoverScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const featuredCollection = discoverCollectionsMock.find((collection) => collection.featured);
-  const editorialCollections = discoverCollectionsMock.filter((collection) => !collection.featured);
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -46,7 +48,13 @@ export default function DiscoverScreen() {
                 description={featuredCollection.items[0].description}
                 imageSource={featuredCollection.items[0].imageSource}
                 onPress={() =>
-                  router.push(`/(guest)/discover/experience/${featuredCollection.items[0].id}` as Href)
+                  router.push({
+                    pathname: '/(guest)/discover/experience/[id]',
+                    params: {
+                      id: featuredCollection.items[0].id,
+                      from: 'discover',
+                    },
+                  } as Href)
                 }
                 priceLabel={featuredCollection.items[0].priceLabel}
                 timeLabel={featuredCollection.items[0].timeLabel}
@@ -55,13 +63,23 @@ export default function DiscoverScreen() {
             </YStack>
           ) : null}
 
-          {editorialCollections.map((collection) => (
+          {discoverEditorialCollectionsMock.map((collection) => (
             <YStack gap={spacing.md} key={collection.id}>
-              <SectionHeader title={collection.title} />
+              <SectionHeader
+                actionLabel="Ver tudo"
+                onPressAction={() => router.push(`/(guest)/discover/collection/${collection.id}` as Href)}
+                title={collection.title}
+              />
               <HorizontalExperienceList
                 items={collection.items}
                 onPressItem={(item) =>
-                  router.push(`/(guest)/discover/experience/${item.id}` as Href)
+                  router.push({
+                    pathname: '/(guest)/discover/experience/[id]',
+                    params: {
+                      id: item.id,
+                      from: 'discover',
+                    },
+                  } as Href)
                 }
               />
             </YStack>

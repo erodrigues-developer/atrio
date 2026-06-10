@@ -141,7 +141,13 @@ export default function TodayScreen() {
                 description={featuredExperienceMock.description}
                 imageSource={featuredExperienceMock.imageSource}
                 onPress={() =>
-                  router.push(`/(guest)/discover/experience/${featuredExperienceMock.id}` as Href)
+                  router.push({
+                    pathname: '/(guest)/discover/experience/[id]',
+                    params: {
+                      id: featuredExperienceMock.id,
+                      from: 'today',
+                    },
+                  } as Href)
                 }
                 priceLabel={featuredExperienceMock.priceLabel}
                 timeLabel={featuredExperienceMock.timeLabel}
