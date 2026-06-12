@@ -4,10 +4,10 @@ import { reservationsMock, type ReservationItem, type ReservationStatus } from '
 
 export type CreateReservationInput = {
   dateLabel: string;
-  experienceId?: string;
-  locationLabel?: string;
+  experienceId: string;
+  locationLabel: string;
+  note?: string;
   status: ReservationStatus;
-  time: string;
   timeLabel: string;
   title: string;
 };

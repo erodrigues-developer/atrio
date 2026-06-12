@@ -99,6 +99,9 @@ export default function TodayScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const requests = useRequests();
   const reservations = useReservations();
+  const visibleReservations = reservations.filter(
+    (reservation) => reservation.status !== 'Concluída' && reservation.status !== 'Cancelada',
+  );
   const requestsRoute: Href = '/(guest)/stay/requests';
 
   return (
@@ -188,10 +191,11 @@ export default function TodayScreen() {
 
           <YStack marginTop={SECTION_SPACING.requestsToReservations}>
             <SectionBlock title="Próximas reservas">
-              {reservations.length > 0 ? (
+              {visibleReservations.length > 0 ? (
                 <YStack gap={spacing.md}>
-                  {reservations.map((reservation) => (
+                  {visibleReservations.map((reservation) => (
                     <ReservationCard
+                      dateLabel={reservation.dateLabel}
                       key={reservation.id}
                       status={reservation.status}
                       timeLabel={reservation.timeLabel}

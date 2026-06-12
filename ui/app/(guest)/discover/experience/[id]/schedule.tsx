@@ -117,9 +117,9 @@ export default function ExperienceScheduleScreen() {
         title: experienceTitle,
         status: 'Solicitada',
         dateLabel: `${selectedDay.label}, ${selectedDay.dateLabel}`,
-        time: selectedSlot.time,
-        timeLabel: `${selectedDay.label}, ${selectedSlot.time}`,
+        timeLabel: selectedSlot.time,
         locationLabel: experienceLocationLabel,
+        note: 'A equipe do hotel irá confirmar os detalhes.',
       });
 
       router.replace({

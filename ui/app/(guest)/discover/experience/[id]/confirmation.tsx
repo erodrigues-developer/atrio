@@ -76,8 +76,8 @@ export default function ExperienceConfirmationScreen() {
           <ReservationSummaryCard
             rows={[
               { label: 'Experiência', value: experience.title },
-              { label: 'Data', value: reservation.dateLabel ?? 'Sob confirmação' },
-              { label: 'Horário', value: reservation.time ?? reservation.timeLabel },
+              { label: 'Data', value: reservation.dateLabel },
+              { label: 'Horário', value: reservation.timeLabel },
               { label: 'Local', value: reservation.locationLabel ?? experience.locationLabel ?? 'Sob confirmação' },
               { label: 'Status', value: reservation.status },
             ]}

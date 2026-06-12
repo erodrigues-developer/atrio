@@ -2,43 +2,52 @@ import { XStack } from 'tamagui';
 
 import type { RequestStatusType } from '@/src/mocks/requests.mock';
 import { Text } from '@/src/design-system/components/Text';
-import { colors } from '@/src/design-system/tokens/colors';
+import { colors, type ColorToken } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 
+export type StatusBadgeTone = 'accent' | 'success' | 'warning' | 'muted' | 'danger';
+
 type StatusBadgeProps = {
   label: string;
-  status: RequestStatusType;
+  status?: RequestStatusType;
+  tone?: StatusBadgeTone;
 };
 
-const statusStyles: Record<
-  RequestStatusType,
-  { backgroundColor: string; colorToken: 'accent' | 'danger' | 'success' | 'warning' }
-> = {
-  received: {
+const toneStyles: Record<StatusBadgeTone, { backgroundColor: string; colorToken: ColorToken }> = {
+  accent: {
     backgroundColor: colors.accentSoft,
     colorToken: 'accent',
   },
-  preparing: {
-    backgroundColor: colors.warningSoft,
-    colorToken: 'warning',
-  },
-  on_the_way: {
-    backgroundColor: colors.accentSoft,
-    colorToken: 'accent',
-  },
-  completed: {
+  success: {
     backgroundColor: colors.successSoft,
     colorToken: 'success',
   },
-  attention: {
+  warning: {
+    backgroundColor: colors.warningSoft,
+    colorToken: 'warning',
+  },
+  muted: {
+    backgroundColor: colors.surfaceMuted,
+    colorToken: 'textSecondary',
+  },
+  danger: {
     backgroundColor: colors.dangerSoft,
     colorToken: 'danger',
   },
 };
 
-export function StatusBadge({ label, status }: StatusBadgeProps) {
-  const statusStyle = statusStyles[status];
+const requestStatusTones: Record<RequestStatusType, StatusBadgeTone> = {
+  received: 'accent',
+  preparing: 'warning',
+  on_the_way: 'accent',
+  completed: 'success',
+  attention: 'danger',
+};
+
+export function StatusBadge({ label, status, tone }: StatusBadgeProps) {
+  const resolvedTone = tone ?? (status ? requestStatusTones[status] : 'accent');
+  const statusStyle = toneStyles[resolvedTone];
 
   return (
     <XStack
