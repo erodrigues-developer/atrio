@@ -25,8 +25,8 @@ import { spacing } from '@/src/design-system/tokens/spacing';
 import { featuredExperienceMock } from '../../../src/mocks/experiences.mock';
 import { guestMock } from '../../../src/mocks/guest.mock';
 import { getRequestDetails } from '../../../src/mocks/requests.mock';
-import { reservationsMock } from '../../../src/mocks/reservations.mock';
 import { useRequests } from '../../../src/stores/requests.store';
+import { useReservations } from '../../../src/stores/reservations.store';
 import { todayMock, usefulInfoMock, type UsefulInfoId } from '../../../src/mocks/today.mock';
 
 type SectionBlockProps = {
@@ -98,6 +98,7 @@ function SectionBlock({ children, description, title }: SectionBlockProps) {
 export default function TodayScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const requests = useRequests();
+  const reservations = useReservations();
   const requestsRoute: Href = '/(guest)/stay/requests';
 
   return (
@@ -187,9 +188,9 @@ export default function TodayScreen() {
 
           <YStack marginTop={SECTION_SPACING.requestsToReservations}>
             <SectionBlock title="Próximas reservas">
-              {reservationsMock.length > 0 ? (
+              {reservations.length > 0 ? (
                 <YStack gap={spacing.md}>
-                  {reservationsMock.map((reservation) => (
+                  {reservations.map((reservation) => (
                     <ReservationCard
                       key={reservation.id}
                       status={reservation.status}

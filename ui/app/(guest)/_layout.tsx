@@ -70,9 +70,11 @@ const guestTabs: GuestTabConfig[] = [
 const hiddenGuestRoutes = [
   'stay/wifi',
   'stay/requests/index',
+  'stay/reservations',
   'discover/collection/[id]',
   'discover/experience/[id]',
   'discover/experience/[id]/schedule',
+  'discover/experience/[id]/confirmation',
   'services/request/[type]',
   'services/request/[type]/confirmation',
 ] as const;

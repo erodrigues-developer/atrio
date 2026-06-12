@@ -15,7 +15,7 @@ type Props = {
 
 const statusStyles: Record<
   ReservationStatus,
-  { backgroundColor: string; colorToken: 'danger' | 'success' | 'warning' }
+  { backgroundColor: string; colorToken: 'accent' | 'danger' | 'success' | 'warning' }
 > = {
   Confirmada: {
     backgroundColor: colors.successSoft,
@@ -28,6 +28,10 @@ const statusStyles: Record<
   'Precisa de atenção': {
     backgroundColor: colors.dangerSoft,
     colorToken: 'danger',
+  },
+  Solicitada: {
+    backgroundColor: colors.accentSoft,
+    colorToken: 'accent',
   },
 };
 

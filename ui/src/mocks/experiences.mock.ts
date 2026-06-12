@@ -15,6 +15,23 @@ export type ExperienceItem = {
   title: string;
 };
 
+export type ExperienceScheduleSlot = {
+  available: boolean;
+  id: string;
+  time: string;
+};
+
+export type ExperienceScheduleDay = {
+  dateLabel: string;
+  id: string;
+  label: string;
+  slots: ExperienceScheduleSlot[];
+};
+
+export type ExperienceSchedule = {
+  days: ExperienceScheduleDay[];
+};
+
 export type DiscoverCollection = {
   description?: string;
   featured?: boolean;
@@ -371,6 +388,63 @@ export const discoverEditorialCollectionsMock = discoverCollectionsMock.filter(
   (collection) => !collection.featured,
 );
 
+export const experienceScheduleMock: Record<string, ExperienceSchedule> = {
+  'sunset-dinner': {
+    days: [
+      {
+        id: 'today',
+        label: 'Hoje',
+        dateLabel: '12 jun',
+        slots: [
+          { id: '1830', time: '18:30', available: true },
+          { id: '1900', time: '19:00', available: true },
+          { id: '1930', time: '19:30', available: true },
+          { id: '2000', time: '20:00', available: true },
+          { id: '2030', time: '20:30', available: false },
+        ],
+      },
+      {
+        id: 'tomorrow',
+        label: 'Amanhã',
+        dateLabel: '13 jun',
+        slots: [
+          { id: '1900', time: '19:00', available: true },
+          { id: '1930', time: '19:30', available: true },
+          { id: '2000', time: '20:00', available: true },
+        ],
+      },
+      {
+        id: 'fri-14',
+        label: 'Sex',
+        dateLabel: '14 jun',
+        slots: [
+          { id: '1900', time: '19:00', available: true },
+          { id: '1930', time: '19:30', available: true },
+          { id: '2030', time: '20:30', available: true },
+        ],
+      },
+      {
+        id: 'sat-15',
+        label: 'Sáb',
+        dateLabel: '15 jun',
+        slots: [
+          { id: '1830', time: '18:30', available: false },
+          { id: '1900', time: '19:00', available: false },
+        ],
+      },
+      {
+        id: 'sun-16',
+        label: 'Dom',
+        dateLabel: '16 jun',
+        slots: [
+          { id: '1930', time: '19:30', available: true },
+          { id: '2000', time: '20:00', available: true },
+        ],
+      },
+    ],
+  },
+};
+
 export function getDiscoverCollectionById(collectionId?: string) {
   if (!collectionId) {
     return undefined;
@@ -387,4 +461,12 @@ export function getExperienceById(experienceId?: string) {
   return discoverCollectionsMock
     .flatMap((collection) => collection.items)
     .find((item) => item.id === experienceId);
+}
+
+export function getExperienceScheduleById(experienceId?: string) {
+  if (!experienceId) {
+    return undefined;
+  }
+
+  return experienceScheduleMock[experienceId];
 }
