@@ -72,6 +72,7 @@ const hiddenGuestRoutes = [
   'stay/requests/index',
   'discover/collection/[id]',
   'discover/experience/[id]',
+  'discover/experience/[id]/schedule',
   'services/request/[type]',
   'services/request/[type]/confirmation',
 ] as const;

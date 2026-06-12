@@ -9,6 +9,7 @@ import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { colors } from '@/src/design-system/tokens/colors';
+import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '../../../src/mocks/stay.mock';
 
