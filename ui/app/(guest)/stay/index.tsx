@@ -29,10 +29,6 @@ export default function StayScreen() {
             title="Minhas reservas"
           />
         </Card>
-
-        <Text colorToken="textSecondary" variant="body">
-          Informações úteis da estadia serão adicionadas aqui nas próximas etapas.
-        </Text>
       </YStack>
     </Screen>
   );

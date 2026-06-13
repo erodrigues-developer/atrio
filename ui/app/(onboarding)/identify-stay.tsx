@@ -8,6 +8,7 @@ import { BackButton } from '@/src/design-system/components/BackButton';
 import { Button } from '@/src/design-system/components/Button';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
@@ -152,9 +153,9 @@ export default function IdentifyStayScreen() {
       <YStack flex={1} justifyContent="space-between">
         <YStack gap={spacing.huge}>
           <BackButton
-            accessibilityLabel="Voltar para a tela de boas-vindas"
+            accessibilityLabel="Voltar"
             disabled={isLoading}
-            onPress={() => router.replace('/(onboarding)/welcome')}
+            onPress={() => goBackOrReplace('/(onboarding)/welcome')}
           />
 
           <YStack gap={spacing.xxxl}>

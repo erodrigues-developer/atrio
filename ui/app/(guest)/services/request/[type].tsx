@@ -11,6 +11,7 @@ import { Text } from '@/src/design-system/components/Text';
 import { TextArea } from '@/src/design-system/components/TextArea';
 import { QuantitySelector } from '@/src/design-system/components/QuantitySelector';
 import { Card } from '@/src/design-system/components/Card';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '@/src/mocks/stay.mock';
@@ -130,7 +131,7 @@ export default function ServiceRequestScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <YStack gap={spacing.xxl}>
-            <BackButton accessibilityLabel="Voltar para Serviços" onPress={() => router.push('/(guest)/services')} />
+            <BackButton accessibilityLabel="Voltar" onPress={() => goBackOrReplace('/(guest)/services')} />
 
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.5} variant="title1">

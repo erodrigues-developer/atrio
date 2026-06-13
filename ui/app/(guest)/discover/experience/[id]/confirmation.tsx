@@ -11,6 +11,7 @@ import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { getExperienceById } from '@/src/mocks/experiences.mock';
+import { getReservationStatusLabel } from '@/src/mocks/reservations.mock';
 import { useReservations } from '@/src/stores/reservations.store';
 
 export default function ExperienceConfirmationScreen() {
@@ -63,7 +64,7 @@ export default function ExperienceConfirmationScreen() {
             </YStack>
 
             <YStack alignItems="center" gap={spacing.sm}>
-              <Badge label="Solicitada" tone="accent" />
+              <Badge label={getReservationStatusLabel(reservation.status)} tone="accent" />
               <Text textAlign="center" variant="title2">
                 Sua reserva foi recebida.
               </Text>
@@ -79,7 +80,7 @@ export default function ExperienceConfirmationScreen() {
               { label: 'Data', value: reservation.dateLabel },
               { label: 'Horário', value: reservation.timeLabel },
               { label: 'Local', value: reservation.locationLabel ?? experience.locationLabel ?? 'Sob confirmação' },
-              { label: 'Status', value: reservation.status },
+              { label: 'Status', value: getReservationStatusLabel(reservation.status) },
             ]}
           />
         </YStack>

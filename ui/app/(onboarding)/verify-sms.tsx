@@ -8,6 +8,7 @@ import { Button } from '@/src/design-system/components/Button';
 import { OtpInput } from '@/src/design-system/components/OtpInput';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { saveSession } from '@/src/stores/session.store';
 
@@ -120,9 +121,9 @@ export default function VerifySmsScreen() {
       <YStack flex={1} justifyContent="space-between">
         <YStack gap={spacing.huge}>
           <BackButton
-            accessibilityLabel="Voltar para identificação da estadia"
+            accessibilityLabel="Voltar"
             disabled={isLoading}
-            onPress={() => router.replace('/(onboarding)/identify-stay')}
+            onPress={() => goBackOrReplace('/(onboarding)/identify-stay')}
           />
 
           <YStack gap={spacing.xxxl}>

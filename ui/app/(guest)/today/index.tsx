@@ -100,7 +100,7 @@ export default function TodayScreen() {
   const requests = useRequests();
   const reservations = useReservations();
   const visibleReservations = reservations.filter(
-    (reservation) => reservation.status !== 'Concluída' && reservation.status !== 'Cancelada',
+    (reservation) => reservation.status !== 'completed' && reservation.status !== 'cancelled',
   );
   const requestsRoute: Href = '/(guest)/stay/requests';
 

@@ -6,7 +6,7 @@ import { Card } from '@/src/design-system/components/Card';
 import { Text } from '@/src/design-system/components/Text';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import type { ReservationItem, ReservationStatus } from '@/src/mocks/reservations.mock';
+import { getReservationStatusLabel, type ReservationItem, type ReservationStatus } from '@/src/mocks/reservations.mock';
 
 type ReservationStatusCardProps = Pick<
   ReservationItem,
@@ -16,11 +16,11 @@ type ReservationStatusCardProps = Pick<
 };
 
 const reservationStatusTones: Record<ReservationStatus, StatusBadgeTone> = {
-  Solicitada: 'accent',
-  Confirmada: 'success',
-  'Em andamento': 'warning',
-  Concluída: 'muted',
-  Cancelada: 'danger',
+  requested: 'accent',
+  confirmed: 'success',
+  in_progress: 'warning',
+  completed: 'muted',
+  cancelled: 'danger',
 };
 
 export function ReservationStatusCard({
@@ -38,7 +38,7 @@ export function ReservationStatusCard({
         <Text flex={1} variant="bodyMedium">
           {title}
         </Text>
-        <StatusBadge label={status} tone={reservationStatusTones[status]} />
+        <StatusBadge label={getReservationStatusLabel(status)} tone={reservationStatusTones[status]} />
       </XStack>
 
       <YStack gap={spacing.xs}>

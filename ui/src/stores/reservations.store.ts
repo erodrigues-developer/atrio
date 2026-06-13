@@ -1,18 +1,25 @@
 import { useSyncExternalStore } from 'react';
 
-import { reservationsMock, type ReservationItem, type ReservationStatus } from '@/src/mocks/reservations.mock';
+import {
+  reservationsMock,
+  sortReservations,
+  type ReservationItem,
+  type ReservationStatus,
+} from '@/src/mocks/reservations.mock';
 
 export type CreateReservationInput = {
   dateLabel: string;
   experienceId: string;
   locationLabel: string;
   note?: string;
+  priceLabel?: string;
+  scheduledAt: string;
   status: ReservationStatus;
   timeLabel: string;
   title: string;
 };
 
-let reservations: ReservationItem[] = [...reservationsMock];
+let reservations: ReservationItem[] = sortReservations([...reservationsMock]);
 
 const listeners = new Set<() => void>();
 
@@ -42,7 +49,7 @@ export function createReservation(input: CreateReservationInput) {
     ...input,
   };
 
-  reservations = [nextReservation, ...reservations];
+  reservations = sortReservations([nextReservation, ...reservations]);
   emitChange();
 
   return nextReservation;

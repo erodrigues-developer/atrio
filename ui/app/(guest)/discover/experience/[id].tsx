@@ -57,11 +57,18 @@ export default function ExperienceDetailScreen() {
   const scheduleHref = {
     pathname: '/(guest)/discover/experience/[id]/schedule',
     params: {
+      collectionId,
+      from,
       id: experienceId,
     },
   } as Href;
 
   function handleGoBack() {
+    if (from === 'reservations') {
+      router.replace('/(guest)/stay/reservations');
+      return;
+    }
+
     if (from === 'today') {
       router.replace('/(guest)/today');
       return;

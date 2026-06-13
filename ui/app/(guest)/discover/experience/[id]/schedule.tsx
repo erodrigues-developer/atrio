@@ -12,17 +12,25 @@ import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { TimeSlotChip } from '@/src/design-system/components/TimeSlotChip';
 import { ReservationSummaryCard } from '@/src/design-system/product/ReservationSummaryCard';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { getExperienceById, getExperienceScheduleById } from '@/src/mocks/experiences.mock';
+import { buildReservationScheduledAt } from '@/src/mocks/reservations.mock';
 import { createReservation } from '@/src/stores/reservations.store';
 
 const CONTENT_HORIZONTAL_PADDING = spacing.xxl;
 const SLOT_GAP = spacing.md;
 
 export default function ExperienceScheduleScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    collectionId?: string | string[];
+    from?: string | string[];
+    id?: string | string[];
+  }>();
   const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const from = Array.isArray(params.from) ? params.from[0] : params.from;
+  const collectionId = Array.isArray(params.collectionId) ? params.collectionId[0] : params.collectionId;
   const experience = getExperienceById(experienceId);
   const schedule = getExperienceScheduleById(experienceId);
   const tabBarHeight = useBottomTabBarHeight();
@@ -47,13 +55,15 @@ export default function ExperienceScheduleScreen() {
 
   function handleGoBack() {
     if (!experienceId) {
-      router.replace('/(guest)/discover');
+      goBackOrReplace('/(guest)/discover');
       return;
     }
 
-    router.replace({
+    goBackOrReplace({
       pathname: '/(guest)/discover/experience/[id]',
       params: {
+        collectionId,
+        from,
         id: experienceId,
       },
     } as Href);
@@ -105,7 +115,7 @@ export default function ExperienceScheduleScreen() {
   }
 
   function handleSubmitReservation() {
-    if (!selectedDay || !selectedSlot || isSubmitting) {
+    if (!experienceId || !experience || !selectedDay || !selectedSlot || isSubmitting) {
       return;
     }
 
@@ -115,10 +125,12 @@ export default function ExperienceScheduleScreen() {
       const reservation = createReservation({
         experienceId,
         title: experienceTitle,
-        status: 'Solicitada',
+        status: 'requested',
         dateLabel: `${selectedDay.label}, ${selectedDay.dateLabel}`,
         timeLabel: selectedSlot.time,
         locationLabel: experienceLocationLabel,
+        priceLabel: experience.priceLabel,
+        scheduledAt: buildReservationScheduledAt(`${selectedDay.label}, ${selectedDay.dateLabel}`, selectedSlot.time),
         note: 'A equipe do hotel irá confirmar os detalhes.',
       });
 
@@ -142,7 +154,7 @@ export default function ExperienceScheduleScreen() {
         showsVerticalScrollIndicator={false}>
         <YStack gap={spacing.xxxl}>
           <YStack gap={spacing.xl} paddingHorizontal={CONTENT_HORIZONTAL_PADDING}>
-            <BackButton accessibilityLabel="Voltar para a experiência" label="Voltar" onPress={handleGoBack} />
+            <BackButton accessibilityLabel="Voltar" label="Voltar" onPress={handleGoBack} />
 
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.4} variant="title1">

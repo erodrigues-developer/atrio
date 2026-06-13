@@ -1475,6 +1475,10 @@ Regras:
 - manter área de toque confortável;
 - usar cor discreta, preferencialmente `textSecondary`;
 - alinhar no topo do conteúdo, abaixo da `StayContextBar` quando ela existir.
+- o comportamento padrão de voltar deve sempre levar para a tela imediatamente anterior do fluxo;
+- não usar destino fixo como regra principal quando existir histórico de navegação;
+- usar fallback explícito apenas quando a tela for acessada diretamente, sem histórico anterior;
+- quando houver fallback, ele deve respeitar o contexto de origem mais provável do fluxo, e não um destino genérico arbitrário.
 
 Objetivo:
 

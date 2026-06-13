@@ -10,10 +10,19 @@ type EmptyStateProps = {
   actionLabel?: string;
   description: string;
   onActionPress?: () => void;
+  onSecondaryActionPress?: () => void;
+  secondaryActionLabel?: string;
   title: string;
 };
 
-export function EmptyState({ actionLabel, description, onActionPress, title }: EmptyStateProps) {
+export function EmptyState({
+  actionLabel,
+  description,
+  onActionPress,
+  onSecondaryActionPress,
+  secondaryActionLabel,
+  title,
+}: EmptyStateProps) {
   return (
     <Card alignItems="center" borderRadius={radius.xl} gap={spacing.lg} padding={spacing.xl}>
       <YStack alignItems="center" gap={spacing.xs}>
@@ -25,7 +34,21 @@ export function EmptyState({ actionLabel, description, onActionPress, title }: E
         </Text>
       </YStack>
 
-      {actionLabel && onActionPress ? <Button onPress={onActionPress}>{actionLabel}</Button> : null}
+      {actionLabel && onActionPress ? (
+        <Button onPress={onActionPress}>
+          <Text colorToken="textInverse" variant="bodyMedium">
+            {actionLabel}
+          </Text>
+        </Button>
+      ) : null}
+
+      {secondaryActionLabel && onSecondaryActionPress ? (
+        <Button onPress={onSecondaryActionPress} variant="ghost">
+          <Text colorToken="textSecondary" variant="bodyMedium">
+            {secondaryActionLabel}
+          </Text>
+        </Button>
+      ) : null}
     </Card>
   );
 }

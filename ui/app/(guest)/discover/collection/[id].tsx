@@ -9,6 +9,7 @@ import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { CollectionExperienceCard } from '@/src/design-system/product/CollectionExperienceCard';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { getDiscoverCollectionById } from '@/src/mocks/experiences.mock';
 
@@ -19,7 +20,7 @@ export default function DiscoverCollectionScreen() {
   const collection = getDiscoverCollectionById(collectionId);
 
   function handleGoBack() {
-    router.replace('/(guest)/discover');
+    goBackOrReplace('/(guest)/discover');
   }
 
   const content = !collection ? (
@@ -85,7 +86,7 @@ export default function DiscoverCollectionScreen() {
         }}
         showsVerticalScrollIndicator={false}>
         <YStack gap={spacing.xxxl}>
-          <BackButton accessibilityLabel="Voltar para Descobrir" label="Voltar" onPress={handleGoBack} />
+          <BackButton accessibilityLabel="Voltar" label="Voltar" onPress={handleGoBack} />
 
           <YStack gap={spacing.md}>
             <Text letterSpacing={-0.5} variant="title1">

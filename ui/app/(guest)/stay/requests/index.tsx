@@ -9,6 +9,7 @@ import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { RequestStatusCard } from '@/src/design-system/product/RequestStatusCard';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { getRequestDetails } from '@/src/mocks/requests.mock';
 import { useRequests } from '@/src/stores/requests.store';
@@ -18,12 +19,7 @@ export default function StayRequestsScreen() {
   const requests = useRequests();
 
   function handleGoBack() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    router.replace('/(guest)/stay');
+    goBackOrReplace('/(guest)/stay');
   }
 
   return (

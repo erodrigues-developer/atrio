@@ -7,7 +7,8 @@ import { BackButton } from '@/src/design-system/components/BackButton';
 import { EmptyState } from '@/src/design-system/components/EmptyState';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
-import { ReservationStatusCard } from '@/src/design-system/product/ReservationStatusCard';
+import { ReservationCard } from '@/src/design-system/product/ReservationCard';
+import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { useReservations } from '@/src/stores/reservations.store';
 
@@ -16,18 +17,14 @@ export default function StayReservationsScreen() {
   const reservations = useReservations();
 
   function handleGoBack() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-
-    router.replace('/(guest)/stay');
+    goBackOrReplace('/(guest)/stay');
   }
 
   function handleOpenExperience(experienceId: string) {
     router.push({
       pathname: '/(guest)/discover/experience/[id]',
       params: {
+        from: 'reservations',
         id: experienceId,
       },
     } as Href);
@@ -39,7 +36,7 @@ export default function StayReservationsScreen() {
         contentContainerStyle={{
           paddingTop: spacing.lg,
           paddingHorizontal: spacing.xxl,
-          paddingBottom: tabBarHeight + spacing.xxxl,
+          paddingBottom: tabBarHeight + spacing.huge + spacing.md,
         }}
         showsVerticalScrollIndicator={false}>
         <YStack gap={spacing.xxl}>
@@ -51,19 +48,19 @@ export default function StayReservationsScreen() {
                 Minhas reservas
               </Text>
               <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-                Acompanhe as experiências reservadas durante sua estadia.
+                Acompanhe as experiências reservadas durante a sua estadia.
               </Text>
             </YStack>
 
             {reservations.length > 0 ? (
               <YStack gap={spacing.lg}>
                 {reservations.map((reservation) => (
-                  <ReservationStatusCard
+                  <ReservationCard
                     dateLabel={reservation.dateLabel}
                     key={reservation.id}
                     locationLabel={reservation.locationLabel}
-                    note={reservation.note}
                     onPress={() => handleOpenExperience(reservation.experienceId)}
+                    showDetailsAction
                     status={reservation.status}
                     timeLabel={reservation.timeLabel}
                     title={reservation.title}
@@ -73,8 +70,10 @@ export default function StayReservationsScreen() {
             ) : (
               <EmptyState
                 actionLabel="Descobrir experiências"
-                description="Quando escolher uma experiência, ela aparecerá aqui para acompanhamento."
+                description="Explore as experiências selecionadas pelo hotel e solicite uma reserva durante a sua estadia."
                 onActionPress={() => router.push('/(guest)/discover')}
+                onSecondaryActionPress={() => router.push('/(guest)/today')}
+                secondaryActionLabel="Voltar para Hoje"
                 title="Você ainda não tem reservas."
               />
             )}

@@ -26,12 +26,7 @@ type GuestTabConfig = {
   accessibilityLabel: string;
   icon: LucideIcon;
   label: string;
-  name:
-    | 'today/index'
-    | 'discover/index'
-    | 'services/index'
-    | 'stay/index'
-    | 'concierge/index';
+  name: 'today/index' | 'discover/index' | 'services/index' | 'stay' | 'concierge/index';
 };
 
 const guestTabs: GuestTabConfig[] = [
@@ -54,7 +49,7 @@ const guestTabs: GuestTabConfig[] = [
     icon: Bell,
   },
   {
-    name: 'stay/index',
+    name: 'stay',
     label: 'Estadia',
     accessibilityLabel: 'Estadia',
     icon: BedDouble,
@@ -68,9 +63,6 @@ const guestTabs: GuestTabConfig[] = [
 ];
 
 const hiddenGuestRoutes = [
-  'stay/wifi',
-  'stay/requests/index',
-  'stay/reservations',
   'discover/collection/[id]',
   'discover/experience/[id]',
   'discover/experience/[id]/schedule',
