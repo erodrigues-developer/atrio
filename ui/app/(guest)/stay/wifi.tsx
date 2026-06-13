@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { Copy, Wifi } from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { XStack, YStack } from 'tamagui';
@@ -12,7 +11,7 @@ import { goBackOrReplace } from '@/src/navigation/go-back';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { stayMock } from '../../../src/mocks/stay.mock';
+import { stayMock } from '@/src/mocks/stay.mock';
 
 export default function WifiScreen() {
   const handleCopyPassword = () => {
@@ -22,7 +21,7 @@ export default function WifiScreen() {
   return (
     <Screen safeAreaEdges={['bottom']}>
       <YStack flex={1} gap={spacing.xxxl}>
-        <BackButton accessibilityLabel="Voltar" onPress={() => goBackOrReplace('/(guest)/today')} />
+        <BackButton accessibilityLabel="Voltar" onPress={() => goBackOrReplace('/(guest)/stay')} />
 
         <YStack gap={spacing.md}>
           <Text variant="title1">Wi-Fi</Text>
@@ -43,7 +42,7 @@ export default function WifiScreen() {
               <Wifi color={colors.accent} size={18} strokeWidth={1.9} />
             </XStack>
             <YStack gap={spacing.xs}>
-              <Text variant="bodyMedium">{stayMock.wifiName}</Text>
+              <Text variant="bodyMedium">{stayMock.wifi.network}</Text>
               <Text colorToken="textSecondary" variant="bodySmall">
                 Rede principal do hotel
               </Text>
@@ -54,7 +53,7 @@ export default function WifiScreen() {
             <Text colorToken="textSecondary" variant="bodySmall">
               Senha
             </Text>
-            <Text variant="title3">{stayMock.wifiPassword}</Text>
+            <Text variant="title3">{stayMock.wifi.password}</Text>
           </YStack>
 
           <Button alignSelf="flex-start" minHeight={44} onPress={handleCopyPassword} variant="ghost">

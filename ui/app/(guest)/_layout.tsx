@@ -88,7 +88,7 @@ export default function GuestLayout() {
     <YStack backgroundColor={colors.background} flex={1}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
         <StayContextBar
-          checkOutTime={stayMock.checkOutTime}
+          checkOutTime={stayMock.checkOutTimeLabel}
           hotelName={stayMock.hotelName}
           onPress={() => router.push('/(guest)/stay')}
           roomNumber={stayMock.roomNumber}
