@@ -8,9 +8,6 @@ export type StayMock = {
   checkInLabel: string;
   checkOutLabel: string;
   checkOutTimeLabel: string;
-  features: {
-    consumptionEnabled: boolean;
-  };
   hotelName: string;
   roomNumber: string;
   statusLabel: string;
@@ -41,9 +38,6 @@ export const stayMock: StayMock = {
   summaries: {
     requests: '1 em andamento',
     reservations: '1 solicitada',
-  },
-  features: {
-    consumptionEnabled: false,
   },
   usefulInfo: [
     {

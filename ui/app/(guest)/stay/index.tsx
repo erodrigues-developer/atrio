@@ -23,6 +23,7 @@ import { StayNavigationItem } from '@/src/design-system/product/StayNavigationIt
 import { StaySummaryCard } from '@/src/design-system/product/StaySummaryCard';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
+import { getConsumptionMock } from '@/src/mocks/consumption.mock';
 import { stayMock } from '@/src/mocks/stay.mock';
 
 const usefulInfoIcons = [Coffee, Clock, Info, Building2, MessageCircle] as const;
@@ -30,6 +31,7 @@ const usefulInfoIcons = [Coffee, Clock, Info, Building2, MessageCircle] as const
 export default function StayScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const stay = stayMock;
+  const consumption = getConsumptionMock();
 
   if (!stay) {
     return (
@@ -125,11 +127,19 @@ export default function StayScreen() {
                 summaryLabel={stay.summaries.reservations}
                 title="Minhas reservas"
               />
-              {stay.features.consumptionEnabled ? (
+              {consumption.enabled ? (
                 <StayNavigationItem
                   description="Acompanhe lançamentos vinculados à sua hospedagem."
                   icon={ReceiptText}
-                  onPress={() => router.push('/(guest)/stay/consumption')}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(guest)/stay/consumption',
+                      params: {
+                        returnTo: '/(guest)/stay',
+                      },
+                    } as Href)
+                  }
+                  summaryLabel={consumption.totalLabel}
                   title="Consumo"
                 />
               ) : null}
