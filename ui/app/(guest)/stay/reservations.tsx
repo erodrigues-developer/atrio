@@ -1,5 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { router, type Href } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -8,24 +8,25 @@ import { EmptyState } from '@/src/design-system/components/EmptyState';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { ReservationCard } from '@/src/design-system/product/ReservationCard';
-import { goBackOrReplace } from '@/src/navigation/go-back';
+import { resolveReturnTo } from '@/src/navigation/return-to';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { useReservations } from '@/src/stores/reservations.store';
 
 export default function StayReservationsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const reservations = useReservations();
 
   function handleGoBack() {
-    goBackOrReplace('/(guest)/stay');
+    router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));
   }
 
   function handleOpenExperience(experienceId: string) {
     router.push({
       pathname: '/(guest)/discover/experience/[id]',
       params: {
-        from: 'reservations',
         id: experienceId,
+        returnTo: '/(guest)/stay/reservations',
       },
     } as Href);
   }

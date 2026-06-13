@@ -1,5 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -9,17 +9,18 @@ import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { RequestStatusCard } from '@/src/design-system/product/RequestStatusCard';
-import { goBackOrReplace } from '@/src/navigation/go-back';
+import { resolveReturnTo } from '@/src/navigation/return-to';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { getRequestDetails } from '@/src/mocks/requests.mock';
 import { useRequests } from '@/src/stores/requests.store';
 
 export default function StayRequestsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const requests = useRequests();
 
   function handleGoBack() {
-    goBackOrReplace('/(guest)/stay');
+    router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));
   }
 
   return (

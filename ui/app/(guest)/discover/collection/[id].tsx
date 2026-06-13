@@ -63,8 +63,7 @@ export default function DiscoverCollectionScreen() {
               pathname: '/(guest)/discover/experience/[id]',
               params: {
                 id: item.id,
-                from: 'collection',
-                collectionId: collection.id,
+                returnTo: `/(guest)/discover/collection/${collection.id}`,
               },
             } as Href)
           }

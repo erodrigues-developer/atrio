@@ -24,13 +24,11 @@ const SLOT_GAP = spacing.md;
 
 export default function ExperienceScheduleScreen() {
   const params = useLocalSearchParams<{
-    collectionId?: string | string[];
-    from?: string | string[];
     id?: string | string[];
+    returnTo?: string | string[];
   }>();
   const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const from = Array.isArray(params.from) ? params.from[0] : params.from;
-  const collectionId = Array.isArray(params.collectionId) ? params.collectionId[0] : params.collectionId;
+  const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
   const experience = getExperienceById(experienceId);
   const schedule = getExperienceScheduleById(experienceId);
   const tabBarHeight = useBottomTabBarHeight();
@@ -62,9 +60,8 @@ export default function ExperienceScheduleScreen() {
     goBackOrReplace({
       pathname: '/(guest)/discover/experience/[id]',
       params: {
-        collectionId,
-        from,
         id: experienceId,
+        returnTo,
       },
     } as Href);
   }

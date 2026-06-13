@@ -63,7 +63,12 @@ const quickActions: QuickAction[] = [
   {
     title: 'Wi-Fi',
     icon: Wifi,
-    href: '/(guest)/stay/wifi',
+    href: {
+      pathname: '/(guest)/stay/wifi',
+      params: {
+        returnTo: '/(guest)/today',
+      },
+    },
   },
   {
     title: 'Concierge',
@@ -102,7 +107,12 @@ export default function TodayScreen() {
   const visibleReservations = reservations.filter(
     (reservation) => reservation.status !== 'completed' && reservation.status !== 'cancelled',
   );
-  const requestsRoute: Href = '/(guest)/stay/requests';
+  const requestsRoute: Href = {
+    pathname: '/(guest)/stay/requests',
+    params: {
+      returnTo: '/(guest)/today',
+    },
+  };
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -149,7 +159,7 @@ export default function TodayScreen() {
                     pathname: '/(guest)/discover/experience/[id]',
                     params: {
                       id: featuredExperienceMock.id,
-                      from: 'today',
+                      returnTo: '/(guest)/today',
                     },
                   } as Href)
                 }
@@ -220,9 +230,14 @@ export default function TodayScreen() {
             <SectionBlock title="Informações úteis">
               <Card borderRadius={radius.xl} paddingHorizontal={spacing.lg} paddingVertical={spacing.sm}>
                 {usefulInfoMock.map((item, index) => {
-                  const href =
+                  const href: Href =
                     item.id === 'wifi'
-                      ? '/(guest)/stay/wifi'
+                      ? {
+                          pathname: '/(guest)/stay/wifi',
+                          params: {
+                            returnTo: '/(guest)/today',
+                          },
+                        }
                       : item.id === 'breakfast'
                         ? '/(guest)/discover'
                         : '/(guest)/stay';

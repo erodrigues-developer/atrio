@@ -11,7 +11,7 @@ import { Text } from '@/src/design-system/components/Text';
 import { TextArea } from '@/src/design-system/components/TextArea';
 import { QuantitySelector } from '@/src/design-system/components/QuantitySelector';
 import { Card } from '@/src/design-system/components/Card';
-import { goBackOrReplace } from '@/src/navigation/go-back';
+import { resolveReturnTo } from '@/src/navigation/return-to';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '@/src/mocks/stay.mock';
@@ -67,7 +67,7 @@ function getPlaceholderContent(type?: ServiceType, serviceTitle?: string): Reque
 }
 
 export default function ServiceRequestScreen() {
-  const { type } = useLocalSearchParams<{ type?: string }>();
+  const { returnTo, type } = useLocalSearchParams<{ returnTo?: string | string[]; type?: string }>();
   const session = useSession();
   const service = servicesMock.find((item) => item.id === (type as ServiceType | undefined));
   const tabBarHeight = useBottomTabBarHeight();
@@ -80,6 +80,10 @@ export default function ServiceRequestScreen() {
   const isTowels = typedService === 'towels';
   const content = isTowels ? towelsRequestContent : getFallbackContent(typedService, service?.title);
   const placeholderContent = getPlaceholderContent(typedService, service?.title);
+
+  function handleGoBack() {
+    router.replace(resolveReturnTo(returnTo, '/(guest)/services'));
+  }
 
   async function handleSubmit() {
     if (!isTowels || isSubmitting) {
@@ -131,7 +135,7 @@ export default function ServiceRequestScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <YStack gap={spacing.xxl}>
-            <BackButton accessibilityLabel="Voltar" onPress={() => goBackOrReplace('/(guest)/services')} />
+            <BackButton accessibilityLabel="Voltar" onPress={handleGoBack} />
 
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.5} variant="title1">

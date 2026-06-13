@@ -1,6 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Copy, Info, Wifi } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
@@ -10,7 +10,7 @@ import { Button } from '@/src/design-system/components/Button';
 import { Card } from '@/src/design-system/components/Card';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
-import { goBackOrReplace } from '@/src/navigation/go-back';
+import { resolveReturnTo } from '@/src/navigation/return-to';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
@@ -22,6 +22,7 @@ export default function WifiScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const [hasCopiedPassword, setHasCopiedPassword] = useState(false);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const params = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const wifi = stayMock.wifi;
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function WifiScreen() {
   }, []);
 
   function handleGoBack() {
-    goBackOrReplace('/(guest)/stay');
+    router.replace(resolveReturnTo(params.returnTo, '/(guest)/stay'));
   }
 
   async function handleCopyPassword() {

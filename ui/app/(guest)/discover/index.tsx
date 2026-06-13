@@ -52,7 +52,7 @@ export default function DiscoverScreen() {
                     pathname: '/(guest)/discover/experience/[id]',
                     params: {
                       id: featuredCollection.items[0].id,
-                      from: 'discover',
+                      returnTo: '/(guest)/discover',
                     },
                   } as Href)
                 }
@@ -77,7 +77,7 @@ export default function DiscoverScreen() {
                     pathname: '/(guest)/discover/experience/[id]',
                     params: {
                       id: item.id,
-                      from: 'discover',
+                      returnTo: '/(guest)/discover',
                     },
                   } as Href)
                 }

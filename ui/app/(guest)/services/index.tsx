@@ -66,7 +66,15 @@ export default function ServicesScreen() {
                   description={service.description}
                   icon={<Icon color={colors.textSecondary} size={18} strokeWidth={1.9} />}
                   isLast={index === servicesMock.length - 1}
-                  onPress={() => router.push(`/(guest)/services/request/${service.id}` as Href)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(guest)/services/request/[type]',
+                      params: {
+                        type: service.id,
+                        returnTo: '/(guest)/services',
+                      },
+                    } as Href)
+                  }
                   title={service.title}
                 />
               );

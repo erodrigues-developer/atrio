@@ -1,5 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import {
   Bell,
   Building2,
@@ -87,20 +87,41 @@ export default function StayScreen() {
               <StayNavigationItem
                 description="Veja o nome da rede e a senha da hospedagem."
                 icon={Wifi}
-                onPress={() => router.push('/(guest)/stay/wifi')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(guest)/stay/wifi',
+                    params: {
+                      returnTo: '/(guest)/stay',
+                    },
+                  } as Href)
+                }
                 title="Wi-Fi"
               />
               <StayNavigationItem
                 description="Acompanhe pedidos feitos ao hotel durante a estadia."
                 icon={Bell}
-                onPress={() => router.push('/(guest)/stay/requests')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(guest)/stay/requests',
+                    params: {
+                      returnTo: '/(guest)/stay',
+                    },
+                  } as Href)
+                }
                 summaryLabel={stay.summaries.requests}
                 title="Minhas solicitações"
               />
               <StayNavigationItem
                 description="Veja experiências reservadas e acompanhe cada confirmação."
                 icon={CalendarCheck}
-                onPress={() => router.push('/(guest)/stay/reservations')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(guest)/stay/reservations',
+                    params: {
+                      returnTo: '/(guest)/stay',
+                    },
+                  } as Href)
+                }
                 summaryLabel={stay.summaries.reservations}
                 title="Minhas reservas"
               />

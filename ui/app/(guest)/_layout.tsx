@@ -1,4 +1,4 @@
-import { Redirect, Tabs, router } from 'expo-router';
+import { Redirect, Tabs, router, type Href } from 'expo-router';
 import {
   BedDouble,
   Bell,
@@ -24,6 +24,7 @@ const TAB_BAR_MAX_BOTTOM_PADDING = 20;
 
 type GuestTabConfig = {
   accessibilityLabel: string;
+  href: Href;
   icon: LucideIcon;
   label: string;
   name: 'today/index' | 'discover/index' | 'services/index' | 'stay' | 'concierge/index';
@@ -32,30 +33,35 @@ type GuestTabConfig = {
 const guestTabs: GuestTabConfig[] = [
   {
     name: 'today/index',
+    href: '/(guest)/today',
     label: 'Hoje',
     accessibilityLabel: 'Hoje',
     icon: House,
   },
   {
     name: 'discover/index',
+    href: '/(guest)/discover',
     label: 'Descobrir',
     accessibilityLabel: 'Descobrir',
     icon: Compass,
   },
   {
     name: 'services/index',
+    href: '/(guest)/services',
     label: 'Serviços',
     accessibilityLabel: 'Serviços',
     icon: Bell,
   },
   {
     name: 'stay',
+    href: '/(guest)/stay',
     label: 'Estadia',
     accessibilityLabel: 'Estadia',
     icon: BedDouble,
   },
   {
     name: 'concierge/index',
+    href: '/(guest)/concierge',
     label: 'Concierge',
     accessibilityLabel: 'Concierge',
     icon: MessageCircle,
@@ -90,7 +96,7 @@ export default function GuestLayout() {
         <StayContextBar
           checkOutTime={stayMock.checkOutTimeLabel}
           hotelName={stayMock.hotelName}
-          onPress={() => router.push('/(guest)/stay')}
+          onPress={() => router.navigate('/(guest)/stay')}
           roomNumber={stayMock.roomNumber}
         />
       </SafeAreaView>
@@ -128,11 +134,18 @@ export default function GuestLayout() {
             paddingBottom: tabBarBottomPadding,
           },
         }}>
-        {guestTabs.map(({ accessibilityLabel, icon: Icon, label, name }) => (
+        {guestTabs.map(({ accessibilityLabel, href, icon: Icon, label, name }) => (
           <Tabs.Screen
             key={name}
             name={name}
+            listeners={{
+              tabPress: (event) => {
+                event.preventDefault();
+                router.navigate(href);
+              },
+            }}
             options={{
+              href,
               title: label,
               tabBarAccessibilityLabel: accessibilityLabel,
               tabBarIcon: ({ color }) => (
