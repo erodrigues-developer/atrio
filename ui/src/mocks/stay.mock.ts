@@ -19,10 +19,12 @@ export type StayMock = {
     reservations: string;
   };
   usefulInfo: StayInfoItem[];
-  wifi: {
-    network: string;
-    password: string;
-  };
+  wifi?:
+    | {
+        network: string;
+        password: string;
+      }
+    | null;
 };
 
 export const stayMock: StayMock = {
