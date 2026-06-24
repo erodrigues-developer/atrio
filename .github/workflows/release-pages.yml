@@ -24,12 +24,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          token: ${{ secrets.PAGES_ENABLEMENT_TOKEN != '' && secrets.PAGES_ENABLEMENT_TOKEN || github.token }}
+          enablement: ${{ secrets.PAGES_ENABLEMENT_TOKEN != '' }}
 
       - name: Install dependencies
         working-directory: ui
