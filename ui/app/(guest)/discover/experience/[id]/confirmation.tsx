@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { CircleCheckBig } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { YStack } from 'tamagui';
 
 import { Badge } from '@/src/design-system/components/Badge';
@@ -10,31 +11,60 @@ import { ReservationSummaryCard } from '@/src/design-system/product/ReservationS
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getExperienceById } from '@/src/mocks/experiences.mock';
+import { getExperience } from '@/src/services/atrio-api';
+import { fetchReservationById } from '@/src/stores/reservations.store';
+import { useSession } from '@/src/stores/session.store';
 import { getReservationStatusLabel } from '@/src/mocks/reservations.mock';
-import { useReservations } from '@/src/stores/reservations.store';
 
 export default function ExperienceConfirmationScreen() {
   const params = useLocalSearchParams<{
     id?: string | string[];
     reservationId?: string | string[];
   }>();
+  const session = useSession();
   const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
   const reservationId = Array.isArray(params.reservationId) ? params.reservationId[0] : params.reservationId;
-  const experience = getExperienceById(experienceId);
-  const reservations = useReservations();
-  const reservation =
-    reservations.find((item) => item.id === reservationId) ??
-    reservations.find((item) => item.experienceId === experienceId);
+  const [experienceTitle, setExperienceTitle] = useState<string | null>(null);
+  const [reservation, setReservation] = useState<Awaited<ReturnType<typeof fetchReservationById>> | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!experience || !reservation) {
+  useEffect(() => {
+    if (!session?.stayId || !experienceId || !reservationId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    Promise.all([getExperience(experienceId), fetchReservationById(session.stayId, reservationId)])
+      .then(([experienceResponse, reservationResponse]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setExperienceTitle(experienceResponse.title);
+        setReservation(reservationResponse);
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao encontramos os detalhes desta reserva.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [experienceId, reservationId, session?.stayId]);
+
+  if (!experienceTitle || !reservation) {
     return (
       <Screen justifyContent="center" safeAreaEdges={['bottom']}>
         <YStack gap={spacing.xxxl}>
           <YStack gap={spacing.md}>
             <Text variant="title1">Reserva não encontrada</Text>
             <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-              Não encontramos os detalhes desta solicitação no momento.
+              {errorMessage ?? 'Não encontramos os detalhes desta solicitação no momento.'}
             </Text>
           </YStack>
 
@@ -76,10 +106,10 @@ export default function ExperienceConfirmationScreen() {
 
           <ReservationSummaryCard
             rows={[
-              { label: 'Experiência', value: experience.title },
+              { label: 'Experiência', value: experienceTitle },
               { label: 'Data', value: reservation.dateLabel },
               { label: 'Horário', value: reservation.timeLabel },
-              { label: 'Local', value: reservation.locationLabel ?? experience.locationLabel ?? 'Sob confirmação' },
+              { label: 'Local', value: reservation.locationLabel },
               { label: 'Status', value: getReservationStatusLabel(reservation.status) },
             ]}
           />

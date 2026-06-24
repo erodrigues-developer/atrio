@@ -15,9 +15,14 @@ import { ReservationSummaryCard } from '@/src/design-system/product/ReservationS
 import { goBackOrReplace } from '@/src/navigation/go-back';
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getExperienceById, getExperienceScheduleById } from '@/src/mocks/experiences.mock';
-import { buildReservationScheduledAt } from '@/src/mocks/reservations.mock';
+import {
+  getExperience,
+  getExperienceAvailability,
+  type ExperienceAvailabilityResponse,
+  type ExperienceDetailResponse,
+} from '@/src/services/atrio-api';
 import { createReservation } from '@/src/stores/reservations.store';
+import { useSession } from '@/src/stores/session.store';
 
 const CONTENT_HORIZONTAL_PADDING = spacing.xxl;
 const SLOT_GAP = spacing.md;
@@ -29,27 +34,47 @@ export default function ExperienceScheduleScreen() {
   }>();
   const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
   const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
-  const experience = getExperienceById(experienceId);
-  const schedule = getExperienceScheduleById(experienceId);
+  const session = useSession();
   const tabBarHeight = useBottomTabBarHeight();
   const { width } = useWindowDimensions();
-  const [selectedDayId, setSelectedDayId] = useState(schedule?.days[0]?.id);
+  const [experience, setExperience] = useState<ExperienceDetailResponse | null>(null);
+  const [availability, setAvailability] = useState<ExperienceAvailabilityResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedDayId, setSelectedDayId] = useState<string | undefined>();
   const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const submissionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submissionPromiseRef = useRef<Promise<unknown> | null>(null);
 
   useEffect(() => {
-    setSelectedDayId(schedule?.days[0]?.id);
-    setSelectedSlotId(undefined);
-  }, [schedule, experienceId]);
+    if (!experienceId) {
+      return;
+    }
 
-  useEffect(() => {
+    let isMounted = true;
+
+    Promise.all([getExperience(experienceId), getExperienceAvailability(experienceId)])
+      .then(([experienceResponse, availabilityResponse]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setExperience(experienceResponse);
+        setAvailability(availabilityResponse);
+        setSelectedDayId(availabilityResponse.days[0]?.id);
+        setSelectedSlotId(undefined);
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar os horarios.',
+          );
+        }
+      });
+
     return () => {
-      if (submissionTimeoutRef.current) {
-        clearTimeout(submissionTimeoutRef.current);
-      }
+      isMounted = false;
     };
-  }, []);
+  }, [experienceId]);
 
   function handleGoBack() {
     if (!experienceId) {
@@ -66,14 +91,14 @@ export default function ExperienceScheduleScreen() {
     } as Href);
   }
 
-  if (!experience) {
+  if (!experience || !availability) {
     return (
       <Screen justifyContent="center" safeAreaEdges={['bottom']}>
         <YStack gap={spacing.xxxl}>
           <YStack gap={spacing.md}>
             <Text variant="title1">Experiência não encontrada</Text>
             <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-              Não conseguimos encontrar os horários desta experiência no momento.
+              {errorMessage ?? 'Não conseguimos encontrar os horários desta experiência no momento.'}
             </Text>
           </YStack>
 
@@ -87,7 +112,7 @@ export default function ExperienceScheduleScreen() {
     );
   }
 
-  const days = schedule?.days ?? [];
+  const days = availability.days ?? [];
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? days[0];
   const selectedSlot = selectedDay?.slots.find((slot) => slot.id === selectedSlotId && slot.available);
   const hasAvailableSlots = Boolean(selectedDay?.slots.some((slot) => slot.available));
@@ -96,7 +121,6 @@ export default function ExperienceScheduleScreen() {
   const slotWidth = Math.floor(availableWidth / columnCount);
   const summaryDateLabel = selectedDay ? `${selectedDay.label}, ${selectedDay.dateLabel}` : undefined;
   const experienceLocationLabel = experience.locationLabel ?? 'Informado na confirmação';
-  const experienceTitle = experience.title;
   const hasSelection = Boolean(selectedDay && selectedSlot);
   const canSubmit = hasSelection && !isSubmitting;
   const ctaBackgroundColor = hasSelection ? colors.accent : colors.surfaceMuted;
@@ -112,33 +136,33 @@ export default function ExperienceScheduleScreen() {
   }
 
   function handleSubmitReservation() {
-    if (!experienceId || !experience || !selectedDay || !selectedSlot || isSubmitting) {
+    if (!session?.stayId || !experienceId || !selectedSlot || isSubmitting) {
       return;
     }
 
     setIsSubmitting(true);
 
-    submissionTimeoutRef.current = setTimeout(() => {
-      const reservation = createReservation({
-        experienceId,
-        title: experienceTitle,
-        status: 'requested',
-        dateLabel: `${selectedDay.label}, ${selectedDay.dateLabel}`,
-        timeLabel: selectedSlot.time,
-        locationLabel: experienceLocationLabel,
-        priceLabel: experience.priceLabel,
-        scheduledAt: buildReservationScheduledAt(`${selectedDay.label}, ${selectedDay.dateLabel}`, selectedSlot.time),
-        note: 'A equipe do hotel irá confirmar os detalhes.',
+    submissionPromiseRef.current = createReservation(session.stayId, {
+      experienceId,
+      slotId: selectedSlot.id,
+      scheduledAt: selectedSlot.startsAt,
+      partySize: 2,
+    })
+      .then((reservation) => {
+        router.replace({
+          pathname: '/(guest)/discover/experience/[id]/confirmation',
+          params: {
+            id: experienceId,
+            reservationId: reservation.id,
+          },
+        } as Href);
+      })
+      .catch((error) => {
+        setIsSubmitting(false);
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Nao foi possivel solicitar a reserva.',
+        );
       });
-
-      router.replace({
-        pathname: '/(guest)/discover/experience/[id]/confirmation',
-        params: {
-          id: experienceId,
-          reservationId: reservation.id,
-        },
-      } as Href);
-    }, 450);
   }
 
   return (
@@ -247,6 +271,12 @@ export default function ExperienceScheduleScreen() {
                 Selecione um horário para ver o resumo da reserva.
               </Text>
             )}
+
+            {errorMessage ? (
+              <Text colorToken="danger" variant="bodySmall">
+                {errorMessage}
+              </Text>
+            ) : null}
 
             <Button
               accessibilityLabel="Solicitar reserva"

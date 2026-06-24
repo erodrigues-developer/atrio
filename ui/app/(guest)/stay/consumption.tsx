@@ -1,6 +1,7 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Info, Shirt, Sparkles, Utensils } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -16,21 +17,92 @@ import { InfoNotice } from '@/src/design-system/product/InfoNotice';
 import { resolveReturnTo } from '@/src/navigation/return-to';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getConsumptionMock } from '@/src/mocks/consumption.mock';
+import { getStayConsumption, type ConsumptionResponse } from '@/src/services/atrio-api';
+import { useSession } from '@/src/stores/session.store';
 
-const consumptionIcons = {
+const consumptionIcons: Record<string, typeof Utensils> = {
   utensils: Utensils,
   sparkles: Sparkles,
   shirt: Shirt,
-} as const;
+};
 
 export default function ConsumptionScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
-  const consumption = getConsumptionMock();
+  const session = useSession();
+  const [consumption, setConsumption] = useState<ConsumptionResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session?.stayId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getStayConsumption(session.stayId)
+      .then((response) => {
+        if (isMounted) {
+          setConsumption(response);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar o consumo da estadia.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.stayId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));
+  }
+
+  function formatCurrency(amountCents: number, currency: string) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency,
+    }).format(amountCents / 100);
+  }
+
+  function formatDateLabel(value: string) {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  }
+
+  if (!consumption) {
+    return (
+      <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: spacing.lg,
+            paddingHorizontal: spacing.xxl,
+            paddingBottom: tabBarHeight + spacing.xxxl,
+          }}
+          showsVerticalScrollIndicator={false}>
+          <YStack gap={spacing.xxl}>
+            <BackButton accessibilityLabel="Voltar" onPress={handleGoBack} />
+            <Card gap={spacing.sm} padding={spacing.xl}>
+              <Text variant="bodyMedium">Nao foi possivel carregar o consumo.</Text>
+              {errorMessage ? (
+                <Text colorToken="textSecondary" variant="bodySmall">
+                  {errorMessage}
+                </Text>
+              ) : null}
+            </Card>
+          </YStack>
+        </ScrollView>
+      </Screen>
+    );
   }
 
   if (!consumption.enabled) {
@@ -98,8 +170,8 @@ export default function ConsumptionScreen() {
               <YStack gap={spacing.xl}>
                 <ConsumptionSummaryCard
                   itemCountLabel={`${consumption.items.length} lançamentos registrados`}
-                  totalLabel={consumption.totalLabel}
-                  updatedAtLabel={consumption.updatedAtLabel}
+                  totalLabel={formatCurrency(consumption.totalAmountCents, consumption.currency)}
+                  updatedAtLabel={`Atualizado em ${formatDateLabel(consumption.updatedAt)}`}
                 />
 
                 <YStack gap={spacing.lg}>
@@ -111,10 +183,10 @@ export default function ConsumptionScreen() {
 
                       return (
                         <ConsumptionItem
-                          amountLabel={item.amountLabel}
-                          dateLabel={item.dateLabel}
+                          amountLabel={formatCurrency(item.amountCents, item.currency)}
+                          dateLabel={formatDateLabel(item.occurredAt)}
                           description={item.description}
-                          icon={Icon}
+                          icon={Icon ?? Info}
                           isLast={index === consumption.items.length - 1}
                           key={item.id}
                           title={item.title}

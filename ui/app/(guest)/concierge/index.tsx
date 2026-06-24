@@ -3,6 +3,7 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
+  MessageCircle,
   Sparkles,
   Users,
   type LucideIcon,
@@ -12,7 +13,6 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { XStack, YStack } from 'tamagui';
 
-import { guestMock } from '@/src/mocks/guest.mock';
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { ConciergeInputBar, conciergeInputBarHeight } from '@/src/design-system/product/ConciergeInputBar';
@@ -21,36 +21,40 @@ import { QuickSuggestionChip } from '@/src/design-system/product/QuickSuggestion
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import {
-  buildInitialConciergeMessages,
-  conciergeQuickReplies,
-  conciergeQuickSuggestions,
-  defaultConciergeReply,
-  type ConciergeMessage,
-  type ConciergeQuickSuggestion,
-} from '@/src/mocks/concierge.mock';
+  createConciergeMessage,
+  listConciergeMessages,
+  type ConciergeMessageResponse,
+} from '@/src/services/atrio-api';
 import { useSession } from '@/src/stores/session.store';
 
-const suggestionIcons: Record<ConciergeQuickSuggestion, LucideIcon> = {
-  'Preciso de ajuda': CircleHelp,
-  'Quero uma recomendação': Sparkles,
-  'Quero reservar algo': CalendarCheck,
-  'Tenho uma solicitação': Bell,
-  'Falar com a equipe': Users,
+const suggestionIcons: Record<string, LucideIcon> = {
+  help: CircleHelp,
+  recommendation: Sparkles,
+  reservation: CalendarCheck,
+  request: Bell,
+  team: Users,
 };
+
+function mapMessage(message: ConciergeMessageResponse) {
+  return {
+    id: message.id,
+    sender: message.sender,
+    text: message.text,
+  };
+}
 
 export default function ConciergeScreen() {
   const session = useSession();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const pendingReplyTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const nextMessageIndexRef = useRef(1);
-  const guestName = session?.guestName?.trim() || guestMock.firstName;
-  const [messages, setMessages] = useState<ConciergeMessage[]>(() => buildInitialConciergeMessages(guestName));
+  const [messages, setMessages] = useState<ReturnType<typeof mapMessage>[]>([]);
+  const [quickSuggestions, setQuickSuggestions] = useState<
+    { id: string; label: string; icon: string }[]
+  >([]);
   const [draftMessage, setDraftMessage] = useState('');
   const [footerHeight, setFooterHeight] = useState(conciergeInputBarHeight + spacing.xl);
-  const welcomeMessage = messages[0];
-  const conversationMessages = messages.slice(1);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const reservedConversationBottomSpace = footerHeight + tabBarHeight + insets.bottom + spacing.lg;
 
   function scrollToConversationEnd(animated = true) {
@@ -60,10 +64,33 @@ export default function ConciergeScreen() {
   }
 
   useEffect(() => {
+    if (!session?.stayId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    listConciergeMessages(session.stayId)
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setMessages(response.messages.map(mapMessage));
+        setQuickSuggestions(response.quickSuggestions);
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar a conversa.',
+          );
+        }
+      });
+
     return () => {
-      pendingReplyTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      isMounted = false;
     };
-  }, []);
+  }, [session?.stayId]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -79,31 +106,28 @@ export default function ConciergeScreen() {
     scrollToConversationEnd(true);
   }, [messages.length, footerHeight]);
 
-  function createMessage(sender: ConciergeMessage['sender'], text: string): ConciergeMessage {
-    const nextIndex = nextMessageIndexRef.current;
-    nextMessageIndexRef.current += 1;
+  async function sendMessage(text: string, source?: string) {
+    if (!session?.stayId) {
+      return;
+    }
 
-    return {
-      id: `message-${nextIndex}`,
-      sender,
-      text,
-    };
-  }
-
-  function queueHotelReply(text: string) {
-    const timeoutId = setTimeout(() => {
-      setMessages((currentMessages) => [...currentMessages, createMessage('hotel', text)]);
-      pendingReplyTimeoutsRef.current = pendingReplyTimeoutsRef.current.filter(
-        (registeredTimeoutId) => registeredTimeoutId !== timeoutId,
+    try {
+      const response = await createConciergeMessage(session.stayId, { text, source });
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        mapMessage(response.message),
+        mapMessage(response.reply),
+      ]);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Nao foi possivel enviar sua mensagem.',
       );
-    }, 480);
-
-    pendingReplyTimeoutsRef.current.push(timeoutId);
+    }
   }
 
-  function handleSuggestionPress(suggestion: ConciergeQuickSuggestion) {
-    setMessages((currentMessages) => [...currentMessages, createMessage('guest', suggestion)]);
-    queueHotelReply(conciergeQuickReplies[suggestion]);
+  function handleSuggestionPress(suggestion: { id: string; label: string }) {
+    void sendMessage(suggestion.label, suggestion.id);
   }
 
   function handleSendMessage() {
@@ -113,9 +137,8 @@ export default function ConciergeScreen() {
       return;
     }
 
-    setMessages((currentMessages) => [...currentMessages, createMessage('guest', trimmedMessage)]);
     setDraftMessage('');
-    queueHotelReply(defaultConciergeReply);
+    void sendMessage(trimmedMessage, 'typed_message');
   }
 
   return (
@@ -150,28 +173,34 @@ export default function ConciergeScreen() {
                 </Text>
               </YStack>
 
-              {welcomeMessage ? <ConciergeMessageBubble message={welcomeMessage} /> : null}
-
-              <YStack gap={spacing.md}>
-                <Text variant="bodyMedium">Sugestões rápidas</Text>
-                <XStack columnGap={spacing.sm} flexWrap="wrap" rowGap={spacing.sm}>
-                  {conciergeQuickSuggestions.map((suggestion) => (
-                    <QuickSuggestionChip
-                      icon={suggestionIcons[suggestion]}
-                      key={suggestion}
-                      label={suggestion}
-                      onPress={() => handleSuggestionPress(suggestion)}
-                    />
-                  ))}
-                </XStack>
-              </YStack>
-
-              {conversationMessages.length > 0 ? (
+              {quickSuggestions.length > 0 ? (
                 <YStack gap={spacing.md}>
-                  {conversationMessages.map((message) => (
+                  <Text variant="bodyMedium">Sugestões rápidas</Text>
+                  <XStack columnGap={spacing.sm} flexWrap="wrap" rowGap={spacing.sm}>
+                    {quickSuggestions.map((suggestion) => (
+                      <QuickSuggestionChip
+                        icon={suggestionIcons[suggestion.id] ?? MessageCircle}
+                        key={suggestion.id}
+                        label={suggestion.label}
+                        onPress={() => handleSuggestionPress(suggestion)}
+                      />
+                    ))}
+                  </XStack>
+                </YStack>
+              ) : null}
+
+              {messages.length > 0 ? (
+                <YStack gap={spacing.md}>
+                  {messages.map((message) => (
                     <ConciergeMessageBubble key={message.id} message={message} />
                   ))}
                 </YStack>
+              ) : null}
+
+              {errorMessage ? (
+                <Text colorToken="danger" variant="bodySmall">
+                  {errorMessage}
+                </Text>
               ) : null}
             </YStack>
           </ScrollView>

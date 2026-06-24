@@ -7,6 +7,7 @@ import {
   MessageCircle,
   type LucideIcon,
 } from 'lucide-react-native';
+import { View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 
@@ -20,7 +21,6 @@ const TAB_ICON_SIZE = 22;
 const TAB_ICON_STROKE_WIDTH = 1.9;
 const TAB_BAR_BASE_HEIGHT = 64;
 const TAB_BAR_MIN_BOTTOM_PADDING = 12;
-const TAB_BAR_MAX_BOTTOM_PADDING = 20;
 
 type GuestTabConfig = {
   accessibilityLabel: string;
@@ -80,24 +80,24 @@ const hiddenGuestRoutes = [
 export default function GuestLayout() {
   const session = useSession();
   const insets = useSafeAreaInsets();
-  const tabBarBottomPadding = Math.min(
-    Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING),
-    TAB_BAR_MAX_BOTTOM_PADDING,
-  );
+  const tabBarBottomPadding = Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + tabBarBottomPadding;
+  const roomNumber = session?.roomNumber ?? stayMock.roomNumber;
+  const hotelName = session?.hotelName ?? stayMock.hotelName;
+  const checkOutTime = session?.checkOutTime ?? stayMock.checkOutTimeLabel;
 
   if (!session?.isAuthenticated) {
     return <Redirect href="/(onboarding)/welcome" />;
   }
 
   return (
-    <YStack backgroundColor={colors.background} flex={1}>
+    <YStack backgroundColor={colors.surface} flex={1}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
         <StayContextBar
-          checkOutTime={stayMock.checkOutTimeLabel}
-          hotelName={stayMock.hotelName}
+          checkOutTime={checkOutTime}
+          hotelName={hotelName}
           onPress={() => router.navigate('/(guest)/stay')}
-          roomNumber={stayMock.roomNumber}
+          roomNumber={roomNumber}
         />
       </SafeAreaView>
 
@@ -110,6 +110,7 @@ export default function GuestLayout() {
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.textMuted,
           tabBarHideOnKeyboard: false,
+          tabBarBackground: () => <View style={{ flex: 1, backgroundColor: colors.surface }} />,
           tabBarIconStyle: {
             marginBottom: 2,
           },
@@ -129,9 +130,13 @@ export default function GuestLayout() {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderSoft,
             borderTopWidth: 1,
+            bottom: 0,
             height: tabBarHeight,
+            left: 0,
             paddingTop: 10,
             paddingBottom: tabBarBottomPadding,
+            position: 'absolute',
+            right: 0,
           },
         }}>
         {guestTabs.map(({ accessibilityLabel, href, icon: Icon, label, name }) => (

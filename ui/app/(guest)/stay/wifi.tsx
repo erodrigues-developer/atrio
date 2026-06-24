@@ -14,16 +14,45 @@ import { resolveReturnTo } from '@/src/navigation/return-to';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { stayMock } from '@/src/mocks/stay.mock';
+import { getStayWifi, type WifiResponse } from '@/src/services/atrio-api';
+import { useSession } from '@/src/stores/session.store';
 
 const COPY_FEEDBACK_DURATION_MS = 2400;
 
 export default function WifiScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const session = useSession();
+  const [wifi, setWifi] = useState<WifiResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasCopiedPassword, setHasCopiedPassword] = useState(false);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const params = useLocalSearchParams<{ returnTo?: string | string[] }>();
-  const wifi = stayMock.wifi;
+
+  useEffect(() => {
+    if (!session?.stayId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getStayWifi(session.stayId)
+      .then((response) => {
+        if (isMounted) {
+          setWifi(response);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar os dados de Wi-Fi.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.stayId]);
 
   useEffect(() => {
     return () => {
@@ -139,7 +168,7 @@ export default function WifiScreen() {
               </XStack>
 
               <Text colorToken="textSecondary" variant="body">
-                Fale com o concierge ou com a recepção para receber ajuda com a conexão.
+                {errorMessage ?? 'Fale com o concierge ou com a recepção para receber ajuda com a conexão.'}
               </Text>
 
               <Button onPress={() => router.push('/(guest)/concierge')}>

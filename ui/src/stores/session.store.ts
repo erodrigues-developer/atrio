@@ -4,12 +4,27 @@ export type Session = {
   guestId: string;
   guestName: string;
   hotelId: string;
+  hotelName?: string;
   isAuthenticated: boolean;
+  checkOutTime?: string;
   roomNumber: string;
   stayId: string;
 };
 
+export type PendingStayAccess = {
+  challengeId?: string;
+  expiresAt?: string;
+  hotelId?: string;
+  lastName: string;
+  maskedPhone?: string;
+  resendAvailableAt?: string;
+  roomNumber: string;
+};
+
 let session: Session | null = null;
+let pendingStayAccess: PendingStayAccess | null = null;
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
 
 const listeners = new Set<() => void>();
 
@@ -34,8 +49,36 @@ export function saveSession(nextSession: Session) {
   emitChange();
 }
 
+export function saveAuthTokens(nextAccessToken: string, nextRefreshToken: string) {
+  accessToken = nextAccessToken;
+  refreshToken = nextRefreshToken;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
+
+export function getRefreshToken() {
+  return refreshToken;
+}
+
+export function getPendingStayAccess() {
+  return pendingStayAccess;
+}
+
+export function savePendingStayAccess(nextPendingStayAccess: PendingStayAccess) {
+  pendingStayAccess = nextPendingStayAccess;
+}
+
+export function clearPendingStayAccess() {
+  pendingStayAccess = null;
+}
+
 export function clearSession() {
   session = null;
+  pendingStayAccess = null;
+  accessToken = null;
+  refreshToken = null;
   emitChange();
 }
 

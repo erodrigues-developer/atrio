@@ -16,12 +16,13 @@ export function QuickActionCard({ icon: Icon, onPress, title }: Props) {
   return (
     <YStack
       accessibilityRole="button"
+      alignItems="center"
       backgroundColor={colors.surface}
       borderColor={colors.borderSoft}
       borderRadius={radius.lg}
       borderWidth={1}
       gap={spacing.sm}
-      justifyContent="space-between"
+      justifyContent="center"
       minHeight={88}
       onPress={onPress}
       paddingHorizontal={13}
@@ -41,7 +42,7 @@ export function QuickActionCard({ icon: Icon, onPress, title }: Props) {
         <Icon color={colors.accent} size={17} strokeWidth={1.9} />
       </YStack>
 
-      <Text numberOfLines={1} variant="bodySmall">
+      <Text numberOfLines={1} textAlign="center" variant="bodySmall">
         {title}
       </Text>
     </YStack>
