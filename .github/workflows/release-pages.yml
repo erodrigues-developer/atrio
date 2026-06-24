@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ui
-        run: npm ci
+        run: npm install --no-fund --no-audit
 
       - name: Build static site
         working-directory: ui
