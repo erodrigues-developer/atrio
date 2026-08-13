@@ -7,6 +7,7 @@ import {
   MessageCircle,
   type LucideIcon,
 } from 'lucide-react-native';
+import { Text as NativeText } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 
@@ -41,8 +42,8 @@ const guestTabs: GuestTabConfig[] = [
   {
     name: 'discover/index',
     href: '/(guest)/discover',
-    label: 'Descobrir',
-    accessibilityLabel: 'Descobrir',
+    label: 'Experiências',
+    accessibilityLabel: 'Experiências',
     icon: Compass,
   },
   {
@@ -150,6 +151,24 @@ export default function GuestLayout() {
               tabBarAccessibilityLabel: accessibilityLabel,
               tabBarIcon: ({ color }) => (
                 <Icon color={color} size={TAB_ICON_SIZE} strokeWidth={TAB_ICON_STROKE_WIDTH} />
+              ),
+              tabBarLabel: ({ color }) => (
+                <NativeText
+                  adjustsFontSizeToFit
+                  maxFontSizeMultiplier={1}
+                  minimumFontScale={0.85}
+                  numberOfLines={1}
+                  style={{
+                    color,
+                    fontSize: 12,
+                    fontWeight: '500',
+                    lineHeight: 16,
+                    marginTop: 1,
+                    textAlign: 'center',
+                    width: 72,
+                  }}>
+                  {label}
+                </NativeText>
               ),
             }}
           />

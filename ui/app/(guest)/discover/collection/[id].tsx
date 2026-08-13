@@ -26,7 +26,7 @@ export default function DiscoverCollectionScreen() {
   const content = !collection ? (
     <Card gap={spacing.lg}>
       <Button alignSelf="flex-start" onPress={() => router.replace('/(guest)/discover')}>
-        Voltar para Descobrir
+        Voltar para Experiências
       </Button>
     </Card>
   ) : collection.items.length === 0 ? (
@@ -34,13 +34,13 @@ export default function DiscoverCollectionScreen() {
       <YStack gap={spacing.xs}>
         <Text variant="bodyMedium">Nenhuma experiência disponível nesta seleção no momento.</Text>
         <Text colorToken="textSecondary" variant="bodySmall">
-          Você pode voltar para Descobrir ou falar com o concierge para receber uma sugestão.
+          Você pode voltar para Experiências ou falar com o concierge para receber uma sugestão.
         </Text>
       </YStack>
 
       <YStack gap={spacing.md}>
         <Button alignSelf="flex-start" onPress={() => router.replace('/(guest)/discover')}>
-          Voltar para Descobrir
+          Voltar para Experiências
         </Button>
 
         <Button alignSelf="flex-start" onPress={() => router.push('/(guest)/concierge')} variant="ghost">

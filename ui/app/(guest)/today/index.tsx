@@ -2,8 +2,8 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, type Href } from 'expo-router';
 import {
   Bell,
+  Compass,
   Coffee,
-  MessageCircle,
   ScrollText,
   Utensils,
   Wifi,
@@ -71,9 +71,9 @@ const quickActions: QuickAction[] = [
     },
   },
   {
-    title: 'Concierge',
-    icon: MessageCircle,
-    href: '/(guest)/concierge',
+    title: 'Experiências',
+    icon: Compass,
+    href: '/(guest)/discover',
   },
 ] as const;
 
@@ -149,9 +149,8 @@ export default function TodayScreen() {
           </YStack>
 
           <YStack marginTop={SECTION_SPACING.quickActionsToFeatured}>
-            <SectionBlock description={todayMock.contextNote} title="Selecionado para hoje">
+            <SectionBlock description={todayMock.contextNote} title="Sugestão do dia">
               <FeaturedExperienceCard
-                badge={featuredExperienceMock.badge}
                 description={featuredExperienceMock.description}
                 imageSource={featuredExperienceMock.imageSource}
                 onPress={() =>
@@ -219,7 +218,7 @@ export default function TodayScreen() {
                     Você ainda não tem reservas para hoje.
                   </Text>
                   <Text colorToken="accent" onPress={() => router.push('/(guest)/discover')} variant="bodyMedium">
-                    Descobrir experiências
+                    Ver experiências
                   </Text>
                 </Card>
               )}

@@ -55,7 +55,7 @@ const boardwalkTourImage = require('../../assets/mock/hospitality/tour-pela-orla
 export const discoverCollectionsMock: DiscoverCollection[] = [
   {
     id: 'today',
-    title: 'Selecionado para hoje',
+    title: 'Sugestão do dia',
     description: 'Uma sugestão especial para aproveitar este momento da estadia.',
     featured: true,
     items: [
@@ -67,7 +67,7 @@ export const discoverCollectionsMock: DiscoverCollection[] = [
         category: 'Gastronomia',
         timeLabel: 'Hoje, a partir das 19h',
         priceLabel: 'Sob consulta',
-        badge: 'Selecionado para hoje',
+        badge: 'Sugestão do dia',
         imageSource: sunsetDinnerImage,
         durationLabel: '2h',
         availabilityLabel: 'Hoje, a partir das 19h',
