@@ -24,7 +24,7 @@ export const conciergeQuickReplies: Record<ConciergeQuickSuggestion, string> = {
   'Quero uma recomendação':
     'Posso sugerir experiências, restaurantes ou momentos para relaxar durante a sua estadia. Você prefere algo para hoje?',
   'Quero reservar algo':
-    'Perfeito. Você pode escolher uma experiência em Descobrir ou me dizer o que deseja reservar.',
+    'Perfeito. Você pode escolher uma experiência em Experiências ou me dizer o que deseja reservar.',
   'Tenho uma solicitação':
     'Sem problema. Conte o que você precisa, ou acesse Serviços para fazer uma solicitação rápida ao hotel.',
   'Falar com a equipe':

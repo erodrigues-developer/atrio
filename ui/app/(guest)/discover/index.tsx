@@ -74,7 +74,7 @@ export default function DiscoverScreen() {
         <YStack gap={spacing.xxxl}>
           <YStack gap={spacing.sm}>
             <Text letterSpacing={-0.5} variant="title1">
-              Descobrir
+              Experiências
             </Text>
             <Text colorToken="textSecondary" maxWidth="94%" variant="body">
               Experiências selecionadas pelo hotel para tornar sua estadia especial.

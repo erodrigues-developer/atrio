@@ -87,7 +87,7 @@ export default function StayReservationsScreen() {
               </YStack>
             ) : (
               <EmptyState
-                actionLabel="Descobrir experiências"
+                actionLabel="Ver experiências"
                 description="Explore as experiências selecionadas pelo hotel e solicite uma reserva durante a sua estadia."
                 onActionPress={() => router.push('/(guest)/discover')}
                 onSecondaryActionPress={() => router.push('/(guest)/today')}

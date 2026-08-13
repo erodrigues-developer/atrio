@@ -70,7 +70,7 @@ export default function ExperienceConfirmationScreen() {
 
           <Button alignSelf="flex-start" onPress={() => router.replace('/(guest)/discover')}>
             <Text colorToken="textInverse" variant="bodyMedium">
-              Voltar para Descobrir
+              Voltar para Experiências
             </Text>
           </Button>
         </YStack>

@@ -2,8 +2,8 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, type Href } from 'expo-router';
 import {
   Bell,
+  Compass,
   Coffee,
-  MessageCircle,
   ScrollText,
   Utensils,
   Wifi,
@@ -52,9 +52,10 @@ const SECTION_SPACING = {
 
 const quickActionIconMap: Record<string, LucideIcon> = {
   bell: Bell,
+  compass: Compass,
   utensils: Utensils,
   wifi: Wifi,
-  'message-circle': MessageCircle,
+  'message-circle': Compass,
 };
 
 const usefulInfoIcons: Record<string, LucideIcon> = {
@@ -84,7 +85,7 @@ function mapQuickActionTarget(target: string): Href {
         },
       } as Href;
     case '/concierge':
-      return '/(guest)/concierge';
+      return '/(guest)/discover';
     default:
       return '/(guest)/today';
   }
@@ -205,8 +206,8 @@ export default function TodayScreen() {
   };
   const quickActions: QuickAction[] =
     dashboard?.quickActions.map((action) => ({
-      title: action.title,
-      icon: quickActionIconMap[action.icon] ?? Bell,
+      title: action.target === '/concierge' ? 'Experiências' : action.title,
+      icon: action.target === '/concierge' ? Compass : quickActionIconMap[action.icon] ?? Bell,
       href: mapQuickActionTarget(action.target),
     })) ?? [];
 
@@ -263,9 +264,8 @@ export default function TodayScreen() {
 
             {dashboard.featuredExperience ? (
               <YStack marginTop={SECTION_SPACING.quickActionsToFeatured}>
-                <SectionBlock description="Uma sugestao especial para este momento da estadia." title="Selecionado para hoje">
+                <SectionBlock description="Uma sugestão especial para este momento da estadia." title="Sugestão do dia">
                   <FeaturedExperienceCard
-                    badge={dashboard.featuredExperience.badge}
                     description={dashboard.featuredExperience.description}
                     imageSource={resolveExperienceImageSource(
                       dashboard.featuredExperience.id,
@@ -341,7 +341,7 @@ export default function TodayScreen() {
                       Você ainda não tem reservas para hoje.
                     </Text>
                     <Text colorToken="accent" onPress={() => router.push('/(guest)/discover')} variant="bodyMedium">
-                      Descobrir experiências
+                      Ver experiências
                     </Text>
                   </Card>
                 )}
