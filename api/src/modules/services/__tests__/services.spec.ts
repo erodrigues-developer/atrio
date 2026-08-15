@@ -6,12 +6,13 @@ import { ServiceCatalogService } from '../services/service-catalog.service';
 
 describe('services catalog module', () => {
   it('covers repository, service and controller', async () => {
-    const list = jest.fn().mockResolvedValue([{ id: 'towels', title: 'Toalhas', description: 'Desc', icon: 'Bath', requestSchema: { fields: [] }, fulfillmentType: 'hotel_staff' }]);
-    const findOne = jest.fn().mockResolvedValue({ id: 'towels', title: 'Toalhas', description: 'Desc', icon: 'Bath', requestSchema: { fields: [] }, fulfillmentType: 'hotel_staff' });
+    const list = jest.fn().mockResolvedValue([{ publicId: 'towels', title: 'Toalhas', description: 'Desc', icon: 'Bath', requestSchema: { fields: [] }, fulfillmentType: 'hotel_staff', published: true }]);
+    const findOne = jest.fn().mockResolvedValue({ publicId: 'towels', title: 'Toalhas', description: 'Desc', icon: 'Bath', requestSchema: { fields: [] }, fulfillmentType: 'hotel_staff' });
     const repository = new ServiceCatalogRepository({ find: list, findOne } as never);
 
-    expect((await repository.list())[0].id).toBe('towels');
-    expect((await repository.findById('towels'))?.id).toBe('towels');
+    expect((await repository.list())[0].publicId).toBe('towels');
+    expect(list).toHaveBeenCalledWith({ where: { published: true }, order: { title: 'ASC' } });
+    expect((await repository.findById('towels'))?.publicId).toBe('towels');
 
     const service = new ServiceCatalogService(repository);
     expect((await service.listServices()).items).toHaveLength(1);

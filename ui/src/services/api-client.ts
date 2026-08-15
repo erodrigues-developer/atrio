@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '@/src/services/api-config';
-import { getAccessToken } from '@/src/stores/session.store';
+import { clearSession, getAccessToken } from '@/src/stores/session.store';
 
 type ApiErrorDetails = {
   field?: string;
@@ -67,6 +67,10 @@ export async function apiRequest<T>(
     const message = payload?.error?.message ?? 'Request failed.';
     const code = payload?.error?.code ?? `HTTP_${response.status}`;
     const details = payload?.error?.details ?? [];
+
+    if (authenticated && response.status === 401) {
+      clearSession();
+    }
 
     throw new ApiClientError(message, response.status, code, details);
   }

@@ -23,7 +23,7 @@ export class ReservationRepository {
 
   async findById(stayId: string, reservationId: string): Promise<Reservation | null> {
     return this.repository.findOne({
-      where: { id: reservationId, stayId },
+      where: { publicId: reservationId, stayId },
     });
   }
 

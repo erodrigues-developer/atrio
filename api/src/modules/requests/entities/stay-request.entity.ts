@@ -1,9 +1,12 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity({ name: 'stay_requests' })
 export class StayRequest {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ name: 'stay_id', type: 'varchar', length: 100 })
   stayId!: string;
@@ -28,6 +31,9 @@ export class StayRequest {
 
   @Column({ type: 'varchar', length: 500, default: '' })
   note!: string;
+
+  @Column({ name: 'internal_note', type: 'varchar', length: 500, nullable: true })
+  internalNote!: string | null;
 
   @Column({ name: 'room_number', type: 'varchar', length: 20 })
   roomNumber!: string;

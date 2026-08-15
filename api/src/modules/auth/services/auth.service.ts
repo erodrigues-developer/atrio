@@ -94,6 +94,27 @@ export class AuthService {
     };
   }
 
+  async createStayAccessChallengeForStay(stayId: string) {
+    const stay = await this.stayRepository.findById(stayId);
+
+    if (!stay) {
+      throw new ApiException(404, 'STAY_NOT_FOUND', 'Stay was not found.');
+    }
+
+    const challenge = this.buildChallenge(stay);
+    const ttlSeconds = this.configService.get<number>('auth.challengeTtlSeconds') ?? 300;
+
+    await this.redisService.setJson(this.buildChallengeKey(challenge.challengeId), challenge, ttlSeconds);
+
+    return {
+      challengeId: challenge.challengeId,
+      deliveryChannel: 'sms',
+      maskedPhone: challenge.maskedPhone,
+      expiresAt: challenge.expiresAt,
+      resendAvailableAt: challenge.resendAvailableAt,
+    };
+  }
+
   async verifyStayAccess(challengeId: string, code: string) {
     const challenge = await this.getChallenge(challengeId);
 
@@ -108,12 +129,13 @@ export class AuthService {
     }
 
     const session = new GuestSession();
-    session.id = buildResourceId('session');
+    session.publicId = buildResourceId('session');
     session.guestId = stay.guestId;
-    session.stayId = stay.id;
+    session.stayId = stay.publicId;
     session.accessToken = buildResourceId('atk');
     session.refreshToken = buildResourceId('rtk');
     session.createdAt = new Date();
+    session.revokedAt = null;
     session.expiresAt = new Date(
       Date.now() + (this.configService.get<number>('auth.accessTokenTtlMinutes') ?? 720) * 60 * 1000,
     );
@@ -128,12 +150,12 @@ export class AuthService {
         guestId: stay.guestId,
         guestName: `${stay.guest.firstName} ${stay.guest.lastName}`,
         hotelId: stay.hotelId,
-        stayId: stay.id,
+        stayId: stay.publicId,
         roomNumber: stay.roomNumber,
         isAuthenticated: true,
       },
       stay: {
-        id: stay.id,
+        id: stay.publicId,
         hotelName: stay.hotel.name,
         roomNumber: stay.roomNumber,
         checkOutTime: stay.checkOutTime,
@@ -171,8 +193,8 @@ export class AuthService {
       guestName: `${stay.guest.firstName} ${stay.guest.lastName}`,
       hotelId: stay.hotelId,
       roomNumber: stay.roomNumber,
-      sessionId: guestSession.id,
-      stayId: stay.id,
+      sessionId: guestSession.publicId,
+      stayId: stay.publicId,
     };
   }
 
@@ -188,7 +210,7 @@ export class AuthService {
     return {
       challengeId,
       code: '123456',
-      stayId: stay.id,
+      stayId: stay.publicId,
       guestId: stay.guestId,
       guestName: `${stay.guest.firstName} ${stay.guest.lastName}`,
       hotelId: stay.hotelId,

@@ -7,8 +7,8 @@ import { ConciergeService } from '../services/concierge.service';
 describe('concierge module', () => {
   it('covers repository, service and controller', async () => {
     const save = jest.fn().mockResolvedValue(undefined);
-    const find = jest.fn().mockResolvedValue([{ id: 'msg_001', stayId: 'stay_001', sender: 'hotel', text: 'Hello', createdAt: new Date('2026-06-13T18:00:00.000Z') }]);
-    const findOne = jest.fn().mockResolvedValue({ id: 'msg_001', stayId: 'stay_001', sender: 'hotel', text: 'Hello', createdAt: new Date('2026-06-13T18:00:00.000Z') });
+    const find = jest.fn().mockResolvedValue([{ publicId: 'msg_001', stayId: 'stay_001', sender: 'hotel', text: 'Hello', createdAt: new Date('2026-06-13T18:00:00.000Z') }]);
+    const findOne = jest.fn().mockResolvedValue({ publicId: 'msg_001', stayId: 'stay_001', sender: 'hotel', text: 'Hello', createdAt: new Date('2026-06-13T18:00:00.000Z') });
     const repository = new ConciergeMessageRepository({ save, find, findOne } as never);
 
     await repository.create({ id: 'msg_001' } as never);
@@ -21,7 +21,7 @@ describe('concierge module', () => {
         { createdAt: new Date('2026-06-13T18:05:00.000Z') } as never,
       )).length,
     ).toBe(1);
-    expect((await repository.findById('msg_001'))?.id).toBe('msg_001');
+    expect((await repository.findById('msg_001'))?.publicId).toBe('msg_001');
 
     const stayRepository = { findById: jest.fn().mockResolvedValue({ id: 'stay_001' }) };
     const queueService = { publish: jest.fn() };

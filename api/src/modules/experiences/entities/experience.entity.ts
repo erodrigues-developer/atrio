@@ -1,11 +1,14 @@
-import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ExperienceAvailabilitySlot } from './experience-availability-slot.entity';
 import { ExperienceCollectionItem } from './experience-collection-item.entity';
 
 @Entity({ name: 'experiences' })
 export class Experience {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ type: 'varchar', length: 150 })
   title!: string;
@@ -45,6 +48,9 @@ export class Experience {
 
   @Column({ type: 'jsonb', default: [] })
   included!: string[];
+
+  @Column({ type: 'boolean', default: true })
+  published!: boolean;
 
   @OneToMany(() => ExperienceCollectionItem, (item) => item.experience)
   collections!: ExperienceCollectionItem[];

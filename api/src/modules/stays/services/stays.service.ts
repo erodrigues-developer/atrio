@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { formatGreetingPeriod, formatRelativeDateLabel, formatShortDate } from 'src/common/utils/date-label.util';
+import { formatShortDate } from 'src/common/utils/date-label.util';
 import { ApiException } from 'src/common/exceptions/api.exception';
 import { AuthSessionContext } from 'src/common/interfaces/auth-session-context.interface';
 import { StayRepository } from '../repositories/stay.repository';
@@ -28,7 +28,7 @@ export class StaysService {
     const reservationsCount = Number(reservationsCountRaw);
 
     return {
-      id: stay.id,
+      id: stay.publicId,
       hotelId: stay.hotelId,
       hotelName: stay.hotel.name,
       guestId: stay.guestId,
@@ -45,7 +45,7 @@ export class StaysService {
         reservations: `${reservationsCount} solicitada`,
       },
       usefulInfo: usefulInfo.map((item) => ({
-        id: item.id,
+        id: item.publicId,
         title: item.title,
         description: item.description,
       })),
@@ -57,47 +57,36 @@ export class StaysService {
     const stay = await this.getRequiredStay(stayId);
     const usefulInfo = await this.stayRepository.listUsefulInfo(stayId, 'dashboard');
     const requests = await this.dataSource.query(
-      `SELECT id, title, status, status_label AS "statusLabel", quantity, room_number AS "roomNumber", created_at AS "createdAt"
+      `SELECT public_id AS id, title, status, status_label AS "statusLabel", quantity, room_number AS "roomNumber", created_at AS "createdAt"
        FROM stay_requests WHERE stay_id = $1 ORDER BY created_at DESC LIMIT 3`,
       [stayId],
     );
     const reservations = await this.dataSource.query(
-      `SELECT id, experience_id AS "experienceId", title, status, status_label AS "statusLabel", scheduled_at AS "scheduledAt", date_label AS "dateLabel", time_label AS "timeLabel"
+      `SELECT public_id AS id, experience_id AS "experienceId", title, status, status_label AS "statusLabel", scheduled_at AS "scheduledAt", date_label AS "dateLabel", time_label AS "timeLabel"
        FROM reservations WHERE stay_id = $1 ORDER BY scheduled_at ASC LIMIT 3`,
       [stayId],
     );
     const featuredExperience = await this.dataSource.query(
-      `SELECT e.id, e.title, e.description, e.badge, e.category, e.time_label AS "timeLabel", e.price_label AS "priceLabel", e.image_url AS "imageUrl"
+      `SELECT e.public_id AS id, e.title, e.description, e.badge, e.category, e.time_label AS "timeLabel", e.price_label AS "priceLabel", e.image_url AS "imageUrl"
        FROM experiences e
-       INNER JOIN experience_collection_items eci ON eci.experience_id = e.id
-       INNER JOIN experience_collections c ON c.id = eci.collection_id
+       INNER JOIN experience_collection_items eci ON eci.experience_id = e.public_id
+       INNER JOIN experience_collections c ON c.public_id = eci.collection_id
        WHERE c.featured = true
        ORDER BY eci.position ASC
        LIMIT 1`,
     );
 
     return {
-      greeting: {
-        periodLabel: formatGreetingPeriod(),
-        guestFirstName: stay.guest.firstName,
-        message: 'Esperamos que sua estadia esteja sendo especial.',
-      },
       stay: {
         hotelName: stay.hotel.name,
         roomNumber: stay.roomNumber,
         checkOutTime: stay.checkOutTime,
       },
-      quickActions: [
-        { id: 'request', title: 'Pedir algo', icon: 'bell', target: '/services' },
-        { id: 'room-service', title: 'Room service', icon: 'utensils', target: '/services?type=room-service' },
-        { id: 'wifi', title: 'Wi-Fi', icon: 'wifi', target: '/stay/wifi' },
-        { id: 'concierge', title: 'Concierge', icon: 'message-circle', target: '/concierge' },
-      ],
       featuredExperience: featuredExperience[0],
       requests,
       reservations,
       usefulInfo: usefulInfo.map((item) => ({
-        id: item.id,
+        id: item.publicId,
         title: item.title,
         description: item.description,
       })),
@@ -131,7 +120,7 @@ export class StaysService {
       totalAmountCents,
       updatedAt: latestOccurrence.toISOString(),
       items: items.map((item) => ({
-        id: item.id,
+        id: item.publicId,
         title: item.title,
         description: item.description,
         category: item.category,

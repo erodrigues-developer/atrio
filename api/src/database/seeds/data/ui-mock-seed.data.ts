@@ -112,7 +112,7 @@ export const seedServices = [
 ];
 
 export const seedCollections = [
-  { id: 'today', title: 'Selecionado para hoje', description: 'Uma sugestão especial para aproveitar este momento da estadia.', featured: true },
+  { id: 'today', title: 'Sugestão do dia', description: 'Uma sugestão especial para aproveitar este momento da estadia.', featured: true },
   { id: 'relax', title: 'Para relaxar', description: 'Experiências selecionadas para desacelerar durante a estadia.', featured: false },
   { id: 'gastronomy', title: 'Gastronomia', description: 'Sugestões à mesa para aproveitar sabores e momentos especiais.', featured: false },
   { id: 'romantic', title: 'Experiências românticas', description: 'Momentos preparados para celebrar com calma e discrição.', featured: false },
@@ -129,7 +129,7 @@ export const seedExperiences = [
     category: 'Gastronomia',
     timeLabel: 'Hoje, a partir das 19h',
     priceLabel: 'Sob consulta',
-    badge: 'Selecionado para hoje',
+    badge: 'Sugestão do dia',
     imageUrl: 'https://cdn.atrio.app/experiences/sunset-dinner.webp',
     durationLabel: '2h',
     availabilityLabel: 'Hoje, a partir das 19h',

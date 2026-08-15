@@ -7,7 +7,7 @@ import { AuthService } from '../services/auth.service';
 
 describe('auth module', () => {
   const stay = {
-    id: 'stay_001',
+    publicId: 'stay_001',
     guestId: 'guest_001',
     hotelId: 'copacabana-palace',
     roomNumber: '304',
@@ -48,7 +48,7 @@ describe('auth module', () => {
     };
     const guestSessionRepository = {
       create: jest.fn(),
-      findActiveByAccessToken: jest.fn().mockResolvedValue({ id: 'session_001', stayId: 'stay_001' }),
+      findActiveByAccessToken: jest.fn().mockResolvedValue({ publicId: 'session_001', stayId: 'stay_001' }),
     };
     const redisService = {
       setJson: jest.fn(),
@@ -175,7 +175,7 @@ describe('auth module', () => {
     stayRepository.findById.mockResolvedValueOnce(null);
     await expect(service.verifyStayAccess('chl_002', '123456')).rejects.toBeInstanceOf(ApiException);
 
-    guestSessionRepository.findActiveByAccessToken.mockResolvedValueOnce({ id: 'session_001', stayId: 'stay_001' });
+    guestSessionRepository.findActiveByAccessToken.mockResolvedValueOnce({ publicId: 'session_001', stayId: 'stay_001' });
     stayRepository.findById.mockResolvedValueOnce(null);
     await expect(service.validateAccessToken('token')).rejects.toBeInstanceOf(ApiException);
 

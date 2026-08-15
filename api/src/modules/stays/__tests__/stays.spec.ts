@@ -6,7 +6,7 @@ import { StaysService } from '../services/stays.service';
 
 describe('stays module', () => {
   const stay = {
-    id: 'stay_001',
+    publicId: 'stay_001',
     hotelId: 'copacabana-palace',
     guestId: 'guest_001',
     roomNumber: '304',
@@ -31,7 +31,7 @@ describe('stays module', () => {
       getOne: jest.fn().mockResolvedValue(stay),
     };
     const findOne = jest.fn().mockResolvedValue(stay);
-    const find = jest.fn().mockResolvedValue([{ id: 'info' }]);
+    const find = jest.fn().mockResolvedValue([{ publicId: 'info' }]);
     const repository = new StayRepository(
       { createQueryBuilder: jest.fn().mockReturnValue(queryBuilder), findOne } as never,
       { find } as never,
@@ -40,17 +40,17 @@ describe('stays module', () => {
 
     expect(await repository.findByHotelRoomAndLastName('h', '1', 'l')).toBe(stay);
     expect(await repository.findById('stay_001')).toBe(stay);
-    expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([{ id: 'info' }]);
-    expect(await repository.listConsumptionItems('stay_001')).toEqual([{ id: 'info' }]);
+    expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([{ publicId: 'info' }]);
+    expect(await repository.listConsumptionItems('stay_001')).toEqual([{ publicId: 'info' }]);
   });
 
   it('covers stay service flows and controller delegation', async () => {
     const stayRepository = {
       findById: jest.fn().mockResolvedValue(stay),
-      listUsefulInfo: jest.fn().mockResolvedValue([{ id: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
+      listUsefulInfo: jest.fn().mockResolvedValue([{ publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
       listConsumptionItems: jest.fn().mockResolvedValue([
         {
-          id: 'cons_001',
+          publicId: 'cons_001',
           title: 'Room service',
           description: 'Pedido',
           category: 'food',

@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Guest } from './guest.entity';
 import { Hotel } from './hotel.entity';
 import { StayUsefulInfo } from './stay-useful-info.entity';
@@ -6,8 +6,11 @@ import { ConsumptionItem } from './consumption-item.entity';
 
 @Entity({ name: 'stays' })
 export class Stay {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ name: 'hotel_id', type: 'varchar', length: 100 })
   hotelId!: string;
@@ -46,11 +49,11 @@ export class Stay {
   consumptionView!: 'ready' | 'empty' | 'unavailable';
 
   @ManyToOne(() => Hotel, (hotel) => hotel.stays, { eager: true })
-  @JoinColumn({ name: 'hotel_id' })
+  @JoinColumn({ name: 'hotel_id', referencedColumnName: 'publicId' })
   hotel!: Hotel;
 
   @ManyToOne(() => Guest, (guest) => guest.stays, { eager: true })
-  @JoinColumn({ name: 'guest_id' })
+  @JoinColumn({ name: 'guest_id', referencedColumnName: 'publicId' })
   guest!: Guest;
 
   @OneToMany(() => StayUsefulInfo, (usefulInfo) => usefulInfo.stay)

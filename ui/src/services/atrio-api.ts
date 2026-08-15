@@ -30,22 +30,11 @@ export type VerifyStayAccessResponse = {
 };
 
 export type DashboardResponse = {
-  greeting: {
-    periodLabel: string;
-    guestFirstName: string;
-    message: string;
-  };
   stay: {
     hotelName: string;
     roomNumber: string;
     checkOutTime: string;
   };
-  quickActions: {
-    id: string;
-    title: string;
-    icon: string;
-    target: string;
-  }[];
   featuredExperience: {
     id: string;
     title: string;

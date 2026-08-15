@@ -15,7 +15,7 @@ import { StayContextBar } from '@/src/design-system/product/StayContextBar';
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '@/src/mocks/stay.mock';
-import { useSession } from '@/src/stores/session.store';
+import { useHasHydratedSession, useSession } from '@/src/stores/session.store';
 
 const TAB_ICON_SIZE = 22;
 const TAB_ICON_STROKE_WIDTH = 1.9;
@@ -79,12 +79,17 @@ const hiddenGuestRoutes = [
 
 export default function GuestLayout() {
   const session = useSession();
+  const hasHydratedSession = useHasHydratedSession();
   const insets = useSafeAreaInsets();
   const tabBarBottomPadding = Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + tabBarBottomPadding;
   const roomNumber = session?.roomNumber ?? stayMock.roomNumber;
   const hotelName = session?.hotelName ?? stayMock.hotelName;
   const checkOutTime = session?.checkOutTime ?? stayMock.checkOutTimeLabel;
+
+  if (!hasHydratedSession) {
+    return null;
+  }
 
   if (!session?.isAuthenticated) {
     return <Redirect href="/(onboarding)/welcome" />;

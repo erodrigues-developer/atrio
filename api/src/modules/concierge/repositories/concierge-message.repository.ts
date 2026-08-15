@@ -28,6 +28,6 @@ export class ConciergeMessageRepository {
   }
 
   async findById(messageId: string): Promise<ConciergeMessage | null> {
-    return this.repository.findOne({ where: { id: messageId } });
+    return this.repository.findOne({ where: { publicId: messageId } });
   }
 }

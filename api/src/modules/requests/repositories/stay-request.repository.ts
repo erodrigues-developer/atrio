@@ -23,7 +23,7 @@ export class StayRequestRepository {
 
   async findById(stayId: string, requestId: string): Promise<StayRequest | null> {
     return this.repository.findOne({
-      where: { id: requestId, stayId },
+      where: { publicId: requestId, stayId },
     });
   }
 }

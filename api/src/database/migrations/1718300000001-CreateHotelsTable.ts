@@ -1,16 +1,12 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { createTableIfMissing, dropTableIfExists } from './helpers/table-migration.helper';
+import { createTableIfMissing, dropTableIfExists, publicIdColumn, uuidPrimaryColumn } from './helpers/table-migration.helper';
 
 export class CreateHotelsTable1718300000001 implements MigrationInterface {
   private readonly table = new Table({
     name: 'hotels',
     columns: [
-      {
-        name: 'id',
-        type: 'varchar',
-        length: '100',
-        isPrimary: true,
-      },
+      uuidPrimaryColumn(),
+      publicIdColumn(),
       {
         name: 'name',
         type: 'varchar',

@@ -1,16 +1,12 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { createTableIfMissing, dropTableIfExists } from './helpers/table-migration.helper';
+import { createTableIfMissing, dropTableIfExists, publicIdColumn, uuidPrimaryColumn } from './helpers/table-migration.helper';
 
 export class CreateConciergeMessagesTable1718300000014 implements MigrationInterface {
   private readonly table = new Table({
     name: 'concierge_messages',
     columns: [
-      {
-        name: 'id',
-        type: 'varchar',
-        length: '100',
-        isPrimary: true,
-      },
+      uuidPrimaryColumn(),
+      publicIdColumn(),
       {
         name: 'stay_id',
         type: 'varchar',
@@ -45,7 +41,7 @@ export class CreateConciergeMessagesTable1718300000014 implements MigrationInter
       {
         columnNames: ['stay_id'],
         referencedTableName: 'stays',
-        referencedColumnNames: ['id'],
+        referencedColumnNames: ['public_id'],
       },
     ],
   });

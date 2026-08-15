@@ -5,9 +5,23 @@ describe('main bootstrap', () => {
     const listen = jest.fn().mockResolvedValue(undefined);
     const useGlobalPipes = jest.fn();
     const enableVersioning = jest.fn();
+    const enableCors = jest.fn();
     const useGlobalInterceptors = jest.fn();
     const select = jest.fn();
+    const get = jest.fn().mockReturnValue({
+      get: jest.fn((key: string) => {
+        const values: Record<string, unknown> = {
+          'app.isLocal': true,
+          'app.cors.allowedOrigins': [],
+          'app.cors.allowCredentials': true,
+        };
+
+        return values[key];
+      }),
+    });
     const app = {
+      get,
+      enableCors,
       useGlobalPipes,
       enableVersioning,
       useGlobalInterceptors,

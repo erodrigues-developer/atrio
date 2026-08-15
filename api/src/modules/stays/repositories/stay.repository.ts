@@ -33,7 +33,7 @@ export class StayRepository {
 
   async findById(stayId: string): Promise<Stay | null> {
     return this.stayRepository.findOne({
-      where: { id: stayId },
+      where: { publicId: stayId },
       relations: {
         hotel: true,
         guest: true,

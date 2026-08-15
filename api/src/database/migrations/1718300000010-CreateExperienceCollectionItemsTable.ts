@@ -1,16 +1,12 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { createTableIfMissing, dropTableIfExists } from './helpers/table-migration.helper';
+import { createTableIfMissing, dropTableIfExists, publicIdColumn, uuidPrimaryColumn } from './helpers/table-migration.helper';
 
 export class CreateExperienceCollectionItemsTable1718300000010 implements MigrationInterface {
   private readonly table = new Table({
     name: 'experience_collection_items',
     columns: [
-      {
-        name: 'id',
-        type: 'varchar',
-        length: '150',
-        isPrimary: true,
-      },
+      uuidPrimaryColumn(),
+      publicIdColumn('150'),
       {
         name: 'collection_id',
         type: 'varchar',
@@ -33,12 +29,12 @@ export class CreateExperienceCollectionItemsTable1718300000010 implements Migrat
       {
         columnNames: ['collection_id'],
         referencedTableName: 'experience_collections',
-        referencedColumnNames: ['id'],
+        referencedColumnNames: ['public_id'],
       },
       {
         columnNames: ['experience_id'],
         referencedTableName: 'experiences',
-        referencedColumnNames: ['id'],
+        referencedColumnNames: ['public_id'],
       },
     ],
   });

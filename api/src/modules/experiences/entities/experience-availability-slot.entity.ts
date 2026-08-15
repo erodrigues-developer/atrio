@@ -1,10 +1,13 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Experience } from './experience.entity';
 
 @Entity({ name: 'experience_availability_slots' })
 export class ExperienceAvailabilitySlot {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ name: 'experience_id', type: 'varchar', length: 100 })
   experienceId!: string;
@@ -31,6 +34,6 @@ export class ExperienceAvailabilitySlot {
   position!: number;
 
   @ManyToOne(() => Experience, (experience) => experience.availabilitySlots)
-  @JoinColumn({ name: 'experience_id' })
+  @JoinColumn({ name: 'experience_id', referencedColumnName: 'publicId' })
   experience!: Experience;
 }

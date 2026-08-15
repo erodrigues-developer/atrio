@@ -20,7 +20,7 @@ export class ExperienceRepository {
   ) {}
 
   async listCollections(): Promise<ExperienceCollection[]> {
-    return this.collectionRepository.find({ order: { featured: 'DESC', title: 'ASC' } });
+    return this.collectionRepository.find({ where: { published: true }, order: { featured: 'DESC', title: 'ASC' } });
   }
 
   async listCollectionItems(collectionId: string): Promise<ExperienceCollectionItem[]> {
@@ -34,11 +34,11 @@ export class ExperienceRepository {
   }
 
   async findCollectionById(collectionId: string): Promise<ExperienceCollection | null> {
-    return this.collectionRepository.findOne({ where: { id: collectionId } });
+    return this.collectionRepository.findOne({ where: { publicId: collectionId, published: true } });
   }
 
   async findExperienceById(experienceId: string): Promise<Experience | null> {
-    return this.experienceRepository.findOne({ where: { id: experienceId } });
+    return this.experienceRepository.findOne({ where: { publicId: experienceId, published: true } });
   }
 
   async listAvailability(experienceId: string): Promise<ExperienceAvailabilitySlot[]> {
@@ -49,7 +49,7 @@ export class ExperienceRepository {
   }
 
   async findSlotById(slotId: string): Promise<ExperienceAvailabilitySlot | null> {
-    return this.slotRepository.findOne({ where: { id: slotId } });
+    return this.slotRepository.findOne({ where: { publicId: slotId } });
   }
 
   async saveSlot(slot: ExperienceAvailabilitySlot): Promise<ExperienceAvailabilitySlot> {

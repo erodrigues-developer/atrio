@@ -1,10 +1,13 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Stay } from './stay.entity';
 
 @Entity({ name: 'consumption_items' })
 export class ConsumptionItem {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ name: 'stay_id', type: 'varchar', length: 100 })
   stayId!: string;
@@ -31,6 +34,6 @@ export class ConsumptionItem {
   occurredAt!: Date;
 
   @ManyToOne(() => Stay, (stay) => stay.consumptionItems)
-  @JoinColumn({ name: 'stay_id' })
+  @JoinColumn({ name: 'stay_id', referencedColumnName: 'publicId' })
   stay!: Stay;
 }

@@ -11,10 +11,10 @@ export class ServiceCatalogRepository {
   ) {}
 
   async list(): Promise<ServiceDefinition[]> {
-    return this.repository.find({ order: { title: 'ASC' } });
+    return this.repository.find({ where: { published: true }, order: { title: 'ASC' } });
   }
 
   async findById(serviceId: string): Promise<ServiceDefinition | null> {
-    return this.repository.findOne({ where: { id: serviceId } });
+    return this.repository.findOne({ where: { publicId: serviceId, published: true } });
   }
 }

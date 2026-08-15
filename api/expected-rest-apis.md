@@ -184,47 +184,16 @@ Resposta esperada `200 OK`:
 
 ```json
 {
-  "greeting": {
-    "periodLabel": "Boa tarde",
-    "guestFirstName": "Everton",
-    "message": "Esperamos que sua estadia esteja sendo especial."
-  },
   "stay": {
     "hotelName": "Copacabana Palace",
     "roomNumber": "304",
     "checkOutTime": "12:00"
   },
-  "quickActions": [
-    {
-      "id": "request",
-      "title": "Pedir algo",
-      "icon": "bell",
-      "target": "/services"
-    },
-    {
-      "id": "room-service",
-      "title": "Room service",
-      "icon": "utensils",
-      "target": "/services?type=room-service"
-    },
-    {
-      "id": "wifi",
-      "title": "Wi-Fi",
-      "icon": "wifi",
-      "target": "/stay/wifi"
-    },
-    {
-      "id": "concierge",
-      "title": "Concierge",
-      "icon": "message-circle",
-      "target": "/concierge"
-    }
-  ],
   "featuredExperience": {
     "id": "sunset-dinner",
     "title": "Jantar ao pôr do sol",
     "description": "Uma experiência à mesa para encerrar o dia com vista, cuidado e tranquilidade.",
-    "badge": "Selecionado para hoje",
+    "badge": "Sugestão do dia",
     "category": "Gastronomia",
     "timeLabel": "Hoje, a partir das 19h",
     "priceLabel": "Sob consulta",
@@ -398,7 +367,7 @@ Resposta esperada `200 OK`:
   "collections": [
     {
       "id": "today",
-      "title": "Selecionado para hoje",
+      "title": "Sugestão do dia",
       "description": "Uma sugestão especial para aproveitar este momento da estadia.",
       "featured": true,
       "items": [
@@ -409,7 +378,7 @@ Resposta esperada `200 OK`:
           "category": "Gastronomia",
           "timeLabel": "Hoje, a partir das 19h",
           "priceLabel": "Sob consulta",
-          "badge": "Selecionado para hoje",
+          "badge": "Sugestão do dia",
           "imageUrl": "https://cdn.atrio.app/experiences/sunset-dinner.webp"
         }
       ]
@@ -476,7 +445,7 @@ Resposta esperada `200 OK`:
   "category": "Gastronomia",
   "timeLabel": "Hoje, a partir das 19h",
   "priceLabel": "Sob consulta",
-  "badge": "Selecionado para hoje",
+  "badge": "Sugestão do dia",
   "imageUrl": "https://cdn.atrio.app/experiences/sunset-dinner.webp",
   "durationLabel": "2h",
   "availabilityLabel": "Hoje, a partir das 19h",

@@ -1,9 +1,12 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity({ name: 'service_definitions' })
 export class ServiceDefinition {
-  @PrimaryColumn({ type: 'varchar', length: 100 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 100, unique: true })
+  publicId!: string;
 
   @Column({ type: 'varchar', length: 150 })
   title!: string;
@@ -21,4 +24,7 @@ export class ServiceDefinition {
   requestSchema!: {
     fields: Array<Record<string, unknown>>;
   };
+
+  @Column({ type: 'boolean', default: true })
+  published!: boolean;
 }

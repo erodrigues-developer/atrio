@@ -50,13 +50,41 @@ const SECTION_SPACING = {
   reservationsToInfo: 32,
 } as const;
 
-const quickActionIconMap: Record<string, LucideIcon> = {
-  bell: Bell,
-  compass: Compass,
-  utensils: Utensils,
-  wifi: Wifi,
-  'message-circle': Compass,
-};
+const quickActions: QuickAction[] = [
+  {
+    title: 'Pedir algo',
+    icon: Bell,
+    href: '/(guest)/services',
+  },
+  {
+    title: 'Room service',
+    icon: Utensils,
+    href: {
+      pathname: '/(guest)/services/request/[type]',
+      params: {
+        type: 'room-service',
+        returnTo: '/(guest)/today',
+      },
+    },
+  },
+  {
+    title: 'Wi-Fi',
+    icon: Wifi,
+    href: {
+      pathname: '/(guest)/stay/wifi',
+      params: {
+        returnTo: '/(guest)/today',
+      },
+    },
+  },
+  {
+    title: 'Experiências',
+    icon: Compass,
+    href: '/(guest)/discover',
+  },
+] as const;
+
+const todayGreetingMessage = 'Esperamos que sua estadia esteja sendo especial.';
 
 const usefulInfoIcons: Record<string, LucideIcon> = {
   wifi: Wifi,
@@ -64,32 +92,6 @@ const usefulInfoIcons: Record<string, LucideIcon> = {
   checkout: Bell,
   'hotel-rules': ScrollText,
 };
-
-function mapQuickActionTarget(target: string): Href {
-  switch (target) {
-    case '/services':
-      return '/(guest)/services';
-    case '/services?type=room-service':
-      return {
-        pathname: '/(guest)/services/request/[type]',
-        params: {
-          type: 'room-service',
-          returnTo: '/(guest)/today',
-        },
-      } as Href;
-    case '/stay/wifi':
-      return {
-        pathname: '/(guest)/stay/wifi',
-        params: {
-          returnTo: '/(guest)/today',
-        },
-      } as Href;
-    case '/concierge':
-      return '/(guest)/discover';
-    default:
-      return '/(guest)/today';
-  }
-}
 
 function mapRequestStatusType(status: string): RequestStatusType {
   switch (status) {
@@ -118,6 +120,24 @@ function buildRequestDetails(request: {
   details.push(request.timeLabel);
 
   return details;
+}
+
+function getGreetingPeriod() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return 'Bom dia';
+  }
+
+  if (hour < 18) {
+    return 'Boa tarde';
+  }
+
+  return 'Boa noite';
+}
+
+function getFirstName(name?: string) {
+  return name?.trim().split(/\s+/)[0] ?? '';
 }
 
 function getUsefulInfoHref(usefulInfoId: string): Href {
@@ -204,12 +224,7 @@ export default function TodayScreen() {
       returnTo: '/(guest)/today',
     },
   };
-  const quickActions: QuickAction[] =
-    dashboard?.quickActions.map((action) => ({
-      title: action.target === '/concierge' ? 'Experiências' : action.title,
-      icon: action.target === '/concierge' ? Compass : quickActionIconMap[action.icon] ?? Bell,
-      href: mapQuickActionTarget(action.target),
-    })) ?? [];
+  const guestFirstName = getFirstName(session?.guestName);
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -240,10 +255,10 @@ export default function TodayScreen() {
           <YStack>
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.5} variant="title1">
-                {dashboard.greeting.periodLabel}, {dashboard.greeting.guestFirstName}
+                {getGreetingPeriod()}, {guestFirstName}
               </Text>
               <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-                {dashboard.greeting.message}
+                {todayGreetingMessage}
               </Text>
             </YStack>
 

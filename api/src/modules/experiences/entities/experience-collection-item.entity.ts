@@ -1,11 +1,14 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { ExperienceCollection } from './experience-collection.entity';
 import { Experience } from './experience.entity';
 
 @Entity({ name: 'experience_collection_items' })
 export class ExperienceCollectionItem {
-  @PrimaryColumn({ type: 'varchar', length: 150 })
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'public_id', type: 'varchar', length: 150, unique: true })
+  publicId!: string;
 
   @Column({ name: 'collection_id', type: 'varchar', length: 100 })
   collectionId!: string;
@@ -17,10 +20,10 @@ export class ExperienceCollectionItem {
   position!: number;
 
   @ManyToOne(() => ExperienceCollection, (collection) => collection.items)
-  @JoinColumn({ name: 'collection_id' })
+  @JoinColumn({ name: 'collection_id', referencedColumnName: 'publicId' })
   collection!: ExperienceCollection;
 
   @ManyToOne(() => Experience, (experience) => experience.collections, { eager: true })
-  @JoinColumn({ name: 'experience_id' })
+  @JoinColumn({ name: 'experience_id', referencedColumnName: 'publicId' })
   experience!: Experience;
 }

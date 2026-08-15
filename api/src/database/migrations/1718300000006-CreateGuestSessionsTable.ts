@@ -1,16 +1,12 @@
 import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { createTableIfMissing, dropTableIfExists } from './helpers/table-migration.helper';
+import { createTableIfMissing, dropTableIfExists, publicIdColumn, uuidPrimaryColumn } from './helpers/table-migration.helper';
 
 export class CreateGuestSessionsTable1718300000006 implements MigrationInterface {
   private readonly table = new Table({
     name: 'guest_sessions',
     columns: [
-      {
-        name: 'id',
-        type: 'varchar',
-        length: '100',
-        isPrimary: true,
-      },
+      uuidPrimaryColumn(),
+      publicIdColumn(),
       {
         name: 'guest_id',
         type: 'varchar',
@@ -52,12 +48,12 @@ export class CreateGuestSessionsTable1718300000006 implements MigrationInterface
       {
         columnNames: ['guest_id'],
         referencedTableName: 'guests',
-        referencedColumnNames: ['id'],
+        referencedColumnNames: ['public_id'],
       },
       {
         columnNames: ['stay_id'],
         referencedTableName: 'stays',
-        referencedColumnNames: ['id'],
+        referencedColumnNames: ['public_id'],
       },
     ],
   });

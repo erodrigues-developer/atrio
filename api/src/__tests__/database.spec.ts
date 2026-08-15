@@ -17,6 +17,12 @@ import { CreateExperienceAvailabilitySlotsTable1718300000011 } from '../database
 import { CreateStayRequestsTable1718300000012 } from '../database/migrations/1718300000012-CreateStayRequestsTable';
 import { CreateReservationsTable1718300000013 } from '../database/migrations/1718300000013-CreateReservationsTable';
 import { CreateConciergeMessagesTable1718300000014 } from '../database/migrations/1718300000014-CreateConciergeMessagesTable';
+import { CreateAdminTables1718300000015 } from '../database/migrations/1718300000015-CreateAdminTables';
+import { SeedDefaultAdminUser1718300000016 } from '../database/migrations/1718300000016-SeedDefaultAdminUser';
+import { AddRevokedAtToGuestSessions1718300000017 } from '../database/migrations/1718300000017-AddRevokedAtToGuestSessions';
+import { AddServicePublishing1718300000018 } from '../database/migrations/1718300000018-AddServicePublishing';
+import { AddInternalNoteToStayRequests1718300000019 } from '../database/migrations/1718300000019-AddInternalNoteToStayRequests';
+import { AddExperiencePublishing1718300000020 } from '../database/migrations/1718300000020-AddExperiencePublishing';
 import InitialSeeder from '../database/seeds/initial.seeder';
 import UniqueSeeder from '../database/seeds/unique.seeder';
 
@@ -31,6 +37,9 @@ describe('database setup', () => {
       hasTable: jest.fn().mockResolvedValue(false),
       createTable: jest.fn(),
       dropTable: jest.fn(),
+      getTable: jest.fn().mockResolvedValue({ findColumnByName: jest.fn().mockReturnValue(null) }),
+      addColumn: jest.fn(),
+      dropColumn: jest.fn(),
       query: jest.fn(),
     };
 
@@ -55,13 +64,19 @@ describe('database setup', () => {
       new CreateStayRequestsTable1718300000012(),
       new CreateReservationsTable1718300000013(),
       new CreateConciergeMessagesTable1718300000014(),
+      new CreateAdminTables1718300000015(),
+      new SeedDefaultAdminUser1718300000016(),
+      new AddRevokedAtToGuestSessions1718300000017(),
+      new AddServicePublishing1718300000018(),
+      new AddInternalNoteToStayRequests1718300000019(),
+      new AddExperiencePublishing1718300000020(),
     ];
 
     for (const migration of incrementalMigrations) {
       await migration.up(queryRunner as never);
     }
 
-    expect(queryRunner.createTable).toHaveBeenCalledTimes(incrementalMigrations.length + 1);
+    expect(queryRunner.createTable).toHaveBeenCalledTimes(18);
 
     queryRunner.hasTable.mockResolvedValue(true);
 
@@ -70,12 +85,12 @@ describe('database setup', () => {
       await migration.down(queryRunner as never);
     }
 
-    expect(queryRunner.dropTable).toHaveBeenCalledTimes(incrementalMigrations.length + 1);
+    expect(queryRunner.dropTable).toHaveBeenCalledTimes(18);
 
     const legacyMigration = new CreateAtrioSchema1718300000000();
     await legacyMigration.up(queryRunner as never);
     await legacyMigration.down(queryRunner as never);
-    expect(queryRunner.query).not.toHaveBeenCalled();
+    expect(queryRunner.query).toHaveBeenCalledWith('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
   });
 
   it('runs the initial seeder only once', async () => {

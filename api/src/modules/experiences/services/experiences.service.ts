@@ -12,13 +12,13 @@ export class ExperiencesService {
     return {
       collections: await Promise.all(
         collections.map(async (collection) => ({
-          id: collection.id,
+          id: collection.publicId,
           title: collection.title,
           description: collection.description,
           featured: collection.featured,
-          items: (await this.experienceRepository.listCollectionItems(collection.id)).map((item) =>
-            this.mapExperienceCard(item.experience),
-          ),
+          items: (await this.experienceRepository.listCollectionItems(collection.publicId))
+            .filter((item) => item.experience.published)
+            .map((item) => this.mapExperienceCard(item.experience)),
         })),
       ),
     };
@@ -32,13 +32,13 @@ export class ExperiencesService {
     }
 
     return {
-      id: collection.id,
+      id: collection.publicId,
       title: collection.title,
       description: collection.description,
       featured: collection.featured,
-      items: (await this.experienceRepository.listCollectionItems(collection.id)).map((item) =>
-        this.mapExperienceCard(item.experience),
-      ),
+      items: (await this.experienceRepository.listCollectionItems(collection.publicId))
+        .filter((item) => item.experience.published)
+        .map((item) => this.mapExperienceCard(item.experience)),
     };
   }
 
@@ -82,7 +82,7 @@ export class ExperiencesService {
       }
 
       daysMap.get(slot.date)!.slots.push({
-        id: slot.id,
+        id: slot.publicId,
         time: slot.time,
         startsAt: slot.startsAt.toISOString(),
         available: slot.isAvailable,
@@ -96,7 +96,7 @@ export class ExperiencesService {
   }
 
   private mapExperienceCard(experience: {
-    id: string;
+    publicId: string;
     title: string;
     description: string;
     category: string;
@@ -106,7 +106,7 @@ export class ExperiencesService {
     imageUrl: string;
   }) {
     return {
-      id: experience.id,
+      id: experience.publicId,
       title: experience.title,
       description: experience.description,
       category: experience.category,

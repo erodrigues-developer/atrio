@@ -1,11 +1,13 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TamaguiProvider } from 'tamagui';
 
 import { colors } from '@/src/design-system/tokens/colors';
+import { hydrateSession } from '@/src/stores/session.store';
 import { tamaguiConfig } from '@/tamagui.config';
 
 const navigationTheme = {
@@ -21,6 +23,10 @@ const navigationTheme = {
 };
 
 export default function RootLayout() {
+  useEffect(() => {
+    hydrateSession();
+  }, []);
+
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <SafeAreaProvider>

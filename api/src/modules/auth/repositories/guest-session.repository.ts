@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { GuestSession } from '../entities/guest-session.entity';
 
 @Injectable()
@@ -19,6 +19,7 @@ export class GuestSessionRepository {
       where: {
         accessToken,
         expiresAt: MoreThan(new Date()),
+        revokedAt: IsNull(),
       },
     });
   }

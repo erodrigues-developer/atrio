@@ -6,18 +6,18 @@ import { RequestsService } from '../services/requests.service';
 
 describe('requests module', () => {
   it('covers repository, service and controller', async () => {
-    const save = jest.fn().mockResolvedValue({ id: 'req_001' });
-    const find = jest.fn().mockResolvedValue([{ id: 'req_001', stayId: 'stay_001', serviceId: 'towels', type: 'towels', title: 'Toalhas extras', status: 'received', statusLabel: 'Recebido', quantity: 2, note: '', roomNumber: '304', createdAt: new Date('2026-06-13T17:20:00.000Z') }]);
-    const findOne = jest.fn().mockResolvedValue({ id: 'req_001', stayId: 'stay_001', serviceId: 'towels', type: 'towels', title: 'Toalhas extras', status: 'received', statusLabel: 'Recebido', quantity: 2, note: '', roomNumber: '304', createdAt: new Date('2026-06-13T17:20:00.000Z') });
+    const save = jest.fn().mockResolvedValue({ publicId: 'req_001' });
+    const find = jest.fn().mockResolvedValue([{ publicId: 'req_001', stayId: 'stay_001', serviceId: 'towels', type: 'towels', title: 'Toalhas extras', status: 'received', statusLabel: 'Recebido', quantity: 2, note: '', roomNumber: '304', createdAt: new Date('2026-06-13T17:20:00.000Z') }]);
+    const findOne = jest.fn().mockResolvedValue({ publicId: 'req_001', stayId: 'stay_001', serviceId: 'towels', type: 'towels', title: 'Toalhas extras', status: 'received', statusLabel: 'Recebido', quantity: 2, note: '', roomNumber: '304', createdAt: new Date('2026-06-13T17:20:00.000Z') });
     const repository = new StayRequestRepository({ save, find, findOne } as never);
 
     await repository.create({ id: 'req_001' } as never);
     expect(save).toHaveBeenCalled();
     expect((await repository.listByStayId('stay_001')).length).toBe(1);
-    expect((await repository.findById('stay_001', 'req_001'))?.id).toBe('req_001');
+    expect((await repository.findById('stay_001', 'req_001'))?.publicId).toBe('req_001');
 
     const stayRepository = { findById: jest.fn().mockResolvedValue({ id: 'stay_001' }) };
-    const serviceCatalogRepository = { findById: jest.fn().mockResolvedValue({ id: 'towels', title: 'Toalhas' }) };
+    const serviceCatalogRepository = { findById: jest.fn().mockResolvedValue({ publicId: 'towels', title: 'Toalhas' }) };
     const queueService = { publish: jest.fn() };
     const service = new RequestsService(stayRepository as never, serviceCatalogRepository as never, repository, queueService as never);
     const session = { stayId: 'stay_001', roomNumber: '304' };

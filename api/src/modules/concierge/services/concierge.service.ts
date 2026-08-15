@@ -34,14 +34,14 @@ export class ConciergeService {
       messages: [...messages]
         .reverse()
         .map((message) => ({
-          id: message.id,
+          id: message.publicId,
           sender: message.sender,
           text: message.text,
           createdAt: message.createdAt.toISOString(),
         })),
       pagination: {
         hasNextPage: messages.length === (query.limit ?? 50),
-        nextCursor: messages.length === (query.limit ?? 50) ? messages[messages.length - 1]?.id ?? null : null,
+        nextCursor: messages.length === (query.limit ?? 50) ? messages[messages.length - 1]?.publicId ?? null : null,
       },
     };
   }
@@ -55,7 +55,7 @@ export class ConciergeService {
     const createdAt = new Date();
 
     const guestMessage = new ConciergeMessage();
-    guestMessage.id = buildResourceId('msg');
+    guestMessage.publicId = buildResourceId('msg');
     guestMessage.stayId = stayId;
     guestMessage.sender = 'guest';
     guestMessage.text = input.text;
@@ -63,7 +63,7 @@ export class ConciergeService {
     guestMessage.createdAt = createdAt;
 
     const replyMessage = new ConciergeMessage();
-    replyMessage.id = buildResourceId('msg');
+    replyMessage.publicId = buildResourceId('msg');
     replyMessage.stayId = stayId;
     replyMessage.sender = 'hotel';
     replyMessage.text = 'Recebemos sua mensagem. A equipe do hotel irá acompanhar e responder em breve.';
@@ -75,18 +75,18 @@ export class ConciergeService {
     await this.queueService.publish('concierge.fifo', {
       event: 'concierge.message.created',
       stayId,
-      messageId: guestMessage.id,
+      messageId: guestMessage.publicId,
     });
 
     return {
       message: {
-        id: guestMessage.id,
+        id: guestMessage.publicId,
         sender: guestMessage.sender,
         text: guestMessage.text,
         createdAt: guestMessage.createdAt.toISOString(),
       },
       reply: {
-        id: replyMessage.id,
+        id: replyMessage.publicId,
         sender: replyMessage.sender,
         text: replyMessage.text,
         createdAt: replyMessage.createdAt.toISOString(),

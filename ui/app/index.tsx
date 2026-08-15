@@ -1,9 +1,14 @@
 import { Redirect } from 'expo-router';
 
-import { useSession } from '@/src/stores/session.store';
+import { useHasHydratedSession, useSession } from '@/src/stores/session.store';
 
 export default function Index() {
   const session = useSession();
+  const hasHydratedSession = useHasHydratedSession();
+
+  if (!hasHydratedSession) {
+    return null;
+  }
 
   if (session?.isAuthenticated) {
     return <Redirect href="/(guest)/today" />;

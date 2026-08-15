@@ -1,16 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-class GreetingDto {
-  @ApiProperty()
-  periodLabel!: string;
-
-  @ApiProperty()
-  guestFirstName!: string;
-
-  @ApiProperty()
-  message!: string;
-}
-
 class DashboardStayDto {
   @ApiProperty()
   hotelName!: string;
@@ -20,20 +9,6 @@ class DashboardStayDto {
 
   @ApiProperty()
   checkOutTime!: string;
-}
-
-class QuickActionDto {
-  @ApiProperty()
-  id!: string;
-
-  @ApiProperty()
-  title!: string;
-
-  @ApiProperty()
-  icon!: string;
-
-  @ApiProperty()
-  target!: string;
 }
 
 class FeaturedExperienceDto {
@@ -123,14 +98,8 @@ class UsefulInfoDto {
 }
 
 export class DashboardResponseDto {
-  @ApiProperty({ type: GreetingDto })
-  greeting!: GreetingDto;
-
   @ApiProperty({ type: DashboardStayDto })
   stay!: DashboardStayDto;
-
-  @ApiProperty({ type: [QuickActionDto] })
-  quickActions!: QuickActionDto[];
 
   @ApiProperty({ type: FeaturedExperienceDto })
   featuredExperience!: FeaturedExperienceDto;

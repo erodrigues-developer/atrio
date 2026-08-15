@@ -10,7 +10,7 @@ export class ServiceCatalogService {
     const items = await this.serviceCatalogRepository.list();
     return {
       items: items.map((item) => ({
-        id: item.id,
+        id: item.publicId,
         title: item.title,
         description: item.description,
         icon: item.icon,
@@ -26,6 +26,12 @@ export class ServiceCatalogService {
       throw new ApiException(404, 'SERVICE_NOT_FOUND', 'Service is not available for the stay.');
     }
 
-    return service;
+    return {
+      id: service.publicId,
+      title: service.title,
+      description: service.description,
+      icon: service.icon,
+      requestSchema: service.requestSchema,
+    };
   }
 }

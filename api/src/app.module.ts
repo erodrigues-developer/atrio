@@ -4,6 +4,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import configuration from './configs/configuration';
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConciergeModule } from './modules/concierge/concierge.module';
 import { ExperiencesModule } from './modules/experiences/experiences.module';
@@ -52,6 +53,7 @@ export function buildTypeOrmOptions(configService: ConfigService) {
     S3Module,
     StorageModule,
     QueuesModule,
+    AdminModule,
     AuthModule,
     StaysModule,
     ExperiencesModule,

@@ -41,9 +41,9 @@ export class ReservationsService {
     }
 
     const reservation = new Reservation();
-    reservation.id = buildResourceId('res');
+    reservation.publicId = buildResourceId('res');
     reservation.stayId = stayId;
-    reservation.experienceId = experience.id;
+    reservation.experienceId = experience.publicId;
     reservation.title = experience.title;
     reservation.status = 'requested';
     reservation.statusLabel = 'Solicitada';
@@ -62,7 +62,7 @@ export class ReservationsService {
     await this.experienceRepository.saveSlot(slot);
     await this.queueService.publish('reservations.fifo', {
       event: 'reservation.created',
-      reservationId: reservation.id,
+      reservationId: reservation.publicId,
       stayId,
     });
 
@@ -114,7 +114,7 @@ export class ReservationsService {
 
   private mapItem(reservation: Reservation) {
     return {
-      id: reservation.id,
+      id: reservation.publicId,
       stayId: reservation.stayId,
       experienceId: reservation.experienceId,
       title: reservation.title,

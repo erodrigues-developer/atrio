@@ -32,22 +32,23 @@ export class RequestsService {
     }
 
     const request = new StayRequest();
-    request.id = buildResourceId('req');
+    request.publicId = buildResourceId('req');
     request.stayId = stayId;
-    request.serviceId = serviceDefinition.id;
-    request.type = serviceDefinition.id;
-    request.title = serviceDefinition.id === 'towels' ? 'Toalhas extras' : serviceDefinition.title;
+    request.serviceId = serviceDefinition.publicId;
+    request.type = serviceDefinition.publicId;
+    request.title = serviceDefinition.publicId === 'towels' ? 'Toalhas extras' : serviceDefinition.title;
     request.status = 'received';
     request.statusLabel = 'Recebido';
     request.quantity = input.quantity ?? null;
     request.note = input.note ?? '';
+    request.internalNote = null;
     request.roomNumber = session.roomNumber;
     request.createdAt = new Date();
 
     await this.stayRequestRepository.create(request);
     await this.queueService.publish('stay-requests.fifo', {
       event: 'stay.request.created',
-      requestId: request.id,
+      requestId: request.publicId,
       stayId,
     });
 
@@ -101,7 +102,7 @@ export class RequestsService {
 
   private mapItem(request: StayRequest) {
     return {
-      id: request.id,
+      id: request.publicId,
       stayId: request.stayId,
       serviceId: request.serviceId,
       type: request.type,
