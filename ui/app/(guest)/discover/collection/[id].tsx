@@ -1,5 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -11,13 +12,44 @@ import { Text } from '@/src/design-system/components/Text';
 import { CollectionExperienceCard } from '@/src/design-system/product/CollectionExperienceCard';
 import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getDiscoverCollectionById } from '@/src/mocks/experiences.mock';
+import {
+  getExperienceCollection,
+  type ExperienceCollectionResponse,
+} from '@/src/services/atrio-api';
+import { resolveExperienceImageSource } from '@/src/services/experience-image';
 
 export default function DiscoverCollectionScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const collectionId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const collection = getDiscoverCollectionById(collectionId);
+  const [collection, setCollection] = useState<ExperienceCollectionResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!collectionId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getExperienceCollection(collectionId)
+      .then((response) => {
+        if (isMounted) {
+          setCollection(response);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar esta colecao.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [collectionId]);
 
   function handleGoBack() {
     goBackOrReplace('/(guest)/discover');
@@ -25,6 +57,9 @@ export default function DiscoverCollectionScreen() {
 
   const content = !collection ? (
     <Card gap={spacing.lg}>
+      <Text colorToken="textSecondary" variant="bodySmall">
+        {errorMessage ?? 'Nao conseguimos encontrar esta selecao no momento.'}
+      </Text>
       <Button alignSelf="flex-start" onPress={() => router.replace('/(guest)/discover')}>
         Voltar para Experiências
       </Button>
@@ -54,9 +89,9 @@ export default function DiscoverCollectionScreen() {
     <YStack gap={spacing.lg}>
       {collection.items.map((item) => (
         <CollectionExperienceCard
-          badge={item.badge}
+          badge={item.badge ?? undefined}
           description={item.description}
-          imageSource={item.imageSource}
+          imageSource={resolveExperienceImageSource(item.id, item.imageUrl)}
           key={item.id}
           onPress={() =>
             router.push({

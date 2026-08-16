@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Alert, Keyboard, TextInput } from 'react-native';
 import { router } from 'expo-router';
@@ -12,9 +12,11 @@ import { goBackOrReplace } from '@/src/navigation/go-back';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
+import { DEFAULT_HOTEL_ID } from '@/src/services/api-config';
+import { identifyStayAccess } from '@/src/services/atrio-api';
+import { getPendingStayAccess, savePendingStayAccess } from '@/src/stores/session.store';
 
 const INPUT_HEIGHT = 56;
-const LOADING_DELAY_MS = 650;
 
 type FieldErrors = {
   roomNumber?: string;
@@ -93,20 +95,12 @@ function StayField({
 }
 
 export default function IdentifyStayScreen() {
-  const [roomNumber, setRoomNumber] = useState('');
-  const [lastName, setLastName] = useState('');
+  const pendingStayAccess = getPendingStayAccess();
+  const [roomNumber, setRoomNumber] = useState(pendingStayAccess?.roomNumber ?? '');
+  const [lastName, setLastName] = useState(pendingStayAccess?.lastName ?? '');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const lastNameInputRef = useRef<TextInput | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   const validateFields = () => {
     const trimmedRoomNumber = roomNumber.trim();
@@ -130,7 +124,7 @@ export default function IdentifyStayScreen() {
     };
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     Keyboard.dismiss();
 
     const { isValid, trimmedLastName, trimmedRoomNumber } = validateFields();
@@ -141,11 +135,39 @@ export default function IdentifyStayScreen() {
 
     setRoomNumber(trimmedRoomNumber);
     setLastName(trimmedLastName);
+    savePendingStayAccess({
+      lastName: trimmedLastName,
+      roomNumber: trimmedRoomNumber,
+    });
     setIsLoading(true);
 
-    timeoutRef.current = setTimeout(() => {
+    try {
+      const challenge = await identifyStayAccess({
+        hotelId: DEFAULT_HOTEL_ID,
+        roomNumber: trimmedRoomNumber,
+        lastName: trimmedLastName,
+      });
+
+      savePendingStayAccess({
+        hotelId: DEFAULT_HOTEL_ID,
+        lastName: trimmedLastName,
+        roomNumber: trimmedRoomNumber,
+        challengeId: challenge.challengeId,
+        maskedPhone: challenge.maskedPhone,
+        resendAvailableAt: challenge.resendAvailableAt,
+        expiresAt: challenge.expiresAt,
+      });
+
       router.push('/(onboarding)/verify-sms');
-    }, LOADING_DELAY_MS);
+    } catch (error) {
+      setIsLoading(false);
+      Alert.alert(
+        'Nao foi possivel localizar a estadia',
+        error instanceof Error
+          ? error.message
+          : 'Confira os dados informados e tente novamente.',
+      );
+    }
   };
 
   return (

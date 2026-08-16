@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import { YStack } from 'tamagui';
@@ -10,17 +10,32 @@ import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
 import { goBackOrReplace } from '@/src/navigation/go-back';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { saveSession } from '@/src/stores/session.store';
+import { resendStayAccessCode, verifyStayAccess } from '@/src/services/atrio-api';
+import {
+  clearPendingStayAccess,
+  getPendingStayAccess,
+  saveAuthTokens,
+  savePendingStayAccess,
+  saveSession,
+} from '@/src/stores/session.store';
 
-const VALID_CODE = '123456';
-const LOADING_DELAY_MS = 650;
+function getCooldownSeconds(resendAvailableAt?: string) {
+  if (!resendAvailableAt) {
+    return 0;
+  }
+
+  const remainingMs = new Date(resendAvailableAt).getTime() - Date.now();
+  return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+}
 
 export default function VerifySmsScreen() {
+  const pendingStayAccess = getPendingStayAccess();
   const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(60);
-  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(
+    getCooldownSeconds(pendingStayAccess?.resendAvailableAt),
+  );
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -48,14 +63,6 @@ export default function VerifySmsScreen() {
     };
   }, [resendCooldownSeconds]);
 
-  useEffect(() => {
-    return () => {
-      if (confirmTimeoutRef.current) {
-        clearTimeout(confirmTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const handleChangeCode = (nextCode: string) => {
     setCode(nextCode);
 
@@ -74,46 +81,74 @@ export default function VerifySmsScreen() {
       return;
     }
 
+    if (!pendingStayAccess?.challengeId) {
+      setErrorMessage('Sua validacao expirou. Recomece a identificacao da estadia.');
+      return;
+    }
+
     setIsLoading(true);
 
-    confirmTimeoutRef.current = setTimeout(() => {
-      if (normalizedCode !== VALID_CODE) {
-        setIsLoading(false);
-        setErrorMessage('Código incorreto. Verifique o SMS recebido e tente novamente.');
-        return;
-      }
+    verifyStayAccess({
+      challengeId: pendingStayAccess.challengeId,
+      code: normalizedCode,
+    })
+      .then((response) => {
+        saveAuthTokens(response.accessToken, response.refreshToken);
 
-      saveSession({
-        isAuthenticated: true,
-        guestId: 'guest-001',
-        stayId: 'stay-001',
-        hotelId: 'copacabana-palace',
-        roomNumber: '304',
-        guestName: 'Everton Rodrigues',
-      });
-
-      try {
+        const roomNumber = pendingStayAccess.roomNumber || response.session.roomNumber;
+        saveSession({
+          ...response.session,
+          hotelName: response.stay.hotelName,
+          checkOutTime: response.stay.checkOutTime,
+          roomNumber,
+        });
+        clearPendingStayAccess();
         router.replace('/(guest)/today');
-      } catch {
+      })
+      .catch((error) => {
         setIsLoading(false);
-        setErrorMessage('Nao foi possivel abrir sua area da estadia agora. Tente novamente.');
-      }
-    }, LOADING_DELAY_MS);
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Nao foi possivel confirmar seu acesso agora. Tente novamente.',
+        );
+      });
   };
 
-  const handleResendCode = () => {
-    if (resendCooldownSeconds > 0) {
+  const handleResendCode = async () => {
+    if (resendCooldownSeconds > 0 || !pendingStayAccess?.challengeId) {
       return;
     }
 
     Keyboard.dismiss();
-    setCode('');
-    setErrorMessage('');
-    setResendCooldownSeconds(60);
-    Alert.alert(
-      'Código reenviado',
-      'Enviamos um novo código para o telefone vinculado à reserva.',
-    );
+
+    try {
+      const response = await resendStayAccessCode({
+        challengeId: pendingStayAccess.challengeId,
+      });
+
+      savePendingStayAccess({
+        ...pendingStayAccess,
+        challengeId: response.challengeId,
+        maskedPhone: response.maskedPhone,
+        resendAvailableAt: response.resendAvailableAt,
+        expiresAt: response.expiresAt,
+      });
+      setCode('');
+      setErrorMessage('');
+      setResendCooldownSeconds(getCooldownSeconds(response.resendAvailableAt));
+      Alert.alert(
+        'Codigo reenviado',
+        'Enviamos um novo codigo para o telefone vinculado a reserva.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Nao foi possivel reenviar o codigo',
+        error instanceof Error
+          ? error.message
+          : 'Tente novamente em alguns instantes.',
+      );
+    }
   };
 
   return (
@@ -135,7 +170,7 @@ export default function VerifySmsScreen() {
                 Enviamos um código de 6 dígitos para o telefone vinculado à sua reserva.
               </Text>
               <Text colorToken="accent" variant="bodyMedium">
-                (31) •••••-1234
+                {pendingStayAccess?.maskedPhone ?? 'Telefone nao identificado'}
               </Text>
             </YStack>
 

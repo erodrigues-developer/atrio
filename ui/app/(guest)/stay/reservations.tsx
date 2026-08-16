@@ -1,5 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -10,12 +11,22 @@ import { Text } from '@/src/design-system/components/Text';
 import { ReservationCard } from '@/src/design-system/product/ReservationCard';
 import { resolveReturnTo } from '@/src/navigation/return-to';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { useReservations } from '@/src/stores/reservations.store';
+import { loadReservations, useReservations } from '@/src/stores/reservations.store';
+import { useSession } from '@/src/stores/session.store';
 
 export default function StayReservationsScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
-  const reservations = useReservations();
+  const session = useSession();
+  const reservationsState = useReservations();
+
+  useEffect(() => {
+    if (!session?.stayId) {
+      return;
+    }
+
+    loadReservations(session.stayId).catch(() => undefined);
+  }, [session?.stayId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));
@@ -53,9 +64,15 @@ export default function StayReservationsScreen() {
               </Text>
             </YStack>
 
-            {reservations.length > 0 ? (
+            {reservationsState.errorMessage ? (
+              <Text colorToken="textSecondary" variant="bodySmall">
+                {reservationsState.errorMessage}
+              </Text>
+            ) : null}
+
+            {reservationsState.items.length > 0 ? (
               <YStack gap={spacing.lg}>
-                {reservations.map((reservation) => (
+                {reservationsState.items.map((reservation) => (
                   <ReservationCard
                     dateLabel={reservation.dateLabel}
                     key={reservation.id}

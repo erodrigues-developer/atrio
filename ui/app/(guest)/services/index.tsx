@@ -11,7 +11,8 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react-native';
-import { ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
 import { Card } from '@/src/design-system/components/Card';
@@ -21,9 +22,9 @@ import { ServiceListItem } from '@/src/design-system/product/ServiceListItem';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { servicesMock, type ServiceIconId } from '../../../src/mocks/services.mock';
+import { listServices, type ServiceResponse } from '@/src/services/atrio-api';
 
-const serviceIcons: Record<ServiceIconId, LucideIcon> = {
+const serviceIcons: Record<string, LucideIcon> = {
   Bath,
   Sparkles,
   Package,
@@ -36,6 +37,37 @@ const serviceIcons: Record<ServiceIconId, LucideIcon> = {
 
 export default function ServicesScreen() {
   const tabBarHeight = useBottomTabBarHeight();
+  const [services, setServices] = useState<ServiceResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    listServices()
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setServices(response.items);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Nao foi possivel carregar os servicos.',
+        );
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
@@ -56,30 +88,46 @@ export default function ServicesScreen() {
             </Text>
           </YStack>
 
-          <Card borderRadius={radius.xl} paddingHorizontal={spacing.xl} paddingVertical={spacing.sm}>
-            {servicesMock.map((service, index) => {
-              const Icon = serviceIcons[service.icon];
+          {isLoading ? (
+            <YStack alignItems="center" gap={spacing.lg} paddingVertical={spacing.huge}>
+              <ActivityIndicator color={colors.accent} />
+              <Text colorToken="textSecondary" variant="body">
+                Carregando serviços...
+              </Text>
+            </YStack>
+          ) : errorMessage ? (
+            <Card borderRadius={radius.xl} gap={spacing.sm} padding={spacing.xl}>
+              <Text variant="bodyMedium">Nao foi possivel carregar os servicos.</Text>
+              <Text colorToken="textSecondary" variant="bodySmall">
+                {errorMessage}
+              </Text>
+            </Card>
+          ) : (
+            <Card borderRadius={radius.xl} paddingHorizontal={spacing.xl} paddingVertical={spacing.sm}>
+              {services.map((service, index) => {
+                const Icon = serviceIcons[service.icon] ?? MessageSquareText;
 
-              return (
-                <ServiceListItem
-                  key={service.id}
-                  description={service.description}
-                  icon={<Icon color={colors.textSecondary} size={18} strokeWidth={1.9} />}
-                  isLast={index === servicesMock.length - 1}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(guest)/services/request/[type]',
-                      params: {
-                        type: service.id,
-                        returnTo: '/(guest)/services',
-                      },
-                    } as Href)
-                  }
-                  title={service.title}
-                />
-              );
-            })}
-          </Card>
+                return (
+                  <ServiceListItem
+                    key={service.id}
+                    description={service.description}
+                    icon={<Icon color={colors.textSecondary} size={18} strokeWidth={1.9} />}
+                    isLast={index === services.length - 1}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(guest)/services/request/[type]',
+                        params: {
+                          type: service.id,
+                          returnTo: '/(guest)/services',
+                        },
+                      } as Href)
+                    }
+                    title={service.title}
+                  />
+                );
+              })}
+            </Card>
+          )}
 
           <Card backgroundToken="accentSoft" borderRadius={radius.xl} gap={spacing.md} padding={spacing.xl}>
             <YStack gap={spacing.xs}>

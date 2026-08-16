@@ -1,25 +1,30 @@
 import { useSyncExternalStore } from 'react';
 
 import {
-  reservationsMock,
   sortReservations,
   type ReservationItem,
   type ReservationStatus,
 } from '@/src/mocks/reservations.mock';
+import {
+  createReservation as createReservationRequest,
+  getReservation,
+  listReservations,
+  type ReservationItemResponse,
+} from '@/src/services/atrio-api';
 
-export type CreateReservationInput = {
-  dateLabel: string;
-  experienceId: string;
-  locationLabel: string;
-  note?: string;
-  priceLabel?: string;
-  scheduledAt: string;
-  status: ReservationStatus;
-  timeLabel: string;
-  title: string;
+type ReservationsState = {
+  errorMessage: string | null;
+  isLoaded: boolean;
+  isLoading: boolean;
+  items: ReservationItem[];
 };
 
-let reservations: ReservationItem[] = sortReservations([...reservationsMock]);
+let state: ReservationsState = {
+  items: [],
+  isLoading: false,
+  isLoaded: false,
+  errorMessage: null,
+};
 
 const listeners = new Set<() => void>();
 
@@ -27,12 +32,46 @@ function emitChange() {
   listeners.forEach((listener) => listener());
 }
 
-function buildReservationId() {
-  return `res-${String(reservations.length + 1).padStart(3, '0')}`;
+function setState(nextState: ReservationsState) {
+  state = nextState;
+  emitChange();
 }
 
-export function getReservations() {
-  return reservations;
+function mapReservationStatus(status: string): ReservationStatus {
+  switch (status) {
+    case 'requested':
+    case 'confirmed':
+    case 'in_progress':
+    case 'completed':
+    case 'cancelled':
+      return status;
+    default:
+      return 'requested';
+  }
+}
+
+function mapReservation(item: ReservationItemResponse): ReservationItem {
+  return {
+    id: item.id,
+    experienceId: item.experienceId,
+    title: item.title,
+    status: mapReservationStatus(item.status),
+    dateLabel: item.dateLabel,
+    timeLabel: item.timeLabel,
+    locationLabel: item.locationLabel,
+    priceLabel: item.priceLabel,
+    scheduledAt: item.scheduledAt,
+    note: item.note,
+  };
+}
+
+function upsertReservation(item: ReservationItem) {
+  const nextItems = state.items.filter((currentItem) => currentItem.id !== item.id);
+  return sortReservations([item, ...nextItems]);
+}
+
+export function getReservationsState() {
+  return state;
 }
 
 export function subscribeToReservations(listener: () => void) {
@@ -43,18 +82,75 @@ export function subscribeToReservations(listener: () => void) {
   };
 }
 
-export function createReservation(input: CreateReservationInput) {
-  const nextReservation: ReservationItem = {
-    id: buildReservationId(),
-    ...input,
-  };
+export async function loadReservations(stayId: string, options: { force?: boolean } = {}) {
+  if (state.isLoading || (state.isLoaded && !options.force)) {
+    return state.items;
+  }
 
-  reservations = sortReservations([nextReservation, ...reservations]);
-  emitChange();
+  setState({
+    ...state,
+    isLoading: true,
+    errorMessage: null,
+  });
 
-  return nextReservation;
+  try {
+    const response = await listReservations(stayId);
+    const items = sortReservations(response.items.map(mapReservation));
+
+    setState({
+      items,
+      isLoading: false,
+      isLoaded: true,
+      errorMessage: null,
+    });
+
+    return items;
+  } catch (error) {
+    setState({
+      ...state,
+      isLoading: false,
+      isLoaded: true,
+      errorMessage: error instanceof Error ? error.message : 'Nao foi possivel carregar as reservas.',
+    });
+
+    throw error;
+  }
+}
+
+export async function createReservation(
+  stayId: string,
+  input: { experienceId: string; slotId: string; scheduledAt: string; partySize: number; note?: string },
+) {
+  const reservation = mapReservation(await createReservationRequest(stayId, input));
+
+  setState({
+    ...state,
+    items: upsertReservation(reservation),
+    isLoaded: true,
+    errorMessage: null,
+  });
+
+  return reservation;
+}
+
+export async function fetchReservationById(stayId: string, reservationId: string) {
+  const existingReservation = state.items.find((item) => item.id === reservationId);
+
+  if (existingReservation) {
+    return existingReservation;
+  }
+
+  const reservation = mapReservation(await getReservation(stayId, reservationId));
+
+  setState({
+    ...state,
+    items: upsertReservation(reservation),
+    isLoaded: true,
+  });
+
+  return reservation;
 }
 
 export function useReservations() {
-  return useSyncExternalStore(subscribeToReservations, getReservations, getReservations);
+  return useSyncExternalStore(subscribeToReservations, getReservationsState, getReservationsState);
 }
