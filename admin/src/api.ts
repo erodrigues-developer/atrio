@@ -120,9 +120,18 @@ export type CreateStayPayload = {
   checkInDate: string;
   checkOutDate: string;
   checkOutTime: string;
-  status: string;
   wifiNetwork: string;
   wifiPassword: string;
+  consumptionEnabled: boolean;
+  consumptionView: 'ready' | 'empty' | 'unavailable';
+};
+
+export type UpdateStayPayload = {
+  guestId?: string;
+  roomNumber: string;
+  checkInDate: string;
+  checkOutDate: string;
+  checkOutTime: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
 };
@@ -381,8 +390,45 @@ export function createStay(accessToken: string, payload: CreateStayPayload) {
   });
 }
 
+export function updateStay(accessToken: string, stayId: string, payload: UpdateStayPayload) {
+  return request<AdminStay>(`/admin/stays/${stayId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function resendStayAccess(accessToken: string, stayId: string) {
   return request<{ challengeId: string; maskedPhone: string; expiresAt: string }>(`/admin/stays/${stayId}/access/resend`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function checkInStay(accessToken: string, stayId: string) {
+  return request<AdminStay>(`/admin/stays/${stayId}/check-in`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function checkOutStay(accessToken: string, stayId: string) {
+  return request<{ stay: AdminStay; revokedSessions: number }>(`/admin/stays/${stayId}/check-out`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+}
+
+export function cancelStay(accessToken: string, stayId: string) {
+  return request<AdminStay>(`/admin/stays/${stayId}/cancel`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

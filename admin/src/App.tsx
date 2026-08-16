@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { BedDouble, CalendarClock, ClipboardList, Download, Hotel, LogOut, MessageSquare, Settings, Sparkles, Users } from 'lucide-react';
 import {
   AdminHotelSettings,
@@ -18,6 +18,9 @@ import {
   ServiceDefinition,
   ServiceRequest,
   StayUsefulInfo,
+  cancelStay,
+  checkInStay,
+  checkOutStay,
   createAdminExperience,
   createAdminExperienceCollection,
   createAdminExperienceSlot,
@@ -47,13 +50,13 @@ import {
   login,
   logout,
   resendStayAccess,
-  revokeStaySessions,
   sendConciergeMessage,
   setAdminServicePublished,
   uploadAdminExperienceCollectionImage,
   uploadAdminExperienceImage,
   uploadHotelHeroImage,
   uploadHotelLogo,
+  updateStay,
   updateAdminRequestStatus,
   updateAdminExperienceSlot,
   updateAdminReservationStatus,
@@ -62,6 +65,30 @@ import {
 
 const SESSION_STORAGE_KEY = 'atrio-admin-session';
 type AdminView = 'dashboard' | 'stays' | 'guests' | 'services' | 'requests' | 'experiences' | 'reservations' | 'concierge' | 'reports' | 'settings';
+
+const VIEW_ROUTES: Record<AdminView, string> = {
+  dashboard: '/',
+  stays: '/stays',
+  guests: '/guests',
+  services: '/services',
+  requests: '/requests',
+  experiences: '/experiences',
+  reservations: '/reservations',
+  concierge: '/concierge',
+  reports: '/reports',
+  settings: '/settings',
+};
+
+function viewFromPath(pathname: string): AdminView {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/';
+  const match = (Object.entries(VIEW_ROUTES) as Array<[AdminView, string]>).find(([, path]) => path === normalizedPath);
+
+  return match?.[0] ?? 'dashboard';
+}
+
+function pathForView(view: AdminView) {
+  return VIEW_ROUTES[view];
+}
 
 function readStoredSession(): AdminSession | null {
   const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
@@ -185,7 +212,7 @@ function AdminShell({
   onSessionChange: (session: AdminSession | null) => void;
 }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [activeView, setActiveView] = useState<AdminView>('dashboard');
+  const [activeView, setActiveView] = useState<AdminView>(() => viewFromPath(window.location.pathname));
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const menuItems = useMemo<
@@ -205,6 +232,32 @@ function AdminShell({
     ],
     [],
   );
+
+  useEffect(() => {
+    const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+
+    if (!Object.values(VIEW_ROUTES).includes(normalizedPath)) {
+      window.history.replaceState({}, '', pathForView('dashboard'));
+      setActiveView('dashboard');
+    }
+
+    function handlePopState() {
+      setActiveView(viewFromPath(window.location.pathname));
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  function navigateToView(view: AdminView) {
+    const nextPath = pathForView(view);
+
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({}, '', nextPath);
+    }
+
+    setActiveView(view);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -252,31 +305,32 @@ function AdminShell({
   return (
     <main className="admin-shell">
       <aside className="sidebar">
-        <button className="brand" onClick={() => setActiveView('dashboard')} type="button">
+        <a className="brand" href={pathForView('dashboard')} onClick={(event) => { event.preventDefault(); navigateToView('dashboard'); }}>
           <span className="brand-mark">A</span>
           <div>
             <strong>Atrio</strong>
             <span>Admin</span>
           </div>
-        </button>
+        </a>
         <nav className="nav-list" aria-label="Principal">
           {menuItems.map((item) => {
             const Icon = item.icon;
 
             return (
-              <button
+              <a
                 className={'view' in item && item.view === activeView ? 'nav-item active' : 'nav-item'}
+                href={item.view ? pathForView(item.view) : '#'}
                 key={item.label}
-                onClick={() => {
+                onClick={(event) => {
                   if (item.view) {
-                    setActiveView(item.view);
+                    event.preventDefault();
+                    navigateToView(item.view);
                   }
                 }}
-                type="button"
               >
                 <Icon size={18} />
                 {item.label}
-              </button>
+              </a>
             );
           })}
         </nav>
@@ -307,7 +361,7 @@ function AdminShell({
               <DashboardView
                 accessToken={session.accessToken}
                 dashboard={dashboard}
-                onNavigate={setActiveView}
+                onNavigate={navigateToView}
                 onRefresh={async () => setDashboard(await getDashboard(session.accessToken))}
               />
             ) : null}
@@ -503,6 +557,7 @@ function RequestPriorityList({
   onUpdateStatus: (itemId: string, status: string) => Promise<void>;
 }) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [statusCandidate, setStatusCandidate] = useState<{ item: Dashboard['pendingRequests'][number]; status: string } | null>(null);
 
   useEffect(() => {
     if (!openMenuId) {
@@ -566,7 +621,7 @@ function RequestPriorityList({
                       className="primary-button compact"
                       onClick={(event) => {
                         event.stopPropagation();
-                        onUpdateStatus(item.id, isRequestInProgress(item.status) ? 'completed' : 'in_progress');
+                        setStatusCandidate({ item, status: isRequestInProgress(item.status) ? 'completed' : 'in_progress' });
                       }}
                       type="button"
                     >
@@ -585,7 +640,7 @@ function RequestPriorityList({
                       {openMenuId === item.id ? (
                         <div className="row-menu-popover">
                           <button onClick={() => { setOpenMenuId(null); onNavigate('requests'); }} type="button">Abrir detalhes</button>
-                          <button onClick={() => { setOpenMenuId(null); onUpdateStatus(item.id, 'completed'); }} type="button">Concluir</button>
+                          <button onClick={() => { setOpenMenuId(null); setStatusCandidate({ item, status: 'completed' }); }} type="button">Concluir</button>
                         </div>
                       ) : null}
                     </div>
@@ -596,6 +651,18 @@ function RequestPriorityList({
           </tbody>
         </table>
       )}
+      {statusCandidate ? (
+        <ConfirmActionModal
+          confirmLabel={statusCandidate.status === 'completed' ? 'Concluir solicitação' : 'Assumir solicitação'}
+          message={`A solicitação "${statusCandidate.item.title}" será marcada como ${statusCandidate.status === 'completed' ? 'concluída' : 'em atendimento'}.`}
+          onCancel={() => setStatusCandidate(null)}
+          onConfirm={() => {
+            onUpdateStatus(statusCandidate.item.id, statusCandidate.status);
+            setStatusCandidate(null);
+          }}
+          title={statusCandidate.status === 'completed' ? 'Concluir solicitação?' : 'Assumir solicitação?'}
+        />
+      ) : null}
     </section>
   );
 }
@@ -721,7 +788,7 @@ function GuestsView({ accessToken }: { accessToken: string }) {
             <button className="secondary-button" type="submit">Buscar</button>
           </form>
         </header>
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? <Toast tone="error" message={error} onClose={() => setError(null)} /> : null}
         {isLoading ? <p className="empty-state">Carregando hóspedes...</p> : <GuestsTable guests={guests} />}
       </section>
       <section className="form-panel">
@@ -768,6 +835,7 @@ function ServicesView({ accessToken }: { accessToken: string }) {
   const [services, setServices] = useState<ServiceDefinition[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [publishCandidate, setPublishCandidate] = useState<ServiceDefinition | null>(null);
   const [form, setForm] = useState({
     id: '',
     title: '',
@@ -844,8 +912,7 @@ function ServicesView({ accessToken }: { accessToken: string }) {
     <div className="management-grid">
       <section className="table-panel">
         <header className="panel-toolbar"><h2>Catálogo de serviços</h2></header>
-        {message ? <p className="success-state">{message}</p> : null}
-        {error ? <p className="form-error">{error}</p> : null}
+        {message || error ? <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} /> : null}
         {services.length === 0 ? <p className="empty-state">Nenhum serviço cadastrado.</p> : (
           <table>
             <thead>
@@ -857,7 +924,7 @@ function ServicesView({ accessToken }: { accessToken: string }) {
                   <td>{service.title}<br /><span className="muted-text">{service.description}</span></td>
                   <td>{service.requestSchema.fields.length} campo(s)</td>
                   <td><span className="status-pill">{service.published ? 'Publicado' : 'Rascunho'}</span></td>
-                  <td><button className="secondary-button compact" onClick={() => togglePublished(service)} type="button">{service.published ? 'Despublicar' : 'Publicar'}</button></td>
+                  <td><button className="secondary-button compact" onClick={() => setPublishCandidate(service)} type="button">{service.published ? 'Despublicar' : 'Publicar'}</button></td>
                 </tr>
               ))}
             </tbody>
@@ -889,6 +956,19 @@ function ServicesView({ accessToken }: { accessToken: string }) {
           <button className="primary-button" type="submit">Cadastrar serviço</button>
         </form>
       </section>
+      {publishCandidate ? (
+        <ConfirmActionModal
+          confirmLabel={publishCandidate.published ? 'Despublicar serviço' : 'Publicar serviço'}
+          message={`O serviço "${publishCandidate.title}" será ${publishCandidate.published ? 'removido do catálogo publicado' : 'publicado no catálogo'}.`}
+          onCancel={() => setPublishCandidate(null)}
+          onConfirm={() => {
+            togglePublished(publishCandidate);
+            setPublishCandidate(null);
+          }}
+          title={publishCandidate.published ? 'Despublicar serviço?' : 'Publicar serviço?'}
+          tone={publishCandidate.published ? 'danger' : 'primary'}
+        />
+      ) : null}
     </div>
   );
 }
@@ -900,6 +980,7 @@ function RequestsView({ accessToken }: { accessToken: string }) {
   const [internalNote, setInternalNote] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusCandidate, setStatusCandidate] = useState<{ request: ServiceRequest; status: string } | null>(null);
 
   async function loadRequests(nextQuery = { search, status }) {
     setError(null);
@@ -949,8 +1030,7 @@ function RequestsView({ accessToken }: { accessToken: string }) {
       <div className="request-note-bar">
         <input placeholder="Nota interna para a proxima atualizacao" value={internalNote} onChange={(event) => setInternalNote(event.target.value)} />
       </div>
-      {message ? <p className="success-state">{message}</p> : null}
-      {error ? <p className="form-error">{error}</p> : null}
+      {message || error ? <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} /> : null}
       {requests.length === 0 ? <p className="empty-state">Nenhuma solicitação encontrada.</p> : (
         <table>
           <thead>
@@ -966,9 +1046,9 @@ function RequestsView({ accessToken }: { accessToken: string }) {
                 <td>{request.note || request.internalNote || '-'}</td>
                 <td>
                   <div className="row-actions">
-                    <button className="secondary-button compact" onClick={() => updateStatus(request, 'accepted')} type="button">Aceitar</button>
-                    <button className="secondary-button compact" onClick={() => updateStatus(request, 'on_the_way')} type="button">A caminho</button>
-                    <button className="ghost-button compact" onClick={() => updateStatus(request, 'completed')} type="button">Concluir</button>
+                    <button className="secondary-button compact" onClick={() => setStatusCandidate({ request, status: 'accepted' })} type="button">Aceitar</button>
+                    <button className="secondary-button compact" onClick={() => setStatusCandidate({ request, status: 'on_the_way' })} type="button">A caminho</button>
+                    <button className="ghost-button compact" onClick={() => setStatusCandidate({ request, status: 'completed' })} type="button">Concluir</button>
                   </div>
                 </td>
               </tr>
@@ -976,6 +1056,19 @@ function RequestsView({ accessToken }: { accessToken: string }) {
           </tbody>
         </table>
       )}
+      {statusCandidate ? (
+        <ConfirmActionModal
+          confirmLabel={`Marcar como ${requestStatusLabel(statusCandidate.status)}`}
+          message={`A solicitação "${statusCandidate.request.title}" do quarto ${statusCandidate.request.roomNumber} será marcada como ${requestStatusLabel(statusCandidate.status)}.`}
+          onCancel={() => setStatusCandidate(null)}
+          onConfirm={() => {
+            updateStatus(statusCandidate.request, statusCandidate.status);
+            setStatusCandidate(null);
+          }}
+          title="Atualizar solicitação?"
+          tone={statusCandidate.status === 'completed' ? 'danger' : 'primary'}
+        />
+      ) : null}
     </section>
   );
 }
@@ -987,6 +1080,7 @@ function ExperiencesView({ accessToken }: { accessToken: string }) {
   const [slots, setSlots] = useState<AdminExperienceSlot[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [slotCandidate, setSlotCandidate] = useState<AdminExperienceSlot | null>(null);
   const [experienceForm, setExperienceForm] = useState({
     id: '',
     title: '',
@@ -1104,8 +1198,15 @@ function ExperiencesView({ accessToken }: { accessToken: string }) {
   }
 
   async function toggleSlot(slot: AdminExperienceSlot) {
-    await updateAdminExperienceSlot(accessToken, slot.experienceId, slot.id, { isAvailable: !slot.isAvailable });
-    setSlots(await listAdminExperienceSlots(accessToken, slot.experienceId));
+    setMessage(null);
+    setError(null);
+    try {
+      await updateAdminExperienceSlot(accessToken, slot.experienceId, slot.id, { isAvailable: !slot.isAvailable });
+      setMessage(slot.isAvailable ? 'Horário bloqueado.' : 'Horário reaberto.');
+      setSlots(await listAdminExperienceSlots(accessToken, slot.experienceId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível alterar horário.');
+    }
   }
 
   async function handleExperienceImageUpload(experienceId: string, fileList: FileList | null) {
@@ -1140,8 +1241,7 @@ function ExperiencesView({ accessToken }: { accessToken: string }) {
     <div className="management-grid wide">
       <section className="table-panel">
         <header className="panel-toolbar"><h2>Experiências</h2></header>
-        {message ? <p className="success-state">{message}</p> : null}
-        {error ? <p className="form-error">{error}</p> : null}
+        {message || error ? <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} /> : null}
         <table>
           <thead><tr><th>Titulo</th><th>Categoria</th><th>Status</th><th>Midia</th><th>Agenda</th></tr></thead>
           <tbody>
@@ -1174,7 +1274,7 @@ function ExperiencesView({ accessToken }: { accessToken: string }) {
           <MiniList items={slots.map((slot) => `${slot.dateLabel} ${slot.time} - ${slot.isAvailable ? 'disponivel' : 'bloqueado'}`)} emptyLabel="Sem horarios." />
           <div className="row-actions wrap">
             {slots.map((slot) => (
-              <button className="ghost-button compact" key={slot.id} onClick={() => toggleSlot(slot)} type="button">
+              <button className="ghost-button compact" key={slot.id} onClick={() => setSlotCandidate(slot)} type="button">
                 {slot.isAvailable ? 'Bloquear' : 'Reabrir'} {slot.time}
               </button>
             ))}
@@ -1223,6 +1323,19 @@ function ExperiencesView({ accessToken }: { accessToken: string }) {
           <button className="secondary-button" type="submit">Cadastrar horario</button>
         </form>
       </section>
+      {slotCandidate ? (
+        <ConfirmActionModal
+          confirmLabel={slotCandidate.isAvailable ? 'Bloquear horário' : 'Reabrir horário'}
+          message={`O horário ${slotCandidate.dateLabel} ${slotCandidate.time} será ${slotCandidate.isAvailable ? 'bloqueado para novas reservas' : 'reaberto para reservas'}.`}
+          onCancel={() => setSlotCandidate(null)}
+          onConfirm={() => {
+            toggleSlot(slotCandidate);
+            setSlotCandidate(null);
+          }}
+          title={slotCandidate.isAvailable ? 'Bloquear horário?' : 'Reabrir horário?'}
+          tone={slotCandidate.isAvailable ? 'danger' : 'primary'}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1236,6 +1349,7 @@ function ReservationsView({ accessToken }: { accessToken: string }) {
   const [status, setStatus] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusCandidate, setStatusCandidate] = useState<{ reservation: AdminReservation; status: string } | null>(null);
   const [form, setForm] = useState({ stayId: '', experienceId: '', slotId: '', guestNote: '' });
 
   async function loadReservations(nextQuery = { search, status }) {
@@ -1308,8 +1422,7 @@ function ReservationsView({ accessToken }: { accessToken: string }) {
             <button className="secondary-button" type="submit">Filtrar</button>
           </form>
         </header>
-        {message ? <p className="success-state">{message}</p> : null}
-        {error ? <p className="form-error">{error}</p> : null}
+        {message || error ? <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} /> : null}
         {reservations.length === 0 ? <p className="empty-state">Nenhuma reserva encontrada.</p> : (
           <table>
             <thead><tr><th>Experiência</th><th>Quarto</th><th>Hóspede</th><th>Status</th><th>Ações</th></tr></thead>
@@ -1321,9 +1434,9 @@ function ReservationsView({ accessToken }: { accessToken: string }) {
                   <td>{reservation.guestName}</td>
                   <td><span className="status-pill">{reservation.statusLabel}</span></td>
                   <td><div className="row-actions">
-                    <button className="secondary-button compact" onClick={() => setReservationStatus(reservation, 'confirmed')} type="button">Confirmar</button>
-                    <button className="ghost-button compact" onClick={() => setReservationStatus(reservation, 'completed')} type="button">Concluir</button>
-                    <button className="ghost-button compact" onClick={() => setReservationStatus(reservation, 'cancelled')} type="button">Cancelar</button>
+                    <button className="secondary-button compact" onClick={() => setStatusCandidate({ reservation, status: 'confirmed' })} type="button">Confirmar</button>
+                    <button className="ghost-button compact" onClick={() => setStatusCandidate({ reservation, status: 'completed' })} type="button">Concluir</button>
+                    <button className="ghost-button compact" onClick={() => setStatusCandidate({ reservation, status: 'cancelled' })} type="button">Cancelar</button>
                   </div></td>
                 </tr>
               ))}
@@ -1350,6 +1463,19 @@ function ReservationsView({ accessToken }: { accessToken: string }) {
           <button className="primary-button" type="submit">Criar reserva</button>
         </form>
       </section>
+      {statusCandidate ? (
+        <ConfirmActionModal
+          confirmLabel={`Marcar como ${reservationStatusLabel(statusCandidate.status)}`}
+          message={`A reserva "${statusCandidate.reservation.title}" do quarto ${statusCandidate.reservation.roomNumber} será marcada como ${reservationStatusLabel(statusCandidate.status)}.`}
+          onCancel={() => setStatusCandidate(null)}
+          onConfirm={() => {
+            setReservationStatus(statusCandidate.reservation, statusCandidate.status);
+            setStatusCandidate(null);
+          }}
+          title="Atualizar reserva?"
+          tone={statusCandidate.status === 'cancelled' ? 'danger' : 'primary'}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1410,7 +1536,7 @@ function ConciergeView({ accessToken }: { accessToken: string }) {
             <button className="secondary-button" type="submit">Filtrar</button>
           </form>
         </header>
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? <Toast tone="error" message={error} onClose={() => setError(null)} /> : null}
         {conversations.length === 0 ? <p className="empty-state">Nenhuma conversa encontrada.</p> : (
           <table>
             <thead><tr><th>Quarto</th><th>Hóspede</th><th>Mensagens</th><th>Última</th></tr></thead>
@@ -1464,7 +1590,7 @@ function ReportsView({ accessToken }: { accessToken: string }) {
       <header className="panel-toolbar">
         <h2>Relatórios CSV</h2>
       </header>
-      {error ? <p className="form-error">{error}</p> : null}
+      {error ? <Toast tone="error" message={error} onClose={() => setError(null)} /> : null}
       <div className="report-filters">
         <input placeholder="Status opcional" value={filters.status} onChange={(event) => setFilters({ ...filters, status: event.target.value })} />
         <input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} />
@@ -1515,8 +1641,7 @@ function SettingsView({ accessToken }: { accessToken: string }) {
       <header className="panel-toolbar">
         <h2>Hotel</h2>
       </header>
-      {message ? <p className="success-state">{message}</p> : null}
-      {error ? <p className="form-error">{error}</p> : null}
+      {message || error ? <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} /> : null}
       {settings ? (
         <div className="settings-grid">
           <article>
@@ -1534,11 +1659,15 @@ function SettingsView({ accessToken }: { accessToken: string }) {
 }
 
 function StaysView({ accessToken }: { accessToken: string }) {
+  const pageSize = 20;
   const [stays, setStays] = useState<AdminStay[]>([]);
   const [guests, setGuests] = useState<AdminGuest[]>([]);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [selectedStay, setSelectedStay] = useState<AdminStay | null>(null);
+  const [status, setStatus] = useState('active');
+  const [period, setPeriod] = useState('month');
+  const [page, setPage] = useState(1);
+  const [detailStay, setDetailStay] = useState<AdminStay | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1554,7 +1683,7 @@ function StaysView({ accessToken }: { accessToken: string }) {
       ]);
       setStays(staysResponse);
       setGuests(guestsResponse);
-      setSelectedStay((current) => current ? staysResponse.find((stay) => stay.id === current.id) ?? current : staysResponse[0] ?? null);
+      setDetailStay((current) => current ? staysResponse.find((stay) => stay.id === current.id) ?? current : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível carregar estadias.');
     } finally {
@@ -1563,8 +1692,12 @@ function StaysView({ accessToken }: { accessToken: string }) {
   }
 
   useEffect(() => {
-    loadData({ search: '', status: '' });
+    loadData({ search: '', status: 'active' });
   }, [accessToken]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, period]);
 
   async function handleResend(stay: AdminStay) {
     setMessage(null);
@@ -1572,121 +1705,384 @@ function StaysView({ accessToken }: { accessToken: string }) {
 
     try {
       const response = await resendStayAccess(accessToken, stay.id);
-      setMessage(`Acesso reenviado para ${response.maskedPhone}. Codigo ${response.challengeId} criado.`);
+      setMessage(`Acesso reenviado para ${response.maskedPhone}. Código ${response.challengeId} criado.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível reenviar acesso.');
     }
   }
 
-  async function handleRevoke(stay: AdminStay) {
+  async function handleCheckIn(stay: AdminStay) {
     setMessage(null);
     setError(null);
 
     try {
-      const response = await revokeStaySessions(accessToken, stay.id);
-      setMessage(`${response.revokedSessions} sessão(oes) encerrada(s).`);
+      await checkInStay(accessToken, stay.id);
+      setMessage(`Check-in realizado para o quarto ${stay.roomNumber}.`);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível encerrar sessões.');
+      setError(err instanceof Error ? err.message : 'Não foi possível realizar check-in.');
     }
   }
 
+  async function handleCheckOut(stay: AdminStay) {
+    setMessage(null);
+    setError(null);
+
+    try {
+      const response = await checkOutStay(accessToken, stay.id);
+      setMessage(`Estadia encerrada. ${response.revokedSessions} ${response.revokedSessions === 1 ? 'acesso foi revogado' : 'acessos foram revogados'}.`);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível encerrar estadia.');
+    }
+  }
+
+  async function handleCancel(stay: AdminStay) {
+    setMessage(null);
+    setError(null);
+
+    try {
+      await cancelStay(accessToken, stay.id);
+      setMessage(`Estadia do quarto ${stay.roomNumber} cancelada.`);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível cancelar estadia.');
+    }
+  }
+
+  const visibleStays = stays.filter((stay) => stayMatchesPeriod(stay, period));
+  const totalPages = Math.max(1, Math.ceil(visibleStays.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedStays = visibleStays.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
-    <div className="management-grid wide">
+    <div className="stays-layout">
       <section className="table-panel">
         <header className="panel-toolbar">
-          <h2>Estadias</h2>
-          <form className="inline-search" onSubmit={(event) => { event.preventDefault(); loadData({ search, status }); }}>
+          <div>
+            <h2>Estadias</h2>
+            <p className="muted-text">Localize estadias e clique em uma linha para visualizar detalhes e ações.</p>
+            {!isLoading ? (
+              <p className="result-count">{visibleStays.length} {visibleStays.length === 1 ? 'estadia' : 'estadias'}</p>
+            ) : null}
+          </div>
+          <form className="stays-toolbar" onSubmit={(event) => { event.preventDefault(); loadData({ search, status }); }}>
             <input placeholder="Quarto, hóspede ou telefone" value={search} onChange={(event) => setSearch(event.target.value)} />
             <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">Todos</option>
-              <option value="scheduled">Agendada</option>
-              <option value="active">Ativa</option>
-              <option value="checked_out">Check-out</option>
-              <option value="cancelled">Cancelada</option>
+              <option value="">Todas</option>
+              <option value="active">Ativas</option>
+              <option value="scheduled">Agendadas</option>
+              <option value="checked_out">Encerradas</option>
+              <option value="cancelled">Canceladas</option>
             </select>
-            <button className="secondary-button" type="submit">Filtrar</button>
+            <select value={period} onChange={(event) => setPeriod(event.target.value)}>
+              <option value="today">Hoje</option>
+              <option value="seven-days">Próximos 7 dias</option>
+              <option value="month">Este mês</option>
+              <option value="custom">Personalizado</option>
+            </select>
+            <button className="ghost-button" type="submit">Filtrar</button>
+            <button className="primary-button" onClick={() => setIsCreateOpen(true)} type="button">+ Nova estadia</button>
           </form>
         </header>
-        {message ? <p className="success-state">{message}</p> : null}
-        {error ? <p className="form-error">{error}</p> : null}
+        {message || error ? (
+          <Toast tone={error ? 'error' : 'success'} message={error ?? message ?? ''} onClose={() => { setMessage(null); setError(null); }} />
+        ) : null}
         {isLoading ? <p className="empty-state">Carregando estadias...</p> : (
-          <StaysTable stays={stays} selectedStayId={selectedStay?.id} onSelect={setSelectedStay} onResend={handleResend} onRevoke={handleRevoke} />
+          visibleStays.length === 0 ? (
+            <StaysEmptyState />
+          ) : (
+            <>
+              <StaysTable stays={paginatedStays} onCancel={handleCancel} onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} onSelect={setDetailStay} onResend={handleResend} />
+              <Pagination currentPage={currentPage} pageSize={pageSize} totalItems={visibleStays.length} totalPages={totalPages} onPageChange={setPage} />
+            </>
+          )
         )}
       </section>
-      {selectedStay ? (
-        <StayDetailPanel accessToken={accessToken} stay={selectedStay} onUpdated={() => loadData()} />
-      ) : (
-        <StayForm accessToken={accessToken} guests={guests} onCreated={() => loadData({ search: '', status: '' })} />
-      )}
-      {selectedStay ? <StayForm accessToken={accessToken} guests={guests} onCreated={() => loadData({ search: '', status: '' })} /> : null}
+      {detailStay ? (
+        <Modal title={`Quarto ${detailStay.roomNumber} · ${detailStay.guest.firstName} ${detailStay.guest.lastName}`} onClose={() => setDetailStay(null)} size="large">
+          <StayDetailPanel
+            accessToken={accessToken}
+            guests={guests}
+            stay={detailStay}
+            onCancel={handleCancel}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+            onResend={handleResend}
+            onUpdated={() => loadData()}
+          />
+        </Modal>
+      ) : null}
+      {isCreateOpen ? (
+        <Modal title="Nova estadia" onClose={() => setIsCreateOpen(false)} size="large">
+          <StayForm
+            accessToken={accessToken}
+            guests={guests}
+            onCancel={() => setIsCreateOpen(false)}
+            onCreated={() => {
+              setIsCreateOpen(false);
+              setSearch('');
+              setStatus('active');
+              setPeriod('month');
+              loadData({ search: '', status: 'active' });
+            }}
+          />
+        </Modal>
+      ) : null}
     </div>
+  );
+}
+
+function StaysEmptyState() {
+  return (
+    <div className="stays-empty-state">
+      <h3>Nenhuma estadia encontrada</h3>
+      <p>Tente alterar os filtros ou cadastre uma nova estadia.</p>
+    </div>
+  );
+}
+
+function Pagination({
+  currentPage,
+  onPageChange,
+  pageSize,
+  totalItems,
+  totalPages,
+}: {
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  return (
+    <footer className="pagination-bar">
+      <span>{pageSize} por página · {totalItems} {totalItems === 1 ? 'estadia' : 'estadias'}</span>
+      <div>
+        <button disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} type="button">‹</button>
+        {pages.map((page) => (
+          <button
+            className={page === currentPage ? 'active' : ''}
+            key={page}
+            onClick={() => onPageChange(page)}
+            type="button"
+          >
+            {page}
+          </button>
+        ))}
+        <button disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} type="button">›</button>
+      </div>
+    </footer>
+  );
+}
+
+function Toast({ message, onClose, tone }: { message: string; onClose: () => void; tone: 'success' | 'error' }) {
+  useEffect(() => {
+    const timeout = window.setTimeout(onClose, 4200);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  return (
+    <div className={`toast ${tone}`} role="status">
+      <p>{message}</p>
+      <button aria-label="Fechar aviso" onClick={onClose} type="button">×</button>
+    </div>
+  );
+}
+
+function ConfirmActionModal({
+  confirmLabel,
+  message,
+  onCancel,
+  onConfirm,
+  title,
+  tone = 'primary',
+}: {
+  confirmLabel: string;
+  message: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+  tone?: 'primary' | 'danger';
+}) {
+  return (
+    <Modal title={title} onClose={onCancel}>
+      <p className="muted-text">{message}</p>
+      <div className="modal-footer">
+        <button className="ghost-button" onClick={onCancel} type="button">Voltar</button>
+        <button className={tone === 'danger' ? 'danger-button' : 'primary-button'} onClick={onConfirm} type="button">{confirmLabel}</button>
+      </div>
+    </Modal>
   );
 }
 
 function StaysTable({
   stays,
-  selectedStayId,
+  onCancel,
+  onCheckIn,
+  onCheckOut,
   onSelect,
   onResend,
-  onRevoke,
 }: {
   stays: AdminStay[];
-  selectedStayId?: string;
+  onCancel: (stay: AdminStay) => void;
+  onCheckIn: (stay: AdminStay) => void;
+  onCheckOut: (stay: AdminStay) => void;
   onSelect: (stay: AdminStay) => void;
   onResend: (stay: AdminStay) => void;
-  onRevoke: (stay: AdminStay) => void;
 }) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [workflowCandidate, setWorkflowCandidate] = useState<{ action: 'resend' | 'check-in' | 'check-out' | 'cancel'; stay: AdminStay } | null>(null);
+
+  useEffect(() => {
+    if (!openMenuId) {
+      return undefined;
+    }
+
+    function closeMenu() {
+      setOpenMenuId(null);
+    }
+
+    document.addEventListener('click', closeMenu);
+    return () => document.removeEventListener('click', closeMenu);
+  }, [openMenuId]);
+
   if (stays.length === 0) {
     return <p className="empty-state">Nenhuma estadia encontrada.</p>;
   }
 
   return (
+    <>
     <table>
       <thead>
         <tr>
           <th>Quarto</th>
           <th>Hóspede</th>
-          <th>Periodo</th>
+          <th>Período</th>
           <th>Status</th>
-          <th>Sessoes</th>
+          <th>Acessos ao app</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         {stays.map((stay) => (
-          <tr className={stay.id === selectedStayId ? 'selected-row' : ''} key={stay.id}>
+          <tr
+            className="clickable-row"
+            key={stay.id}
+            onClick={() => onSelect(stay)}
+          >
             <td>{stay.roomNumber}</td>
             <td>{stay.guest.firstName} {stay.guest.lastName}</td>
-            <td>{stay.checkInDate} - {stay.checkOutDate}</td>
-            <td><span className="status-pill">{stay.statusLabel}</span></td>
+            <td>{formatStayPeriod(stay.checkInDate, stay.checkOutDate)}</td>
+            <td><span className={`status-pill ${stayStatusTone(stay.status)}`}>{shortStayStatus(stay.status)}</span></td>
             <td>{stay.activeGuestSessions}</td>
             <td>
-              <div className="row-actions">
-                <button className="secondary-button compact" onClick={() => onResend(stay)} type="button">Reenviar</button>
-                <button className="ghost-button compact" onClick={() => onRevoke(stay)} type="button">Encerrar</button>
-                <button className="ghost-button compact" onClick={() => onSelect(stay)} type="button">Detalhes</button>
+              <div className="row-actions dashboard-actions">
+                <div className="row-menu" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    aria-expanded={openMenuId === stay.id}
+                    aria-label="Mais ações"
+                    className="menu-trigger"
+                    onClick={() => setOpenMenuId(openMenuId === stay.id ? null : stay.id)}
+                    type="button"
+                  >
+                    •••
+                  </button>
+                  {openMenuId === stay.id ? (
+                    <div className="row-menu-popover">
+                      <button onClick={() => { setOpenMenuId(null); onSelect(stay); }} type="button">Ver detalhes</button>
+                      {stay.status === 'scheduled' ? (
+                        <button onClick={() => { setOpenMenuId(null); setWorkflowCandidate({ action: 'check-in', stay }); }} type="button">Realizar check-in</button>
+                      ) : null}
+                      {stay.status === 'scheduled' || stay.status === 'active' ? (
+                        <button onClick={() => { setOpenMenuId(null); setWorkflowCandidate({ action: 'resend', stay }); }} type="button">Reenviar acesso</button>
+                      ) : null}
+                      {stay.status === 'active' ? (
+                        <button onClick={() => { setOpenMenuId(null); setWorkflowCandidate({ action: 'check-out', stay }); }} type="button">Encerrar estadia</button>
+                      ) : null}
+                      {stay.status === 'scheduled' ? (
+                        <button onClick={() => { setOpenMenuId(null); setWorkflowCandidate({ action: 'cancel', stay }); }} type="button">Cancelar estadia</button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </td>
           </tr>
         ))}
       </tbody>
     </table>
+    {workflowCandidate ? (
+      <Modal title={stayWorkflowTitle(workflowCandidate.action)} onClose={() => setWorkflowCandidate(null)}>
+        <p className="muted-text">
+          {stayWorkflowMessage(workflowCandidate.action, workflowCandidate.stay)}
+        </p>
+        <div className="modal-footer">
+          <button className="ghost-button" onClick={() => setWorkflowCandidate(null)} type="button">Voltar</button>
+          <button
+            className={workflowCandidate.action === 'check-out' || workflowCandidate.action === 'cancel' ? 'danger-button' : 'primary-button'}
+            onClick={() => {
+              if (workflowCandidate.action === 'resend') {
+                onResend(workflowCandidate.stay);
+              } else if (workflowCandidate.action === 'check-in') {
+                onCheckIn(workflowCandidate.stay);
+              } else if (workflowCandidate.action === 'check-out') {
+                onCheckOut(workflowCandidate.stay);
+              } else {
+                onCancel(workflowCandidate.stay);
+              }
+              setWorkflowCandidate(null);
+            }}
+            type="button"
+          >
+            {stayWorkflowConfirmLabel(workflowCandidate.action)}
+          </button>
+        </div>
+      </Modal>
+    ) : null}
+    </>
   );
 }
 
 function StayDetailPanel({
   accessToken,
+  guests,
   stay,
+  onCancel,
+  onCheckIn,
+  onCheckOut,
+  onResend,
   onUpdated,
 }: {
   accessToken: string;
+  guests: AdminGuest[];
   stay: AdminStay;
+  onCancel: (stay: AdminStay) => void;
+  onCheckIn: (stay: AdminStay) => void;
+  onCheckOut: (stay: AdminStay) => void;
+  onResend: (stay: AdminStay) => void;
   onUpdated: () => void;
 }) {
   const [usefulInfo, setUsefulInfo] = useState<StayUsefulInfo[]>([]);
   const [consumption, setConsumption] = useState<ConsumptionItem[]>([]);
   const [wifi, setWifi] = useState({ wifiNetwork: stay.wifiNetwork, wifiPassword: stay.wifiPassword });
+  const [activeModal, setActiveModal] = useState<null | 'wifi' | 'info' | 'consumption' | 'edit' | 'resend' | 'check-in' | 'close' | 'cancel'>(null);
+  const [showWifiPassword, setShowWifiPassword] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    guestId: stay.guest.id,
+    roomNumber: stay.roomNumber,
+    checkInDate: stay.checkInDate,
+    checkOutDate: stay.checkOutDate,
+    checkOutTime: stay.checkOutTime,
+    consumptionView: stay.consumptionView,
+  });
   const [infoForm, setInfoForm] = useState<{
     scope: 'dashboard' | 'stay';
     title: string;
@@ -1696,7 +2092,8 @@ function StayDetailPanel({
   const [consumptionForm, setConsumptionForm] = useState({
     title: '',
     description: '',
-    category: 'minibar',
+    category: 'Minibar',
+    quantity: 1,
     icon: 'Receipt',
     amountCents: 0,
     currency: 'BRL',
@@ -1723,14 +2120,48 @@ function StayDetailPanel({
     loadDetails();
   }, [accessToken, stay.id]);
 
+  useEffect(() => {
+    setEditForm({
+      guestId: stay.guest.id,
+      roomNumber: stay.roomNumber,
+      checkInDate: stay.checkInDate,
+      checkOutDate: stay.checkOutDate,
+      checkOutTime: stay.checkOutTime,
+      consumptionView: stay.consumptionView,
+    });
+  }, [stay]);
+
   async function handleWifiSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     try {
       await updateStayWifi(accessToken, stay.id, wifi);
+      setActiveModal(null);
+      setSuccess('Wi-Fi atualizado com sucesso.');
       onUpdated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível atualizar Wi-Fi.');
+    }
+  }
+
+  async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await updateStay(accessToken, stay.id, {
+        guestId: editForm.guestId,
+        roomNumber: editForm.roomNumber,
+        checkInDate: editForm.checkInDate,
+        checkOutDate: editForm.checkOutDate,
+        checkOutTime: editForm.checkOutTime,
+        consumptionEnabled: true,
+        consumptionView: editForm.consumptionView,
+      });
+      setActiveModal(null);
+      setSuccess('Estadia atualizada com sucesso.');
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível editar estadia.');
     }
   }
 
@@ -1740,6 +2171,8 @@ function StayDetailPanel({
     try {
       await createStayUsefulInfo(accessToken, stay.id, infoForm);
       setInfoForm({ scope: 'stay', title: '', description: '', position: infoForm.position + 1 });
+      setActiveModal(null);
+      setSuccess('Informação adicionada com sucesso.');
       await loadDetails();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível adicionar informação.');
@@ -1752,51 +2185,237 @@ function StayDetailPanel({
     try {
       await createStayConsumption(accessToken, stay.id, {
         ...consumptionForm,
-        amountCents: Number(consumptionForm.amountCents),
+        title: `${consumptionForm.title} ×${consumptionForm.quantity}`,
+        amountCents: Number(consumptionForm.amountCents) * Number(consumptionForm.quantity),
         occurredAt: new Date(consumptionForm.occurredAt).toISOString(),
       });
-      setConsumptionForm({ ...consumptionForm, title: '', description: '', amountCents: 0 });
+      setConsumptionForm({ ...consumptionForm, title: '', description: '', quantity: 1, amountCents: 0 });
+      setActiveModal(null);
+      setSuccess('Consumo adicionado com sucesso.');
       await loadDetails();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível adicionar consumo.');
     }
   }
 
-  return (
-    <section className="form-panel detail-panel">
-      <h2>Detalhes do quarto {stay.roomNumber}</h2>
-      <p className="muted-text">{stay.guest.firstName} {stay.guest.lastName}</p>
-      {error ? <p className="form-error">{error}</p> : null}
-      <form className="stack-form section-form" onSubmit={handleWifiSubmit}>
-        <h3>Wi-Fi</h3>
-        <label>Rede<input value={wifi.wifiNetwork} onChange={(event) => setWifi({ ...wifi, wifiNetwork: event.target.value })} /></label>
-        <label>Senha<input value={wifi.wifiPassword} onChange={(event) => setWifi({ ...wifi, wifiPassword: event.target.value })} /></label>
-        <button className="secondary-button" type="submit">Salvar Wi-Fi</button>
-      </form>
-      <form className="stack-form section-form" onSubmit={handleInfoSubmit}>
-        <h3>Dados uteis</h3>
-        <select value={infoForm.scope} onChange={(event) => setInfoForm({ ...infoForm, scope: event.target.value as 'dashboard' | 'stay' })}>
-          <option value="stay">Estadia</option>
-          <option value="dashboard">Dashboard</option>
-        </select>
-        <input placeholder="Titulo" value={infoForm.title} onChange={(event) => setInfoForm({ ...infoForm, title: event.target.value })} required />
-        <input placeholder="Descricao" value={infoForm.description} onChange={(event) => setInfoForm({ ...infoForm, description: event.target.value })} required />
-        <button className="secondary-button" type="submit">Adicionar informação</button>
-      </form>
-      <MiniList items={usefulInfo.map((item) => `${item.scope}: ${item.title}`)} emptyLabel="Sem dados uteis." />
-      <form className="stack-form section-form" onSubmit={handleConsumptionSubmit}>
-        <h3>Consumo manual</h3>
-        <input placeholder="Titulo" value={consumptionForm.title} onChange={(event) => setConsumptionForm({ ...consumptionForm, title: event.target.value })} required />
-        <input placeholder="Descricao" value={consumptionForm.description} onChange={(event) => setConsumptionForm({ ...consumptionForm, description: event.target.value })} required />
-        <div className="two-columns">
-          <input placeholder="Categoria" value={consumptionForm.category} onChange={(event) => setConsumptionForm({ ...consumptionForm, category: event.target.value })} required />
-          <input placeholder="Valor centavos" type="number" value={consumptionForm.amountCents} onChange={(event) => setConsumptionForm({ ...consumptionForm, amountCents: Number(event.target.value) })} required />
+  const currentStatus = stay.status;
+  const consumptionTotal = Number(consumptionForm.amountCents) * Number(consumptionForm.quantity);
+
+  function returnToDetails() {
+    setActiveModal(null);
+    setError(null);
+  }
+
+  if (activeModal === 'wifi') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Editar Wi-Fi" onBack={returnToDetails} />
+        {error ? <p className="form-error">{error}</p> : null}
+        <form className="stack-form" onSubmit={handleWifiSubmit}>
+          <label>Rede<input value={wifi.wifiNetwork} onChange={(event) => setWifi({ ...wifi, wifiNetwork: event.target.value })} required /></label>
+          <label>Senha
+            <div className="password-field">
+              <input type={showWifiPassword ? 'text' : 'password'} value={wifi.wifiPassword} onChange={(event) => setWifi({ ...wifi, wifiPassword: event.target.value })} required />
+              <button className="ghost-button compact" onClick={() => setShowWifiPassword((value) => !value)} type="button">{showWifiPassword ? 'Ocultar' : 'Mostrar'}</button>
+            </div>
+          </label>
+          <ModalFooter onCancel={returnToDetails} submitLabel="Salvar alterações" />
+        </form>
+      </div>
+    );
+  }
+
+  if (activeModal === 'edit') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Editar estadia" onBack={returnToDetails} />
+        {error ? <p className="form-error">{error}</p> : null}
+        <form className="stack-form modal-grid-form edit-stay-grid" onSubmit={handleEditSubmit}>
+          <label className="wide-field">Hóspede
+            <select value={editForm.guestId} onChange={(event) => setEditForm({ ...editForm, guestId: event.target.value })} required>
+              {guests.map((guest) => (
+                <option key={guest.id} value={guest.id}>{guest.firstName} {guest.lastName}</option>
+              ))}
+            </select>
+          </label>
+          <label>Quarto<input value={editForm.roomNumber} onChange={(event) => setEditForm({ ...editForm, roomNumber: event.target.value })} required /></label>
+          <label>Check-in<input lang="pt-BR" type="date" value={editForm.checkInDate} onChange={(event) => setEditForm({ ...editForm, checkInDate: event.target.value })} required /></label>
+          <label>Check-out<input lang="pt-BR" type="date" value={editForm.checkOutDate} onChange={(event) => setEditForm({ ...editForm, checkOutDate: event.target.value })} required /></label>
+          <label>Horário de saída<input value={editForm.checkOutTime} onChange={(event) => setEditForm({ ...editForm, checkOutTime: event.target.value })} required /></label>
+          <label className="wide-field">Lançamento de consumos
+            <select value={editForm.consumptionView} onChange={(event) => setEditForm({ ...editForm, consumptionView: event.target.value as 'ready' | 'empty' | 'unavailable' })}>
+              <option value="ready">Permitido</option>
+              <option value="empty">Permitido, sem itens lançados</option>
+              <option value="unavailable">Indisponível</option>
+            </select>
+          </label>
+          <p className="muted-text wide-field">Status operacional: {shortStayStatus(stay.status)}</p>
+          <ModalFooter onCancel={returnToDetails} submitLabel="Salvar alterações" />
+        </form>
+      </div>
+    );
+  }
+
+  if (activeModal === 'info') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Adicionar informação" onBack={returnToDetails} />
+        {error ? <p className="form-error">{error}</p> : null}
+        <form className="stack-form" onSubmit={handleInfoSubmit}>
+          <label>Categoria/tipo
+            <select value={infoForm.scope} onChange={(event) => setInfoForm({ ...infoForm, scope: event.target.value as 'dashboard' | 'stay' })}>
+              <option value="stay">Estadia</option>
+              <option value="dashboard">Hotel</option>
+            </select>
+          </label>
+          <label>Título<input placeholder="Horário do café da manhã" value={infoForm.title} onChange={(event) => setInfoForm({ ...infoForm, title: event.target.value })} required /></label>
+          <label>Descrição<textarea placeholder="Servido das 06:30 às 10:30 no restaurante do térreo." rows={3} value={infoForm.description} onChange={(event) => setInfoForm({ ...infoForm, description: event.target.value })} required /></label>
+          <ModalFooter onCancel={returnToDetails} submitLabel="Adicionar informação" />
+        </form>
+      </div>
+    );
+  }
+
+  if (activeModal === 'consumption') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Adicionar consumo" onBack={returnToDetails} />
+        {error ? <p className="form-error">{error}</p> : null}
+        <form className="stack-form" onSubmit={handleConsumptionSubmit}>
+          <div className="two-columns">
+            <label>Categoria
+              <select value={consumptionForm.category} onChange={(event) => setConsumptionForm({ ...consumptionForm, category: event.target.value })}>
+                <option>Minibar</option>
+                <option>Room service</option>
+                <option>Lavanderia</option>
+                <option>Restaurante</option>
+                <option>Outros</option>
+              </select>
+            </label>
+            <label>Item<input list="consumption-items" placeholder="Água mineral 500ml" value={consumptionForm.title} onChange={(event) => setConsumptionForm({ ...consumptionForm, title: event.target.value })} required /></label>
+          </div>
+          <datalist id="consumption-items">
+            <option value="Água mineral 500ml" />
+            <option value="Sanduíche" />
+            <option value="Café da manhã no quarto" />
+            <option value="Lavanderia expressa" />
+          </datalist>
+          <div className="two-columns">
+            <label>Quantidade<input min="1" type="number" value={consumptionForm.quantity} onChange={(event) => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, Number(event.target.value)) })} required /></label>
+            <label>Valor unitário<input inputMode="numeric" placeholder="R$ 0,00" value={formatCurrencyInput(consumptionForm.amountCents)} onChange={(event) => setConsumptionForm({ ...consumptionForm, amountCents: parseCurrencyInput(event.target.value) })} required /></label>
+          </div>
+          <label>Data/hora<input lang="pt-BR" type="datetime-local" value={consumptionForm.occurredAt} onChange={(event) => setConsumptionForm({ ...consumptionForm, occurredAt: event.target.value })} required /></label>
+          <label>Observação (opcional)<textarea rows={3} value={consumptionForm.description} onChange={(event) => setConsumptionForm({ ...consumptionForm, description: event.target.value })} /></label>
+          <p className="consumption-total">Total: {formatMoney(consumptionTotal, consumptionForm.currency)}</p>
+          <ModalFooter onCancel={returnToDetails} submitLabel="Adicionar consumo" />
+        </form>
+      </div>
+    );
+  }
+
+  if (activeModal === 'close') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Encerrar estadia?" onBack={returnToDetails} />
+        <p className="muted-text">O hóspede perderá o acesso aos recursos vinculados a esta estadia.</p>
+        <div className="modal-footer">
+          <button className="ghost-button" onClick={returnToDetails} type="button">Cancelar</button>
+          <button className="danger-button" onClick={() => { returnToDetails(); onCheckOut(stay); }} type="button">Encerrar estadia</button>
         </div>
-        <input type="datetime-local" value={consumptionForm.occurredAt} onChange={(event) => setConsumptionForm({ ...consumptionForm, occurredAt: event.target.value })} required />
-        <button className="secondary-button" type="submit">Adicionar consumo</button>
-      </form>
-      <MiniList items={consumption.map((item) => `${item.title} - ${formatMoney(item.amountCents, item.currency)}`)} emptyLabel="Sem consumo." />
-    </section>
+      </div>
+    );
+  }
+
+  if (activeModal === 'resend') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Reenviar acesso?" onBack={returnToDetails} />
+        <p className="muted-text">Um novo acesso será enviado para {stay.guest.firstName} {stay.guest.lastName}.</p>
+        <div className="modal-footer">
+          <button className="ghost-button" onClick={returnToDetails} type="button">Voltar</button>
+          <button className="primary-button" onClick={() => { returnToDetails(); onResend(stay); }} type="button">Reenviar acesso</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeModal === 'check-in') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Realizar check-in?" onBack={returnToDetails} />
+        <p className="muted-text">A estadia do quarto {stay.roomNumber} será marcada como ativa.</p>
+        <div className="modal-footer">
+          <button className="ghost-button" onClick={returnToDetails} type="button">Voltar</button>
+          <button className="primary-button" onClick={() => { returnToDetails(); onCheckIn(stay); }} type="button">Realizar check-in</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeModal === 'cancel') {
+    return (
+      <div className="detail-panel modal-subview">
+        <SubviewHeader title="Cancelar estadia?" onBack={returnToDetails} />
+        <p className="muted-text">A estadia será marcada como cancelada e sairá da operação ativa.</p>
+        <div className="modal-footer">
+          <button className="ghost-button" onClick={returnToDetails} type="button">Voltar</button>
+          <button className="danger-button" onClick={() => { returnToDetails(); onCancel(stay); }} type="button">Cancelar estadia</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="detail-panel stay-detail-content">
+      <div className="detail-summary">
+        <span className={`status-pill ${stayStatusTone(currentStatus)}`}>{shortStayStatus(currentStatus)}</span>
+        <p>{formatStayPeriod(stay.checkInDate, stay.checkOutDate)}</p>
+        <span>Check-out previsto às {stay.checkOutTime} · {stay.activeGuestSessions} {stay.activeGuestSessions === 1 ? 'acesso ao app' : 'acessos ao app'}</span>
+      </div>
+      {success ? <p className="success-state detail-feedback">{success}</p> : null}
+      {error ? <p className="form-error">{error}</p> : null}
+      <section className="detail-section">
+        <header><h3>Wi-Fi</h3><button className="ghost-button compact" onClick={() => setActiveModal('wifi')} type="button">Editar Wi-Fi</button></header>
+        <p className="detail-label">Rede</p>
+        <strong>{stay.wifiNetwork}</strong>
+        <p className="detail-label">Senha</p>
+        <strong>{stay.wifiPassword || '-'}</strong>
+      </section>
+      <section className="detail-section">
+        <header><h3>Informações para o hóspede</h3><button className="ghost-button compact" onClick={() => setActiveModal('info')} type="button">Adicionar informação</button></header>
+        {usefulInfo.length > 0 ? <p className="muted-text">{usefulInfo.length} {usefulInfo.length === 1 ? 'informação' : 'informações'}</p> : null}
+        <MiniList items={usefulInfo.slice(0, 3).map((item) => `${item.title}: ${item.description}`)} emptyLabel="Nenhuma informação cadastrada." />
+      </section>
+      <section className="detail-section detail-section-wide">
+        <header><h3>Consumos</h3><button className="ghost-button compact" onClick={() => setActiveModal('consumption')} type="button">Adicionar consumo</button></header>
+        {consumption.length > 0 ? <p className="muted-text">{consumption.length} {consumption.length === 1 ? 'registro' : 'registros'}</p> : null}
+        <MiniList items={consumption.slice(0, 3).map((item) => `${item.category} · ${item.title} - ${formatMoney(item.amountCents, item.currency)}`)} emptyLabel="Nenhum consumo registrado." />
+      </section>
+      <section className="detail-section detail-section-wide stay-actions-section">
+        <h3>Ações da estadia</h3>
+        {stay.status === 'scheduled' || stay.status === 'active' ? (
+          <>
+            <div className="detail-actions inline">
+              <button className="ghost-button" onClick={() => setActiveModal('edit')} type="button">Editar estadia</button>
+              {stay.status === 'scheduled' ? (
+                <button className="primary-button" onClick={() => setActiveModal('check-in')} type="button">Realizar check-in</button>
+              ) : null}
+              <button className="ghost-button" onClick={() => setActiveModal('resend')} type="button">Reenviar acesso</button>
+            </div>
+            <div className="risk-actions">
+              {stay.status === 'scheduled' ? (
+                <button className="danger-button" onClick={() => setActiveModal('cancel')} type="button">Cancelar estadia</button>
+              ) : null}
+              {stay.status === 'active' ? (
+                <button className="danger-button" onClick={() => setActiveModal('close')} type="button">Encerrar estadia</button>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="mini-empty">Sem ações operacionais disponíveis.</p>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -1812,17 +2431,198 @@ function MiniList({ items, emptyLabel }: { items: string[]; emptyLabel: string }
   );
 }
 
+function SubviewHeader({ onBack, title }: { onBack: () => void; title: string }) {
+  return (
+    <header className="subview-header">
+      <button className="ghost-button compact" onClick={onBack} type="button">← Voltar</button>
+      <h3>{title}</h3>
+    </header>
+  );
+}
+
+function Modal({
+  children,
+  onClose,
+  size = 'default',
+  title,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  size?: 'default' | 'large';
+  title: string;
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className={size === 'large' ? 'modal-panel large' : 'modal-panel'} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header>
+          <h2 id="modal-title">{title}</h2>
+          <button className="icon-button" onClick={onClose} type="button">×</button>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function ModalFooter({ onCancel, submitLabel }: { onCancel: () => void; submitLabel: string }) {
+  return (
+    <div className="modal-footer">
+      <button className="ghost-button" onClick={onCancel} type="button">Cancelar</button>
+      <button className="primary-button" type="submit">{submitLabel}</button>
+    </div>
+  );
+}
+
 function formatMoney(amountCents: number, currency: string) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(amountCents / 100);
+}
+
+function formatCurrencyInput(amountCents: number) {
+  return formatMoney(amountCents, 'BRL');
+}
+
+function parseCurrencyInput(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits) : 0;
+}
+
+function formatStayPeriod(checkInDate: string, checkOutDate: string) {
+  const start = new Date(`${checkInDate}T00:00:00`);
+  const end = new Date(`${checkOutDate}T00:00:00`);
+  const currentYear = new Date().getFullYear();
+  const sameYear = start.getFullYear() === end.getFullYear() && start.getFullYear() === currentYear;
+  const options: Intl.DateTimeFormatOptions = sameYear
+    ? { day: '2-digit', month: 'short' }
+    : { day: '2-digit', month: 'short', year: 'numeric' };
+  const formatter = new Intl.DateTimeFormat('pt-BR', options);
+
+  return `${formatter.format(start).replace('.', '')} → ${formatter.format(end).replace('.', '')}`;
+}
+
+function requestStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    accepted: 'aceita',
+    in_progress: 'em atendimento',
+    on_the_way: 'a caminho',
+    completed: 'concluída',
+    cancelled: 'cancelada',
+    rejected: 'recusada',
+  };
+
+  return labels[status] ?? status;
+}
+
+function reservationStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    confirmed: 'confirmada',
+    completed: 'concluída',
+    cancelled: 'cancelada',
+    rejected: 'recusada',
+  };
+
+  return labels[status] ?? status;
+}
+
+function stayWorkflowTitle(action: 'resend' | 'check-in' | 'check-out' | 'cancel') {
+  const titles = {
+    resend: 'Reenviar acesso?',
+    'check-in': 'Realizar check-in?',
+    'check-out': 'Encerrar estadia?',
+    cancel: 'Cancelar estadia?',
+  };
+
+  return titles[action];
+}
+
+function stayWorkflowConfirmLabel(action: 'resend' | 'check-in' | 'check-out' | 'cancel') {
+  const labels = {
+    resend: 'Reenviar acesso',
+    'check-in': 'Realizar check-in',
+    'check-out': 'Encerrar estadia',
+    cancel: 'Cancelar estadia',
+  };
+
+  return labels[action];
+}
+
+function stayWorkflowMessage(action: 'resend' | 'check-in' | 'check-out' | 'cancel', stay: AdminStay) {
+  const guestName = `${stay.guest.firstName} ${stay.guest.lastName}`;
+
+  if (action === 'resend') {
+    return `Um novo acesso será enviado para ${guestName}.`;
+  }
+
+  if (action === 'check-in') {
+    return `A estadia do quarto ${stay.roomNumber} será marcada como ativa.`;
+  }
+
+  if (action === 'check-out') {
+    return 'O hóspede perderá o acesso aos recursos vinculados a esta estadia.';
+  }
+
+  return 'A estadia será marcada como cancelada e sairá da operação ativa.';
+}
+
+function shortStayStatus(status: string) {
+  const labels: Record<string, string> = {
+    active: 'Ativa',
+    scheduled: 'Agendada',
+    checked_out: 'Encerrada',
+    cancelled: 'Cancelada',
+  };
+
+  return labels[status] ?? status;
+}
+
+function stayStatusTone(status: string) {
+  const tones: Record<string, string> = {
+    active: 'success',
+    scheduled: 'info',
+    checked_out: '',
+    cancelled: 'danger',
+  };
+
+  return tones[status] ?? '';
+}
+
+function stayMatchesPeriod(stay: AdminStay, period: string) {
+  if (period === 'custom') {
+    return true;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const checkIn = new Date(`${stay.checkInDate}T00:00:00`);
+  const checkOut = new Date(`${stay.checkOutDate}T00:00:00`);
+
+  if (period === 'today') {
+    return checkIn <= today && checkOut >= today;
+  }
+
+  if (period === 'seven-days') {
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + 7);
+    return checkIn <= limit && checkOut >= today;
+  }
+
+  if (period === 'month') {
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return checkIn <= monthEnd && checkOut >= monthStart;
+  }
+
+  return true;
 }
 
 function StayForm({
   accessToken,
   guests,
+  onCancel,
   onCreated,
 }: {
   accessToken: string;
   guests: AdminGuest[];
+  onCancel: () => void;
   onCreated: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -1837,7 +2637,6 @@ function StayForm({
     checkInDate: string;
     checkOutDate: string;
     checkOutTime: string;
-    status: string;
     wifiNetwork: string;
     wifiPassword: string;
     consumptionView: 'ready' | 'empty' | 'unavailable';
@@ -1850,7 +2649,6 @@ function StayForm({
     checkInDate: today,
     checkOutDate: today,
     checkOutTime: '12:00',
-    status: 'active',
     wifiNetwork: 'Atrio Guest',
     wifiPassword: '',
     consumptionView: 'ready' as const,
@@ -1865,7 +2663,6 @@ function StayForm({
       checkInDate: form.checkInDate,
       checkOutDate: form.checkOutDate,
       checkOutTime: form.checkOutTime,
-      status: form.status,
       wifiNetwork: form.wifiNetwork,
       wifiPassword: form.wifiPassword,
       consumptionEnabled: true,
@@ -1886,7 +2683,6 @@ function StayForm({
         checkInDate: today,
         checkOutDate: today,
         checkOutTime: '12:00',
-        status: 'active',
         wifiNetwork: 'Atrio Guest',
         wifiPassword: '',
         consumptionView: 'ready',
@@ -1898,9 +2694,7 @@ function StayForm({
   }
 
   return (
-    <section className="form-panel">
-      <h2>Nova estadia</h2>
-      <form className="stack-form" onSubmit={handleSubmit}>
+      <form className="stack-form modal-grid-form" onSubmit={handleSubmit}>
         <label className="check-row">
           <input type="checkbox" checked={useNewGuest} onChange={(event) => setUseNewGuest(event.target.checked)} />
           Cadastrar novo hóspede
@@ -1923,35 +2717,25 @@ function StayForm({
         )}
         <div className="two-columns">
           <label>Quarto<input value={form.roomNumber} onChange={(event) => setForm({ ...form, roomNumber: event.target.value })} required /></label>
-          <label>Status
-            <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-              <option value="active">Ativa</option>
-              <option value="scheduled">Agendada</option>
-              <option value="checked_out">Check-out</option>
-              <option value="cancelled">Cancelada</option>
-            </select>
-          </label>
+          <label>Horário de saída<input value={form.checkOutTime} onChange={(event) => setForm({ ...form, checkOutTime: event.target.value })} required /></label>
         </div>
         <div className="two-columns">
-          <label>Check-in<input type="date" value={form.checkInDate} onChange={(event) => setForm({ ...form, checkInDate: event.target.value })} required /></label>
-          <label>Check-out<input type="date" value={form.checkOutDate} onChange={(event) => setForm({ ...form, checkOutDate: event.target.value })} required /></label>
+          <label>Check-in<input lang="pt-BR" type="date" value={form.checkInDate} onChange={(event) => setForm({ ...form, checkInDate: event.target.value })} required /></label>
+          <label>Check-out<input lang="pt-BR" type="date" value={form.checkOutDate} onChange={(event) => setForm({ ...form, checkOutDate: event.target.value })} required /></label>
         </div>
-        <div className="two-columns">
-          <label>Horário saida<input value={form.checkOutTime} onChange={(event) => setForm({ ...form, checkOutTime: event.target.value })} required /></label>
-          <label>Consumo
+        <label>Lançamento de consumos
             <select value={form.consumptionView} onChange={(event) => setForm({ ...form, consumptionView: event.target.value as 'ready' | 'empty' | 'unavailable' })}>
-              <option value="ready">Disponível</option>
-              <option value="empty">Sem itens</option>
+              <option value="ready">Permitido</option>
+              <option value="empty">Permitido, sem itens lançados</option>
               <option value="unavailable">Indisponível</option>
             </select>
-          </label>
-        </div>
+        </label>
+        <p className="muted-text">Status operacional: Agendada</p>
         <label>Rede Wi-Fi<input value={form.wifiNetwork} onChange={(event) => setForm({ ...form, wifiNetwork: event.target.value })} required /></label>
         <label>Senha Wi-Fi<input value={form.wifiPassword} onChange={(event) => setForm({ ...form, wifiPassword: event.target.value })} required /></label>
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="primary-button" type="submit">Cadastrar estadia</button>
+        <ModalFooter onCancel={onCancel} submitLabel="Cadastrar estadia" />
       </form>
-    </section>
   );
 }
 

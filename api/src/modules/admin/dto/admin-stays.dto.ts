@@ -83,8 +83,9 @@ export class CreateAdminStayDto {
   checkOutTime!: string;
 
   @ApiProperty({ example: 'active' })
+  @IsOptional()
   @IsIn(['scheduled', 'active', 'checked_out', 'cancelled'])
-  status!: string;
+  status?: string;
 
   @ApiProperty()
   @IsString()
@@ -95,6 +96,39 @@ export class CreateAdminStayDto {
   @IsString()
   @MaxLength(150)
   wifiPassword!: string;
+
+  @ApiProperty()
+  @IsBoolean()
+  consumptionEnabled!: boolean;
+
+  @ApiProperty()
+  @IsIn(['ready', 'empty', 'unavailable'])
+  consumptionView!: 'ready' | 'empty' | 'unavailable';
+}
+
+export class UpdateAdminStayDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  guestId?: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(20)
+  roomNumber!: string;
+
+  @ApiProperty({ example: '2026-08-14' })
+  @IsDateString()
+  checkInDate!: string;
+
+  @ApiProperty({ example: '2026-08-18' })
+  @IsDateString()
+  checkOutDate!: string;
+
+  @ApiProperty({ example: '12:00' })
+  @IsString()
+  @MaxLength(10)
+  checkOutTime!: string;
 
   @ApiProperty()
   @IsBoolean()

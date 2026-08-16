@@ -14,6 +14,7 @@ import {
   CreateAdminGuestDto,
   CreateAdminStayDto,
   CreateAdminStayUsefulInfoDto,
+  UpdateAdminStayDto,
   UpdateAdminStayWifiDto,
 } from '../dto/admin-stays.dto';
 import { AdminStaysService } from '../services/admin-stays.service';
@@ -83,6 +84,17 @@ export class AdminStaysController {
     return this.adminStaysService.getStay(session, stayId);
   }
 
+  @Patch(':stayId')
+  @Version('1')
+  @ApiOkResponse({ type: AdminStayResponseDto })
+  async updateStay(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+    @Body() body: UpdateAdminStayDto,
+  ) {
+    return this.adminStaysService.updateStay(session, stayId, body);
+  }
+
   @Post(':stayId/access/resend')
   @Version('1')
   async resendAccess(
@@ -99,6 +111,35 @@ export class AdminStaysController {
     @Param('stayId') stayId: string,
   ) {
     return this.adminStaysService.revokeGuestSessions(session, stayId);
+  }
+
+  @Post(':stayId/check-in')
+  @Version('1')
+  @ApiOkResponse({ type: AdminStayResponseDto })
+  async checkInStay(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+  ) {
+    return this.adminStaysService.checkInStay(session, stayId);
+  }
+
+  @Post(':stayId/check-out')
+  @Version('1')
+  async checkOutStay(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+  ) {
+    return this.adminStaysService.checkOutStay(session, stayId);
+  }
+
+  @Post(':stayId/cancel')
+  @Version('1')
+  @ApiOkResponse({ type: AdminStayResponseDto })
+  async cancelStay(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+  ) {
+    return this.adminStaysService.cancelStay(session, stayId);
   }
 
   @Patch(':stayId/wifi')

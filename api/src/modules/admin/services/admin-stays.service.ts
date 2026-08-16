@@ -15,6 +15,7 @@ import {
   CreateAdminGuestDto,
   CreateAdminStayDto,
   CreateAdminStayUsefulInfoDto,
+  UpdateAdminStayDto,
   UpdateAdminStayWifiDto,
 } from '../dto/admin-stays.dto';
 import { AuditService } from './audit.service';
@@ -117,8 +118,8 @@ export class AdminStaysService {
     stay.hotelId = session.hotelId;
     stay.guestId = guest.publicId;
     stay.roomNumber = input.roomNumber;
-    stay.status = input.status;
-    stay.statusLabel = this.statusLabel(input.status);
+    stay.status = 'scheduled';
+    stay.statusLabel = this.statusLabel(stay.status);
     stay.checkInDate = input.checkInDate;
     stay.checkOutDate = input.checkOutDate;
     stay.checkOutTime = input.checkOutTime;
@@ -137,6 +138,115 @@ export class AdminStaysService {
       resourceType: 'stay',
       resourceId: savedStay.publicId,
       summary: `${session.email} created stay ${savedStay.publicId} for room ${savedStay.roomNumber}.`,
+    });
+
+    return this.mapStay(savedStay);
+  }
+
+  async updateStay(session: AdminSessionContext, stayId: string, input: UpdateAdminStayDto) {
+    const stay = await this.getRequiredStay(session, stayId);
+
+    if (input.guestId && input.guestId !== stay.guestId) {
+      const guest = await this.guestRepository.findOne({ where: { publicId: input.guestId } });
+
+      if (!guest) {
+        throw new ApiException(404, 'GUEST_NOT_FOUND', 'Guest was not found.');
+      }
+
+      stay.guestId = guest.publicId;
+      stay.guest = guest;
+    }
+
+    stay.roomNumber = input.roomNumber;
+    stay.checkInDate = input.checkInDate;
+    stay.checkOutDate = input.checkOutDate;
+    stay.checkOutTime = input.checkOutTime;
+    stay.consumptionEnabled = input.consumptionEnabled;
+    stay.consumptionView = input.consumptionView;
+
+    const savedStay = await this.stayRepository.save(stay);
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.update',
+      resourceType: 'stay',
+      resourceId: stayId,
+      summary: `${session.email} updated stay ${stayId}.`,
+    });
+
+    return this.mapStay(savedStay);
+  }
+
+  async checkInStay(session: AdminSessionContext, stayId: string) {
+    const stay = await this.getRequiredStay(session, stayId);
+
+    if (stay.status !== 'scheduled') {
+      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only scheduled stays can be checked in.');
+    }
+
+    stay.status = 'active';
+    stay.statusLabel = this.statusLabel(stay.status);
+    const savedStay = await this.stayRepository.save(stay);
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.check_in',
+      resourceType: 'stay',
+      resourceId: stayId,
+      summary: `${session.email} checked in stay ${stayId}.`,
+    });
+
+    return this.mapStay(savedStay);
+  }
+
+  async checkOutStay(session: AdminSessionContext, stayId: string) {
+    const stay = await this.getRequiredStay(session, stayId);
+
+    if (stay.status !== 'active') {
+      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only active stays can be checked out.');
+    }
+
+    stay.status = 'checked_out';
+    stay.statusLabel = this.statusLabel(stay.status);
+    const savedStay = await this.stayRepository.save(stay);
+    const result = await this.guestSessionRepository.update(
+      { stayId, revokedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+      { revokedAt: new Date() },
+    );
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.check_out',
+      resourceType: 'stay',
+      resourceId: stayId,
+      summary: `${session.email} checked out stay ${stayId}.`,
+      metadata: { revokedSessions: result.affected ?? 0 },
+    });
+
+    return { stay: await this.mapStay(savedStay), revokedSessions: result.affected ?? 0 };
+  }
+
+  async cancelStay(session: AdminSessionContext, stayId: string) {
+    const stay = await this.getRequiredStay(session, stayId);
+
+    if (stay.status !== 'scheduled') {
+      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only scheduled stays can be cancelled.');
+    }
+
+    stay.status = 'cancelled';
+    stay.statusLabel = this.statusLabel(stay.status);
+    const savedStay = await this.stayRepository.save(stay);
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.cancel',
+      resourceType: 'stay',
+      resourceId: stayId,
+      summary: `${session.email} cancelled stay ${stayId}.`,
     });
 
     return this.mapStay(savedStay);
@@ -385,8 +495,8 @@ export class AdminStaysService {
   private statusLabel(status: string) {
     const labels: Record<string, string> = {
       scheduled: 'Agendada',
-      active: 'Hospedagem ativa',
-      checked_out: 'Check-out realizado',
+      active: 'Ativa',
+      checked_out: 'Encerrada',
       cancelled: 'Cancelada',
     };
 

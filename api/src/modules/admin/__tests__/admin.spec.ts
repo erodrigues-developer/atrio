@@ -445,6 +445,13 @@ describe('admin module', () => {
     await expect(service.resendAccess(sessionContext, 'stay_001')).resolves.toHaveProperty('challengeId', 'chl_001');
     await expect(service.revokeGuestSessions(sessionContext, 'stay_001')).resolves.toEqual({ revokedSessions: 2 });
 
+    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'scheduled', statusLabel: 'Agendada' });
+    await expect(service.checkInStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'active');
+    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'active', statusLabel: 'Ativa' });
+    await expect(service.checkOutStay(sessionContext, 'stay_001')).resolves.toHaveProperty('stay.status', 'checked_out');
+    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'scheduled', statusLabel: 'Agendada' });
+    await expect(service.cancelStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'cancelled');
+
     await expect(
       service.updateWifi(sessionContext, 'stay_001', { wifiNetwork: 'New Wi-Fi', wifiPassword: 'new-password' }),
     ).resolves.toHaveProperty('wifiNetwork', 'New Wi-Fi');
@@ -483,6 +490,9 @@ describe('admin module', () => {
       getStay: jest.fn().mockResolvedValue({ id: 'stay_001' }),
       resendAccess: jest.fn().mockResolvedValue({ challengeId: 'chl_001' }),
       revokeGuestSessions: jest.fn().mockResolvedValue({ revokedSessions: 1 }),
+      checkInStay: jest.fn().mockResolvedValue({ id: 'stay_001', status: 'active' }),
+      checkOutStay: jest.fn().mockResolvedValue({ stay: { id: 'stay_001', status: 'checked_out' }, revokedSessions: 1 }),
+      cancelStay: jest.fn().mockResolvedValue({ id: 'stay_001', status: 'cancelled' }),
       updateWifi: jest.fn().mockResolvedValue({ id: 'stay_001' }),
       listUsefulInfo: jest.fn().mockResolvedValue([{ id: 'info_001' }]),
       createUsefulInfo: jest.fn().mockResolvedValue({ id: 'info_002' }),
@@ -501,6 +511,9 @@ describe('admin module', () => {
     await expect(staysController.getStay(sessionContext, 'stay_001')).resolves.toHaveProperty('id', 'stay_001');
     await expect(staysController.resendAccess(sessionContext, 'stay_001')).resolves.toHaveProperty('challengeId', 'chl_001');
     await expect(staysController.revokeGuestSessions(sessionContext, 'stay_001')).resolves.toEqual({ revokedSessions: 1 });
+    await expect(staysController.checkInStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'active');
+    await expect(staysController.checkOutStay(sessionContext, 'stay_001')).resolves.toHaveProperty('stay.status', 'checked_out');
+    await expect(staysController.cancelStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'cancelled');
     await expect(staysController.updateWifi(sessionContext, 'stay_001', { wifiNetwork: 'A', wifiPassword: 'B' })).resolves.toHaveProperty('id', 'stay_001');
     await expect(staysController.listUsefulInfo(sessionContext, 'stay_001')).resolves.toHaveLength(1);
     await expect(staysController.createUsefulInfo(sessionContext, 'stay_001', {} as never)).resolves.toHaveProperty('id', 'info_002');
