@@ -1,6 +1,8 @@
 export const seedHotel = {
   id: 'copacabana-palace',
   name: 'Copacabana Palace',
+  wifiNetwork: 'Copacabana Palace Guest',
+  wifiPassword: 'copacabana',
 };
 
 export const seedGuest = {
@@ -22,22 +24,27 @@ export const seedStay = {
   checkOutDate: '2026-06-15',
   checkOutTime: '12:00',
   wifiNetwork: 'Copacabana Palace Guest',
-  wifiPassword: 'copacabana304',
+  wifiPassword: 'copacabana',
   consumptionEnabled: true,
   consumptionView: 'ready',
 };
 
-export const seedStayUsefulInfo = [
-  { id: 'wifi', stayId: 'stay_001', scope: 'dashboard', title: 'Wi-Fi', description: 'Rede e senha da internet', position: 1 },
-  { id: 'breakfast', stayId: 'stay_001', scope: 'dashboard', title: 'Horário do café', description: 'Disponível até 10:30', position: 2 },
-  { id: 'checkout', stayId: 'stay_001', scope: 'dashboard', title: 'Check-out', description: 'Até 12:00', position: 3 },
-  { id: 'hotel-rules', stayId: 'stay_001', scope: 'dashboard', title: 'Regras do hotel', description: 'Informações importantes da estadia', position: 4 },
-  { id: 'breakfast-hours', stayId: 'stay_001', scope: 'stay', title: 'Horário do café', description: 'Servido das 6h30 às 10h30.', position: 1 },
-  { id: 'check-out', stayId: 'stay_001', scope: 'stay', title: 'Check-out', description: 'Até 12:00.', position: 2 },
-  { id: 'visitor-policy', stayId: 'stay_001', scope: 'stay', title: 'Política de visitantes', description: 'Consulte a recepção para orientações durante a estadia.', position: 3 },
-  { id: 'common-areas', stayId: 'stay_001', scope: 'stay', title: 'Áreas comuns', description: 'Piscina, spa e restaurantes seguem horários informados pelo hotel.', position: 4 },
-  { id: 'front-desk', stayId: 'stay_001', scope: 'stay', title: 'Contato da recepção', description: 'Disponível 24h pelo concierge.', position: 5 },
+export const seedHotelUsefulInfo = [
+  { id: 'wifi', hotelId: 'copacabana-palace', scope: 'dashboard', title: 'Wi-Fi', description: 'Rede e senha da internet', position: 1 },
+  { id: 'breakfast', hotelId: 'copacabana-palace', scope: 'dashboard', title: 'Horário do café', description: 'Disponível até 10:30', position: 2 },
+  { id: 'checkout', hotelId: 'copacabana-palace', scope: 'dashboard', title: 'Check-out', description: 'Até 12:00', position: 3 },
+  { id: 'hotel-rules', hotelId: 'copacabana-palace', scope: 'dashboard', title: 'Regras do hotel', description: 'Informações importantes do hotel', position: 4 },
+  { id: 'breakfast-hours', hotelId: 'copacabana-palace', scope: 'stay', title: 'Horário do café', description: 'Servido das 6h30 às 10h30.', position: 1 },
+  { id: 'check-out', hotelId: 'copacabana-palace', scope: 'stay', title: 'Check-out', description: 'Até 12:00.', position: 2 },
+  { id: 'visitor-policy', hotelId: 'copacabana-palace', scope: 'stay', title: 'Política de visitantes', description: 'Consulte a recepção para orientações durante a estadia.', position: 3 },
+  { id: 'common-areas', hotelId: 'copacabana-palace', scope: 'stay', title: 'Áreas comuns', description: 'Piscina, spa e restaurantes seguem horários informados pelo hotel.', position: 4 },
+  { id: 'front-desk', hotelId: 'copacabana-palace', scope: 'stay', title: 'Contato da recepção', description: 'Disponível 24h pelo concierge.', position: 5 },
 ];
+
+export const seedStayUsefulInfo = seedHotelUsefulInfo.map(({ hotelId, ...item }) => ({
+  ...item,
+  stayId: 'stay_001',
+}));
 
 export const seedServices = [
   {

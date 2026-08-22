@@ -18,6 +18,12 @@ export class Hotel {
   @Column({ name: 'hero_image_url', type: 'varchar', length: 255, nullable: true })
   heroImageUrl!: string | null;
 
+  @Column({ name: 'wifi_network', type: 'varchar', length: 150, nullable: true })
+  wifiNetwork!: string | null;
+
+  @Column({ name: 'wifi_password', type: 'varchar', length: 150, nullable: true })
+  wifiPassword!: string | null;
+
   @OneToMany(() => Stay, (stay) => stay.hotel)
   stays!: Stay[];
 }

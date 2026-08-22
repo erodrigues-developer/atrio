@@ -19,7 +19,7 @@ describe('stays module', () => {
     wifiPassword: 'password',
     consumptionEnabled: true,
     consumptionView: 'ready',
-    hotel: { name: 'Copacabana Palace' },
+    hotel: { name: 'Copacabana Palace', wifiNetwork: 'network', wifiPassword: 'password' },
     guest: { firstName: 'Everton', lastName: 'Rodrigues' },
   };
 
@@ -36,11 +36,13 @@ describe('stays module', () => {
       { createQueryBuilder: jest.fn().mockReturnValue(queryBuilder), findOne } as never,
       { find } as never,
       { find } as never,
+      { find } as never,
     );
 
     expect(await repository.findByHotelRoomAndLastName('h', '1', 'l')).toBe(stay);
     expect(await repository.findById('stay_001')).toBe(stay);
     expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([{ publicId: 'info' }]);
+    expect(await repository.listHotelUsefulInfo('copacabana-palace', 'stay')).toEqual([{ publicId: 'info' }]);
     expect(await repository.listConsumptionItems('stay_001')).toEqual([{ publicId: 'info' }]);
   });
 
@@ -48,6 +50,7 @@ describe('stays module', () => {
     const stayRepository = {
       findById: jest.fn().mockResolvedValue(stay),
       listUsefulInfo: jest.fn().mockResolvedValue([{ publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
+      listHotelUsefulInfo: jest.fn().mockResolvedValue([{ publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
       listConsumptionItems: jest.fn().mockResolvedValue([
         {
           publicId: 'cons_001',

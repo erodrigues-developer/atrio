@@ -12,6 +12,7 @@ import { StayRequest } from 'src/modules/requests/entities/stay-request.entity';
 import { ServiceDefinition } from 'src/modules/services/entities/service-definition.entity';
 import { ConsumptionItem } from 'src/modules/stays/entities/consumption-item.entity';
 import { Guest } from 'src/modules/stays/entities/guest.entity';
+import { HotelUsefulInfo } from 'src/modules/stays/entities/hotel-useful-info.entity';
 import { Hotel } from 'src/modules/stays/entities/hotel.entity';
 import { Stay } from 'src/modules/stays/entities/stay.entity';
 import { StayUsefulInfo } from 'src/modules/stays/entities/stay-useful-info.entity';
@@ -24,6 +25,7 @@ import {
   seedExperiences,
   seedGuest,
   seedHotel,
+  seedHotelUsefulInfo,
   seedRequests,
   seedReservations,
   seedServices,
@@ -84,6 +86,12 @@ export default class InitialSeeder extends UniqueSeeder implements Seeder {
       });
       await dataSource.getRepository(StayUsefulInfo).save(
         seedStayUsefulInfo.map((item) => ({
+          ...toEntitySeed(item),
+          scope: item.scope as 'dashboard' | 'stay',
+        })),
+      );
+      await dataSource.getRepository(HotelUsefulInfo).save(
+        seedHotelUsefulInfo.map((item) => ({
           ...toEntitySeed(item),
           scope: item.scope as 'dashboard' | 'stay',
         })),

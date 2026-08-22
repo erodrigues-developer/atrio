@@ -16,6 +16,7 @@ import { GuestSession } from '../auth/entities/guest-session.entity';
 import { Guest } from '../stays/entities/guest.entity';
 import { Stay } from '../stays/entities/stay.entity';
 import { StayUsefulInfo } from '../stays/entities/stay-useful-info.entity';
+import { HotelUsefulInfo } from '../stays/entities/hotel-useful-info.entity';
 import { ConsumptionItem } from '../stays/entities/consumption-item.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ServiceDefinition } from '../services/entities/service-definition.entity';
@@ -49,6 +50,7 @@ import { PasswordService } from './services/password.service';
       Stay,
       GuestSession,
       StayUsefulInfo,
+      HotelUsefulInfo,
       ConsumptionItem,
       ServiceDefinition,
       StayRequest,

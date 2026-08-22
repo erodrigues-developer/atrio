@@ -31,7 +31,8 @@ import { AddRevokedAtToGuestSessions1718300000017 } from '../database/migrations
 import { AddServicePublishing1718300000018 } from '../database/migrations/1718300000018-AddServicePublishing';
 import { AddInternalNoteToStayRequests1718300000019 } from '../database/migrations/1718300000019-AddInternalNoteToStayRequests';
 import { AddExperiencePublishing1718300000020 } from '../database/migrations/1718300000020-AddExperiencePublishing';
-import { seedAvailabilitySlots, seedCollections, seedCollectionItems, seedConciergeMessages, seedConsumptionItems, seedExperiences, seedGuest, seedHotel, seedRequests, seedReservations, seedServices, seedStay, seedStayUsefulInfo } from '../database/seeds/data/ui-mock-seed.data';
+import { AddHotelGuestSettings1718300000022 } from '../database/migrations/1718300000022-AddHotelGuestSettings';
+import { seedAvailabilitySlots, seedCollections, seedCollectionItems, seedConciergeMessages, seedConsumptionItems, seedExperiences, seedGuest, seedHotel, seedHotelUsefulInfo, seedRequests, seedReservations, seedServices, seedStay, seedStayUsefulInfo } from '../database/seeds/data/ui-mock-seed.data';
 import InitialSeeder from '../database/seeds/initial.seeder';
 import UniqueSeeder from '../database/seeds/unique.seeder';
 import { AdminModule } from '../modules/admin/admin.module';
@@ -110,6 +111,7 @@ import { StayResponseDto, WifiResponseDto } from '../modules/stays/dto/stay-resp
 import { ConsumptionItem } from '../modules/stays/entities/consumption-item.entity';
 import { Guest } from '../modules/stays/entities/guest.entity';
 import { Hotel } from '../modules/stays/entities/hotel.entity';
+import { HotelUsefulInfo } from '../modules/stays/entities/hotel-useful-info.entity';
 import { StayUsefulInfo } from '../modules/stays/entities/stay-useful-info.entity';
 import { Stay } from '../modules/stays/entities/stay.entity';
 import { StayRepository } from '../modules/stays/repositories/stay.repository';
@@ -157,10 +159,12 @@ describe('smoke imports', () => {
     expect(AddServicePublishing1718300000018).toBeDefined();
     expect(AddInternalNoteToStayRequests1718300000019).toBeDefined();
     expect(AddExperiencePublishing1718300000020).toBeDefined();
+    expect(AddHotelGuestSettings1718300000022).toBeDefined();
     expect(seedHotel.id).toBe('copacabana-palace');
     expect(seedGuest.id).toBe('guest_001');
     expect(seedStay.id).toBe('stay_001');
     expect(seedStayUsefulInfo).toHaveLength(9);
+    expect(seedHotelUsefulInfo).toHaveLength(9);
     expect(seedServices.length).toBeGreaterThan(1);
     expect(seedCollections.length).toBeGreaterThan(1);
     expect(seedExperiences.length).toBeGreaterThan(1);
@@ -288,6 +292,7 @@ describe('smoke imports', () => {
     expect(ConsumptionItem).toBeDefined();
     expect(Guest).toBeDefined();
     expect(Hotel).toBeDefined();
+    expect(HotelUsefulInfo).toBeDefined();
     expect(StayUsefulInfo).toBeDefined();
     expect(Stay).toBeDefined();
     expect(StayRepository).toBeDefined();

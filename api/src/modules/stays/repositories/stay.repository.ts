@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConsumptionItem } from '../entities/consumption-item.entity';
+import { HotelUsefulInfo } from '../entities/hotel-useful-info.entity';
 import { Stay } from '../entities/stay.entity';
 import { StayUsefulInfo } from '../entities/stay-useful-info.entity';
 
@@ -12,6 +13,8 @@ export class StayRepository {
     private readonly stayRepository: Repository<Stay>,
     @InjectRepository(StayUsefulInfo)
     private readonly usefulInfoRepository: Repository<StayUsefulInfo>,
+    @InjectRepository(HotelUsefulInfo)
+    private readonly hotelUsefulInfoRepository: Repository<HotelUsefulInfo>,
     @InjectRepository(ConsumptionItem)
     private readonly consumptionRepository: Repository<ConsumptionItem>,
   ) {}
@@ -44,6 +47,13 @@ export class StayRepository {
   async listUsefulInfo(stayId: string, scope: 'dashboard' | 'stay'): Promise<StayUsefulInfo[]> {
     return this.usefulInfoRepository.find({
       where: { stayId, scope },
+      order: { position: 'ASC' },
+    });
+  }
+
+  async listHotelUsefulInfo(hotelId: string, scope: 'dashboard' | 'stay'): Promise<HotelUsefulInfo[]> {
+    return this.hotelUsefulInfoRepository.find({
+      where: { hotelId, scope },
       order: { position: 'ASC' },
     });
   }

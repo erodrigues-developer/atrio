@@ -18,6 +18,17 @@ export type AdminHotelSettings = {
   name: string;
   logoUrl: string | null;
   heroImageUrl: string | null;
+  wifiNetwork: string;
+  wifiPassword: string;
+  usefulInfo: HotelUsefulInfo[];
+};
+
+export type HotelUsefulInfo = {
+  id: string;
+  scope: 'dashboard' | 'stay';
+  title: string;
+  description: string;
+  position: number;
 };
 
 export type AdminSession = {
@@ -99,12 +110,18 @@ export type AdminStay = {
   checkInDate: string;
   checkOutDate: string;
   checkOutTime: string;
-  wifiNetwork: string;
-  wifiPassword: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
   guest: AdminGuest;
   activeGuestSessions: number;
+};
+
+export type AdminStayPage = {
+  items: AdminStay[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type CreateGuestPayload = {
@@ -120,8 +137,6 @@ export type CreateStayPayload = {
   checkInDate: string;
   checkOutDate: string;
   checkOutTime: string;
-  wifiNetwork: string;
-  wifiPassword: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
 };
@@ -362,7 +377,14 @@ export function createGuest(accessToken: string, payload: CreateGuestPayload) {
   });
 }
 
-export function listStays(accessToken: string, query: { search?: string; status?: string } = {}) {
+export function listStays(accessToken: string, query: {
+  search?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+} = {}) {
   const params = new URLSearchParams();
 
   if (query.search) {
@@ -373,7 +395,23 @@ export function listStays(accessToken: string, query: { search?: string; status?
     params.set('status', query.status);
   }
 
-  return request<AdminStay[]>(`/admin/stays${params.size ? `?${params}` : ''}`, {
+  if (query.dateFrom) {
+    params.set('dateFrom', query.dateFrom);
+  }
+
+  if (query.dateTo) {
+    params.set('dateTo', query.dateTo);
+  }
+
+  if (query.page) {
+    params.set('page', String(query.page));
+  }
+
+  if (query.pageSize) {
+    params.set('pageSize', String(query.pageSize));
+  }
+
+  return request<AdminStayPage>(`/admin/stays${params.size ? `?${params}` : ''}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -488,6 +526,25 @@ export function createStayConsumption(accessToken: string, stayId: string, paylo
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateStayConsumption(accessToken: string, stayId: string, consumptionId: string, payload: Omit<ConsumptionItem, 'id'>) {
+  return request<ConsumptionItem>(`/admin/stays/${stayId}/consumption/${consumptionId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteStayConsumption(accessToken: string, stayId: string, consumptionId: string) {
+  return request<{ id: string }>(`/admin/stays/${stayId}/consumption/${consumptionId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 }
 
@@ -674,6 +731,22 @@ export function sendConciergeMessage(accessToken: string, stayId: string, text: 
 export function getHotelSettings(accessToken: string) {
   return request<AdminHotelSettings>('/admin/hotels/current', {
     headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+export function updateHotelWifi(accessToken: string, payload: { wifiNetwork: string; wifiPassword: string }) {
+  return request<AdminHotelSettings>('/admin/hotels/current/wifi', {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createHotelUsefulInfo(accessToken: string, payload: Omit<HotelUsefulInfo, 'id'>) {
+  return request<HotelUsefulInfo>('/admin/hotels/current/useful-info', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
   });
 }
 

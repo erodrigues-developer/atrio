@@ -1,9 +1,10 @@
-import { Controller, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors, Version } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors, Version } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
 import { AdminSessionContext } from 'src/common/interfaces/admin-session-context.interface';
+import { CreateAdminHotelUsefulInfoDto, UpdateAdminHotelWifiDto } from '../dto/admin-hotel-settings.dto';
 import { AdminMediaService } from '../services/admin-media.service';
 
 const mediaBody = {
@@ -30,6 +31,18 @@ export class AdminHotelSettingsController {
   @ApiOkResponse()
   async getSettings(@CurrentAdminSession() session: AdminSessionContext) {
     return this.adminMediaService.getHotelSettings(session);
+  }
+
+  @Patch('wifi')
+  @Version('1')
+  async updateWifi(@CurrentAdminSession() session: AdminSessionContext, @Body() body: UpdateAdminHotelWifiDto) {
+    return this.adminMediaService.updateHotelWifi(session, body);
+  }
+
+  @Post('useful-info')
+  @Version('1')
+  async createUsefulInfo(@CurrentAdminSession() session: AdminSessionContext, @Body() body: CreateAdminHotelUsefulInfoDto) {
+    return this.adminMediaService.createHotelUsefulInfo(session, body);
   }
 
   @Post('logo')
@@ -84,4 +97,3 @@ export class AdminExperienceMediaController {
     return this.adminMediaService.uploadCollectionImage(session, collectionId, file);
   }
 }
-

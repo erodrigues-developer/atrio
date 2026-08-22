@@ -188,7 +188,7 @@ export default function StayScreen() {
 
             <YStack gap={spacing.md}>
               <StayNavigationItem
-                description="Veja o nome da rede e a senha da hospedagem."
+                description="Veja o nome da rede e a senha do hotel."
                 icon={Wifi}
                 onPress={() =>
                   router.push({
@@ -248,22 +248,30 @@ export default function StayScreen() {
           </YStack>
 
           <YStack gap={spacing.lg}>
-            <SectionHeader title="Regras e informações úteis" />
+            <SectionHeader title="Informações do hotel" />
 
             <Card borderRadius={radius.xl} paddingHorizontal={spacing.xl} paddingVertical={0}>
-              {stay.usefulInfo.map((item, index) => {
-                const Icon = usefulInfoIcons[index] ?? Info;
+              {stay.usefulInfo.length > 0 ? (
+                stay.usefulInfo.map((item, index) => {
+                  const Icon = usefulInfoIcons[index] ?? Info;
 
-                return (
-                  <StayInfoCard
-                    description={item.description}
-                    icon={Icon}
-                    isLast={index === stay.usefulInfo.length - 1}
-                    key={item.id}
-                    title={item.title}
-                  />
-                );
-              })}
+                  return (
+                    <StayInfoCard
+                      description={item.description}
+                      icon={Icon}
+                      isLast={index === stay.usefulInfo.length - 1}
+                      key={item.id}
+                      title={item.title}
+                    />
+                  );
+                })
+              ) : (
+                <YStack paddingVertical={spacing.xl}>
+                  <Text colorToken="textSecondary" variant="body">
+                    Nenhuma informação do hotel disponível no momento.
+                  </Text>
+                </YStack>
+              )}
             </Card>
           </YStack>
         </YStack>

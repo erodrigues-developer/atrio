@@ -2,11 +2,24 @@ import 'reflect-metadata';
 import { ApiException } from 'src/common/exceptions/api.exception';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
 import { resolveCurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
-import { AdminAuthController, AdminMeController } from '../controllers/admin-auth.controller';
+import {
+  AdminAuthController,
+  AdminMeController,
+} from '../controllers/admin-auth.controller';
 import { AdminDashboardController } from '../controllers/admin-dashboard.controller';
-import { AdminExperienceCollectionsController, AdminExperiencesController, AdminReservationsController } from '../controllers/admin-experiences.controller';
-import { AdminRequestsController, AdminServicesController } from '../controllers/admin-services.controller';
-import { AdminGuestsController, AdminStaysController } from '../controllers/admin-stays.controller';
+import {
+  AdminExperienceCollectionsController,
+  AdminExperiencesController,
+  AdminReservationsController,
+} from '../controllers/admin-experiences.controller';
+import {
+  AdminRequestsController,
+  AdminServicesController,
+} from '../controllers/admin-services.controller';
+import {
+  AdminGuestsController,
+  AdminStaysController,
+} from '../controllers/admin-stays.controller';
 import { AuditService } from '../services/audit.service';
 import { AdminAuthService } from '../services/admin-auth.service';
 import { AdminDashboardService } from '../services/admin-dashboard.service';
@@ -177,7 +190,9 @@ describe('admin module', () => {
       metadata: { ip: '127.0.0.1' },
     });
 
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({ action: 'admin.login' }));
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'admin.login' }),
+    );
   });
 
   it('handles admin login, session validation, me and logout', async () => {
@@ -207,38 +222,64 @@ describe('admin module', () => {
     const loginResponse = await service.login(' ADMIN@ATRIO.APP ', 'admin123');
     expect(loginResponse.admin.hotel.name).toBe('Copacabana Palace');
     expect(adminSessionRepository.save).toHaveBeenCalled();
-    expect(auditService.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'admin.login' }));
+    expect(auditService.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'admin.login' }),
+    );
 
     adminUserRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.login('missing@atrio.app', 'admin123')).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.login('missing@atrio.app', 'admin123'),
+    ).rejects.toBeInstanceOf(ApiException);
 
-    adminUserRepository.findOne.mockResolvedValueOnce({ ...adminUser, isActive: false });
-    await expect(service.login('admin@atrio.app', 'admin123')).rejects.toBeInstanceOf(ApiException);
+    adminUserRepository.findOne.mockResolvedValueOnce({
+      ...adminUser,
+      isActive: false,
+    });
+    await expect(
+      service.login('admin@atrio.app', 'admin123'),
+    ).rejects.toBeInstanceOf(ApiException);
 
     adminUserRepository.findOne.mockResolvedValueOnce(adminUser);
-    await expect(service.login('admin@atrio.app', 'wrong123')).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.login('admin@atrio.app', 'wrong123'),
+    ).rejects.toBeInstanceOf(ApiException);
 
     const context = await service.validateAccessToken('token');
     expect(context.adminUserId).toBe('admin_001');
 
     adminSessionRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.validateAccessToken('missing')).rejects.toBeInstanceOf(ApiException);
+    await expect(service.validateAccessToken('missing')).rejects.toBeInstanceOf(
+      ApiException,
+    );
 
     adminSessionRepository.findOne.mockResolvedValueOnce({
       publicId: 'admin_session_001',
       hotelId: 'copacabana-palace',
       adminUser: { ...adminUser, isActive: false },
     });
-    await expect(service.validateAccessToken('inactive')).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.validateAccessToken('inactive'),
+    ).rejects.toBeInstanceOf(ApiException);
 
     adminUserRepository.findOne.mockResolvedValueOnce(adminUser);
-    await expect(service.getMe(sessionContext)).resolves.toHaveProperty('email', 'admin@atrio.app');
+    await expect(service.getMe(sessionContext)).resolves.toHaveProperty(
+      'email',
+      'admin@atrio.app',
+    );
 
-    adminUserRepository.findOne.mockResolvedValueOnce({ ...adminUser, hotel: undefined });
-    await expect(service.getMe(sessionContext)).resolves.toHaveProperty('hotel.name', 'copacabana-palace');
+    adminUserRepository.findOne.mockResolvedValueOnce({
+      ...adminUser,
+      hotel: undefined,
+    });
+    await expect(service.getMe(sessionContext)).resolves.toHaveProperty(
+      'hotel.name',
+      'copacabana-palace',
+    );
 
     adminUserRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.getMe(sessionContext)).rejects.toBeInstanceOf(ApiException);
+    await expect(service.getMe(sessionContext)).rejects.toBeInstanceOf(
+      ApiException,
+    );
 
     await expect(service.logout(sessionContext)).resolves.toEqual({ ok: true });
     expect(adminSessionRepository.update).toHaveBeenCalled();
@@ -248,7 +289,9 @@ describe('admin module', () => {
     const dataSource = {
       query: jest.fn((sql: string) => {
         if (sql.includes('FROM hotels')) {
-          return Promise.resolve([{ id: 'copacabana-palace', name: 'Copacabana Palace' }]);
+          return Promise.resolve([
+            { id: 'copacabana-palace', name: 'Copacabana Palace' },
+          ]);
         }
         if (sql.includes("status = 'active'")) {
           return Promise.resolve([{ count: 2 }]);
@@ -259,7 +302,11 @@ describe('admin module', () => {
         if (sql.includes('check_out_date')) {
           return Promise.resolve([{ count: 4 }]);
         }
-        if (sql.includes('COUNT(*)::int AS count') && sql.includes('stay_requests') && sql.includes("INTERVAL '30 minutes'")) {
+        if (
+          sql.includes('COUNT(*)::int AS count') &&
+          sql.includes('stay_requests') &&
+          sql.includes("INTERVAL '30 minutes'")
+        ) {
           return Promise.resolve([{ count: 1 }]);
         }
         if (sql.includes('COUNT(*)::int') && sql.includes('stay_requests')) {
@@ -271,10 +318,24 @@ describe('admin module', () => {
         if (sql.includes('conversation_activity') && sql.includes('delayed')) {
           return Promise.resolve([{ count: 2, delayed: 1 }]);
         }
-        if (sql.includes('FROM stay_requests sr') && sql.includes('waitMinutes')) {
-          return Promise.resolve([{ id: 'req_001', title: 'Toalhas', priority: 'critical', roomNumber: '304', waitMinutes: 42 }]);
+        if (
+          sql.includes('FROM stay_requests sr') &&
+          sql.includes('waitMinutes')
+        ) {
+          return Promise.resolve([
+            {
+              id: 'req_001',
+              title: 'Toalhas',
+              priority: 'critical',
+              roomNumber: '304',
+              waitMinutes: 42,
+            },
+          ]);
         }
-        if (sql.includes('FROM reservations r') && sql.includes('Aguardando confirmação')) {
+        if (
+          sql.includes('FROM reservations r') &&
+          sql.includes('Aguardando confirmação')
+        ) {
           return Promise.resolve([{ id: 'res_001', title: 'Jantar' }]);
         }
         if (sql.includes('conversation_activity')) {
@@ -310,12 +371,22 @@ describe('admin module', () => {
     };
     const authController = new AdminAuthController(authService as never);
     const meController = new AdminMeController(authService as never);
-    const dashboardController = new AdminDashboardController(dashboardService as never);
+    const dashboardController = new AdminDashboardController(
+      dashboardService as never,
+    );
 
-    await expect(authController.login({ email: 'admin@atrio.app', password: 'admin123' })).resolves.toEqual({ ok: true });
-    await expect(authController.logout(sessionContext)).resolves.toEqual({ ok: true });
-    await expect(meController.me(sessionContext)).resolves.toEqual({ ok: true });
-    await expect(dashboardController.getDashboard(sessionContext)).resolves.toEqual({ ok: true });
+    await expect(
+      authController.login({ email: 'admin@atrio.app', password: 'admin123' }),
+    ).resolves.toEqual({ ok: true });
+    await expect(authController.logout(sessionContext)).resolves.toEqual({
+      ok: true,
+    });
+    await expect(meController.me(sessionContext)).resolves.toEqual({
+      ok: true,
+    });
+    await expect(
+      dashboardController.getDashboard(sessionContext),
+    ).resolves.toEqual({ ok: true });
 
     const request = { headers: { authorization: 'Bearer token' } };
     const executionContext = {
@@ -325,9 +396,13 @@ describe('admin module', () => {
     };
     const guard = new AdminAccessTokenGuard(authService as never);
 
-    await expect(guard.canActivate(executionContext as never)).resolves.toBe(true);
+    await expect(guard.canActivate(executionContext as never)).resolves.toBe(
+      true,
+    );
     expect(request).toHaveProperty('adminSession', sessionContext);
-    expect(resolveCurrentAdminSession(executionContext as never)).toBe(sessionContext);
+    expect(resolveCurrentAdminSession(executionContext as never)).toBe(
+      sessionContext,
+    );
 
     const missingHeaderContext = {
       switchToHttp: () => ({
@@ -335,7 +410,9 @@ describe('admin module', () => {
       }),
     };
 
-    await expect(guard.canActivate(missingHeaderContext as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      guard.canActivate(missingHeaderContext as never),
+    ).rejects.toBeInstanceOf(ApiException);
   });
 
   it('handles admin guest and stay management flows', async () => {
@@ -349,14 +426,25 @@ describe('admin module', () => {
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([stay]),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[stay], 11]),
     };
     const stayRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
       findOne: jest.fn().mockResolvedValue(stay),
       save: jest.fn((entity) => Promise.resolve({ ...entity, guest })),
+    };
+    const hotelRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({
+          publicId: 'copacabana-palace',
+          wifiNetwork: 'Atrio Guest',
+          wifiPassword: 'atrio',
+        }),
+      save: jest.fn((entity) => Promise.resolve(entity)),
     };
     const guestSessionRepository = {
       count: jest.fn().mockResolvedValue(1),
@@ -366,19 +454,29 @@ describe('admin module', () => {
       find: jest.fn().mockResolvedValue([usefulInfo]),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
+    const hotelUsefulInfoRepository = {
+      find: jest.fn().mockResolvedValue([usefulInfo]),
+      save: jest.fn((entity) => Promise.resolve(entity)),
+    };
     const consumptionItemRepository = {
       find: jest.fn().mockResolvedValue([consumptionItem]),
+      findOne: jest.fn().mockResolvedValue(consumptionItem),
+      remove: jest.fn().mockResolvedValue(consumptionItem),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
     const authService = {
-      createStayAccessChallengeForStay: jest.fn().mockResolvedValue({ challengeId: 'chl_001' }),
+      createStayAccessChallengeForStay: jest
+        .fn()
+        .mockResolvedValue({ challengeId: 'chl_001' }),
     };
     const auditService = { record: jest.fn() };
     const service = new AdminStaysService(
       guestRepository as never,
       stayRepository as never,
+      hotelRepository as never,
       guestSessionRepository as never,
       usefulInfoRepository as never,
+      hotelUsefulInfoRepository as never,
       consumptionItemRepository as never,
       authService as never,
       auditService as never,
@@ -392,11 +490,28 @@ describe('admin module', () => {
     });
     expect(createdGuest.maskedPhone).toBe('*****-9876');
 
-    const stays = await service.listStays(sessionContext, { search: '304', status: 'active' });
-    expect(stays[0].activeGuestSessions).toBe(1);
+    const stays = await service.listStays(sessionContext, {
+      search: '304',
+      status: 'active',
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-31',
+      page: 2,
+      pageSize: 5,
+    });
+    expect(stays.items[0].activeGuestSessions).toBe(1);
+    expect(stays).toMatchObject({
+      total: 11,
+      page: 2,
+      pageSize: 5,
+      totalPages: 3,
+    });
+    expect(queryBuilder.skip).toHaveBeenCalledWith(5);
+    expect(queryBuilder.take).toHaveBeenCalledWith(5);
     expect(queryBuilder.andWhere).toHaveBeenCalled();
 
-    await expect(service.getStay(sessionContext, 'stay_001')).resolves.toHaveProperty('id', 'stay_001');
+    await expect(
+      service.getStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('id', 'stay_001');
 
     const createdStay = await service.createStay(sessionContext, {
       guestId: 'guest_001',
@@ -405,8 +520,6 @@ describe('admin module', () => {
       checkOutDate: '2026-08-18',
       checkOutTime: '12:00',
       status: 'scheduled',
-      wifiNetwork: 'Atrio Guest',
-      wifiPassword: 'atrio305',
       consumptionEnabled: true,
       consumptionView: 'ready',
     });
@@ -421,8 +534,6 @@ describe('admin module', () => {
         checkOutDate: '2026-08-18',
         checkOutTime: '12:00',
         status: 'scheduled',
-        wifiNetwork: 'Atrio Guest',
-        wifiPassword: 'atrio305',
         consumptionEnabled: true,
         consumptionView: 'ready',
       }),
@@ -435,27 +546,52 @@ describe('admin module', () => {
         checkOutDate: '2026-08-18',
         checkOutTime: '12:00',
         status: 'scheduled',
-        wifiNetwork: 'Atrio Guest',
-        wifiPassword: 'atrio305',
         consumptionEnabled: true,
         consumptionView: 'ready',
       }),
     ).rejects.toBeInstanceOf(ApiException);
 
-    await expect(service.resendAccess(sessionContext, 'stay_001')).resolves.toHaveProperty('challengeId', 'chl_001');
-    await expect(service.revokeGuestSessions(sessionContext, 'stay_001')).resolves.toEqual({ revokedSessions: 2 });
+    await expect(
+      service.resendAccess(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('challengeId', 'chl_001');
+    await expect(
+      service.revokeGuestSessions(sessionContext, 'stay_001'),
+    ).resolves.toEqual({ revokedSessions: 2 });
 
-    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'scheduled', statusLabel: 'Agendada' });
-    await expect(service.checkInStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'active');
-    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'active', statusLabel: 'Ativa' });
-    await expect(service.checkOutStay(sessionContext, 'stay_001')).resolves.toHaveProperty('stay.status', 'checked_out');
-    stayRepository.findOne.mockResolvedValueOnce({ ...stay, status: 'scheduled', statusLabel: 'Agendada' });
-    await expect(service.cancelStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'cancelled');
+    stayRepository.findOne.mockResolvedValueOnce({
+      ...stay,
+      status: 'scheduled',
+      statusLabel: 'Agendada',
+    });
+    await expect(
+      service.checkInStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('status', 'active');
+    stayRepository.findOne.mockResolvedValueOnce({
+      ...stay,
+      status: 'active',
+      statusLabel: 'Ativa',
+    });
+    await expect(
+      service.checkOutStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('stay.status', 'checked_out');
+    stayRepository.findOne.mockResolvedValueOnce({
+      ...stay,
+      status: 'scheduled',
+      statusLabel: 'Agendada',
+    });
+    await expect(
+      service.cancelStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('status', 'cancelled');
 
     await expect(
-      service.updateWifi(sessionContext, 'stay_001', { wifiNetwork: 'New Wi-Fi', wifiPassword: 'new-password' }),
-    ).resolves.toHaveProperty('wifiNetwork', 'New Wi-Fi');
-    await expect(service.listUsefulInfo(sessionContext, 'stay_001')).resolves.toHaveLength(1);
+      service.updateWifi(sessionContext, 'stay_001', {
+        wifiNetwork: 'New Wi-Fi',
+        wifiPassword: 'new-password',
+      }),
+    ).resolves.toHaveProperty('id', 'stay_001');
+    await expect(
+      service.listUsefulInfo(sessionContext, 'stay_001'),
+    ).resolves.toHaveLength(1);
     await expect(
       service.createUsefulInfo(sessionContext, 'stay_001', {
         scope: 'stay',
@@ -464,7 +600,9 @@ describe('admin module', () => {
         position: 2,
       }),
     ).resolves.toHaveProperty('title', 'Piscina');
-    await expect(service.listConsumption(sessionContext, 'stay_001')).resolves.toHaveLength(1);
+    await expect(
+      service.listConsumption(sessionContext, 'stay_001'),
+    ).resolves.toHaveLength(1);
     await expect(
       service.createConsumption(sessionContext, 'stay_001', {
         title: 'Agua',
@@ -476,49 +614,141 @@ describe('admin module', () => {
         occurredAt: '2026-08-14T12:00:00.000Z',
       }),
     ).resolves.toHaveProperty('amountCents', 900);
+    await expect(
+      service.updateConsumption(sessionContext, 'stay_001', 'cons_001', {
+        title: 'Agua com gas',
+        description: 'Frigobar',
+        category: 'minibar',
+        icon: 'Bottle',
+        amountCents: 1100,
+        currency: 'BRL',
+        occurredAt: '2026-08-14T13:00:00.000Z',
+      }),
+    ).resolves.toHaveProperty('amountCents', 1100);
+    await expect(
+      service.deleteConsumption(sessionContext, 'stay_001', 'cons_001'),
+    ).resolves.toEqual({ id: 'cons_001' });
+    expect(consumptionItemRepository.remove).toHaveBeenCalledWith(
+      consumptionItem,
+    );
 
     stayRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.getStay(sessionContext, 'missing')).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.getStay(sessionContext, 'missing'),
+    ).rejects.toBeInstanceOf(ApiException);
   });
 
   it('delegates from admin guest and stay controllers', async () => {
     const service = {
       listGuests: jest.fn().mockResolvedValue([{ id: 'guest_001' }]),
       createGuest: jest.fn().mockResolvedValue({ id: 'guest_002' }),
-      listStays: jest.fn().mockResolvedValue([{ id: 'stay_001' }]),
+      listStays: jest
+        .fn()
+        .mockResolvedValue({
+          items: [{ id: 'stay_001' }],
+          total: 1,
+          page: 1,
+          pageSize: 10,
+          totalPages: 1,
+        }),
       createStay: jest.fn().mockResolvedValue({ id: 'stay_002' }),
       getStay: jest.fn().mockResolvedValue({ id: 'stay_001' }),
       resendAccess: jest.fn().mockResolvedValue({ challengeId: 'chl_001' }),
       revokeGuestSessions: jest.fn().mockResolvedValue({ revokedSessions: 1 }),
-      checkInStay: jest.fn().mockResolvedValue({ id: 'stay_001', status: 'active' }),
-      checkOutStay: jest.fn().mockResolvedValue({ stay: { id: 'stay_001', status: 'checked_out' }, revokedSessions: 1 }),
-      cancelStay: jest.fn().mockResolvedValue({ id: 'stay_001', status: 'cancelled' }),
+      checkInStay: jest
+        .fn()
+        .mockResolvedValue({ id: 'stay_001', status: 'active' }),
+      checkOutStay: jest
+        .fn()
+        .mockResolvedValue({
+          stay: { id: 'stay_001', status: 'checked_out' },
+          revokedSessions: 1,
+        }),
+      cancelStay: jest
+        .fn()
+        .mockResolvedValue({ id: 'stay_001', status: 'cancelled' }),
       updateWifi: jest.fn().mockResolvedValue({ id: 'stay_001' }),
       listUsefulInfo: jest.fn().mockResolvedValue([{ id: 'info_001' }]),
       createUsefulInfo: jest.fn().mockResolvedValue({ id: 'info_002' }),
       listConsumption: jest.fn().mockResolvedValue([{ id: 'cons_001' }]),
       createConsumption: jest.fn().mockResolvedValue({ id: 'cons_002' }),
+      updateConsumption: jest.fn().mockResolvedValue({ id: 'cons_001' }),
+      deleteConsumption: jest.fn().mockResolvedValue({ id: 'cons_001' }),
     };
     const guestsController = new AdminGuestsController(service as never);
     const staysController = new AdminStaysController(service as never);
 
-    await expect(guestsController.listGuests(sessionContext, { search: 'ana' })).resolves.toHaveLength(1);
     await expect(
-      guestsController.createGuest(sessionContext, { firstName: 'Ana', lastName: 'Silva', phoneNumber: '+5531999999999' }),
+      guestsController.listGuests(sessionContext, { search: 'ana' }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      guestsController.createGuest(sessionContext, {
+        firstName: 'Ana',
+        lastName: 'Silva',
+        phoneNumber: '+5531999999999',
+      }),
     ).resolves.toHaveProperty('id', 'guest_002');
-    await expect(staysController.listStays(sessionContext, { status: 'active' })).resolves.toHaveLength(1);
-    await expect(staysController.createStay(sessionContext, {} as never)).resolves.toHaveProperty('id', 'stay_002');
-    await expect(staysController.getStay(sessionContext, 'stay_001')).resolves.toHaveProperty('id', 'stay_001');
-    await expect(staysController.resendAccess(sessionContext, 'stay_001')).resolves.toHaveProperty('challengeId', 'chl_001');
-    await expect(staysController.revokeGuestSessions(sessionContext, 'stay_001')).resolves.toEqual({ revokedSessions: 1 });
-    await expect(staysController.checkInStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'active');
-    await expect(staysController.checkOutStay(sessionContext, 'stay_001')).resolves.toHaveProperty('stay.status', 'checked_out');
-    await expect(staysController.cancelStay(sessionContext, 'stay_001')).resolves.toHaveProperty('status', 'cancelled');
-    await expect(staysController.updateWifi(sessionContext, 'stay_001', { wifiNetwork: 'A', wifiPassword: 'B' })).resolves.toHaveProperty('id', 'stay_001');
-    await expect(staysController.listUsefulInfo(sessionContext, 'stay_001')).resolves.toHaveLength(1);
-    await expect(staysController.createUsefulInfo(sessionContext, 'stay_001', {} as never)).resolves.toHaveProperty('id', 'info_002');
-    await expect(staysController.listConsumption(sessionContext, 'stay_001')).resolves.toHaveLength(1);
-    await expect(staysController.createConsumption(sessionContext, 'stay_001', {} as never)).resolves.toHaveProperty('id', 'cons_002');
+    await expect(
+      staysController.listStays(sessionContext, { status: 'active' }),
+    ).resolves.toHaveProperty('items.length', 1);
+    await expect(
+      staysController.createStay(sessionContext, {} as never),
+    ).resolves.toHaveProperty('id', 'stay_002');
+    await expect(
+      staysController.getStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('id', 'stay_001');
+    await expect(
+      staysController.resendAccess(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('challengeId', 'chl_001');
+    await expect(
+      staysController.revokeGuestSessions(sessionContext, 'stay_001'),
+    ).resolves.toEqual({ revokedSessions: 1 });
+    await expect(
+      staysController.checkInStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('status', 'active');
+    await expect(
+      staysController.checkOutStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('stay.status', 'checked_out');
+    await expect(
+      staysController.cancelStay(sessionContext, 'stay_001'),
+    ).resolves.toHaveProperty('status', 'cancelled');
+    await expect(
+      staysController.updateWifi(sessionContext, 'stay_001', {
+        wifiNetwork: 'A',
+        wifiPassword: 'B',
+      }),
+    ).resolves.toHaveProperty('id', 'stay_001');
+    await expect(
+      staysController.listUsefulInfo(sessionContext, 'stay_001'),
+    ).resolves.toHaveLength(1);
+    await expect(
+      staysController.createUsefulInfo(sessionContext, 'stay_001', {} as never),
+    ).resolves.toHaveProperty('id', 'info_002');
+    await expect(
+      staysController.listConsumption(sessionContext, 'stay_001'),
+    ).resolves.toHaveLength(1);
+    await expect(
+      staysController.createConsumption(
+        sessionContext,
+        'stay_001',
+        {} as never,
+      ),
+    ).resolves.toHaveProperty('id', 'cons_002');
+    await expect(
+      staysController.updateConsumption(
+        sessionContext,
+        'stay_001',
+        'cons_001',
+        {} as never,
+      ),
+    ).resolves.toHaveProperty('id', 'cons_001');
+    await expect(
+      staysController.deleteConsumption(
+        sessionContext,
+        'stay_001',
+        'cons_001',
+      ),
+    ).resolves.toHaveProperty('id', 'cons_001');
   });
 
   it('handles admin service catalog and request queue flows', async () => {
@@ -534,7 +764,11 @@ describe('admin module', () => {
       orderBy: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue([{ ...stayRequest, id: 'req_001', guestName: 'Everton Rodrigues' }]),
+      getRawMany: jest
+        .fn()
+        .mockResolvedValue([
+          { ...stayRequest, id: 'req_001', guestName: 'Everton Rodrigues' },
+        ]),
       getOne: jest.fn().mockResolvedValue(stayRequest),
     };
     const stayRequestRepository = {
@@ -549,18 +783,46 @@ describe('admin module', () => {
     );
 
     await expect(service.listServices()).resolves.toHaveLength(1);
-    await expect(service.createService(sessionContext, serviceDefinition as never)).resolves.toHaveProperty('id');
-    await expect(service.updateService(sessionContext, 'towels', serviceDefinition as never)).resolves.toHaveProperty('title', 'Toalhas');
-    await expect(service.setServicePublished(sessionContext, 'towels', false)).resolves.toHaveProperty('published', false);
-    await expect(service.listRequests(sessionContext, { status: 'received', search: '304' })).resolves.toHaveLength(1);
     await expect(
-      service.updateRequestStatus(sessionContext, 'req_001', { status: 'on_the_way', internalNote: 'Saiu da rouparia' }),
+      service.createService(sessionContext, serviceDefinition as never),
+    ).resolves.toHaveProperty('id');
+    await expect(
+      service.updateService(
+        sessionContext,
+        'towels',
+        serviceDefinition as never,
+      ),
+    ).resolves.toHaveProperty('title', 'Toalhas');
+    await expect(
+      service.setServicePublished(sessionContext, 'towels', false),
+    ).resolves.toHaveProperty('published', false);
+    await expect(
+      service.listRequests(sessionContext, {
+        status: 'received',
+        search: '304',
+      }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      service.updateRequestStatus(sessionContext, 'req_001', {
+        status: 'on_the_way',
+        internalNote: 'Saiu da rouparia',
+      }),
     ).resolves.toHaveProperty('statusLabel', 'A caminho');
 
     serviceDefinitionRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.updateService(sessionContext, 'missing', serviceDefinition as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateService(
+        sessionContext,
+        'missing',
+        serviceDefinition as never,
+      ),
+    ).rejects.toBeInstanceOf(ApiException);
     requestQueryBuilder.getOne.mockResolvedValueOnce(null);
-    await expect(service.updateRequestStatus(sessionContext, 'missing', { status: 'completed' })).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateRequestStatus(sessionContext, 'missing', {
+        status: 'completed',
+      }),
+    ).rejects.toBeInstanceOf(ApiException);
   });
 
   it('delegates from admin services and requests controllers', async () => {
@@ -576,12 +838,33 @@ describe('admin module', () => {
     const requestsController = new AdminRequestsController(service as never);
 
     await expect(servicesController.listServices()).resolves.toHaveLength(1);
-    await expect(servicesController.createService(sessionContext, serviceDefinition as never)).resolves.toHaveProperty('id', 'laundry');
-    await expect(servicesController.updateService(sessionContext, 'towels', serviceDefinition as never)).resolves.toHaveProperty('id', 'towels');
-    await expect(servicesController.publishService(sessionContext, 'towels')).resolves.toHaveProperty('id', 'towels');
-    await expect(servicesController.unpublishService(sessionContext, 'towels')).resolves.toHaveProperty('id', 'towels');
-    await expect(requestsController.listRequests(sessionContext, { status: 'received' })).resolves.toHaveLength(1);
-    await expect(requestsController.updateRequestStatus(sessionContext, 'req_001', { status: 'completed' })).resolves.toHaveProperty('id', 'req_001');
+    await expect(
+      servicesController.createService(
+        sessionContext,
+        serviceDefinition as never,
+      ),
+    ).resolves.toHaveProperty('id', 'laundry');
+    await expect(
+      servicesController.updateService(
+        sessionContext,
+        'towels',
+        serviceDefinition as never,
+      ),
+    ).resolves.toHaveProperty('id', 'towels');
+    await expect(
+      servicesController.publishService(sessionContext, 'towels'),
+    ).resolves.toHaveProperty('id', 'towels');
+    await expect(
+      servicesController.unpublishService(sessionContext, 'towels'),
+    ).resolves.toHaveProperty('id', 'towels');
+    await expect(
+      requestsController.listRequests(sessionContext, { status: 'received' }),
+    ).resolves.toHaveLength(1);
+    await expect(
+      requestsController.updateRequestStatus(sessionContext, 'req_001', {
+        status: 'completed',
+      }),
+    ).resolves.toHaveProperty('id', 'req_001');
   });
 
   it('handles admin experience, collection, slot and reservation flows', async () => {
@@ -612,7 +895,16 @@ describe('admin module', () => {
       orderBy: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue([{ ...reservation, id: 'res_001', roomNumber: '304', guestName: 'Everton Rodrigues' }]),
+      getRawMany: jest
+        .fn()
+        .mockResolvedValue([
+          {
+            ...reservation,
+            id: 'res_001',
+            roomNumber: '304',
+            guestName: 'Everton Rodrigues',
+          },
+        ]),
       getOne: jest.fn().mockResolvedValue(reservation),
     };
     const reservationRepository = {
@@ -634,32 +926,100 @@ describe('admin module', () => {
     );
 
     await expect(service.listExperiences()).resolves.toHaveLength(1);
-    await expect(service.createExperience(sessionContext, experience as never)).resolves.toHaveProperty('id');
-    await expect(service.updateExperience(sessionContext, 'exp_001', experience as never)).resolves.toHaveProperty('title', 'Jantar');
+    await expect(
+      service.createExperience(sessionContext, experience as never),
+    ).resolves.toHaveProperty('id');
+    await expect(
+      service.updateExperience(sessionContext, 'exp_001', experience as never),
+    ).resolves.toHaveProperty('title', 'Jantar');
     await expect(service.listCollections()).resolves.toHaveLength(1);
-    await expect(service.createCollection(sessionContext, collection as never)).resolves.toHaveProperty('id');
-    await expect(service.updateCollection(sessionContext, 'col_001', collection as never)).resolves.toHaveProperty('title', 'Gastronomia');
-    await expect(service.linkExperience(sessionContext, 'col_001', { experienceId: 'exp_001', position: 1 })).resolves.toHaveProperty('experienceId', 'exp_001');
+    await expect(
+      service.createCollection(sessionContext, collection as never),
+    ).resolves.toHaveProperty('id');
+    await expect(
+      service.updateCollection(sessionContext, 'col_001', collection as never),
+    ).resolves.toHaveProperty('title', 'Gastronomia');
+    await expect(
+      service.linkExperience(sessionContext, 'col_001', {
+        experienceId: 'exp_001',
+        position: 1,
+      }),
+    ).resolves.toHaveProperty('experienceId', 'exp_001');
     await expect(service.listSlots('exp_001')).resolves.toHaveLength(1);
-    await expect(service.createSlot(sessionContext, 'exp_001', { startsAt: '2026-08-14T19:00:00.000Z', isAvailable: true, position: 1 })).resolves.toHaveProperty('isAvailable', true);
-    await expect(service.updateSlot(sessionContext, 'exp_001', 'slot_001', { isAvailable: false })).resolves.toHaveProperty('isAvailable', false);
-    await expect(service.listReservations(sessionContext, { status: 'requested', search: '304' })).resolves.toHaveLength(1);
-    slotRepository.findOne.mockResolvedValueOnce({ ...slot, isAvailable: true });
-    await expect(service.createReservation(sessionContext, { stayId: 'stay_001', experienceId: 'exp_001', slotId: 'slot_001' })).resolves.toHaveProperty('status', 'confirmed');
-    await expect(service.updateReservationStatus(sessionContext, 'res_001', { status: 'completed' })).resolves.toHaveProperty('statusLabel', 'Concluida');
+    await expect(
+      service.createSlot(sessionContext, 'exp_001', {
+        startsAt: '2026-08-14T19:00:00.000Z',
+        isAvailable: true,
+        position: 1,
+      }),
+    ).resolves.toHaveProperty('isAvailable', true);
+    await expect(
+      service.updateSlot(sessionContext, 'exp_001', 'slot_001', {
+        isAvailable: false,
+      }),
+    ).resolves.toHaveProperty('isAvailable', false);
+    await expect(
+      service.listReservations(sessionContext, {
+        status: 'requested',
+        search: '304',
+      }),
+    ).resolves.toHaveLength(1);
+    slotRepository.findOne.mockResolvedValueOnce({
+      ...slot,
+      isAvailable: true,
+    });
+    await expect(
+      service.createReservation(sessionContext, {
+        stayId: 'stay_001',
+        experienceId: 'exp_001',
+        slotId: 'slot_001',
+      }),
+    ).resolves.toHaveProperty('status', 'confirmed');
+    await expect(
+      service.updateReservationStatus(sessionContext, 'res_001', {
+        status: 'completed',
+      }),
+    ).resolves.toHaveProperty('statusLabel', 'Concluida');
 
     experienceRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.updateExperience(sessionContext, 'missing', experience as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateExperience(sessionContext, 'missing', experience as never),
+    ).rejects.toBeInstanceOf(ApiException);
     collectionRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.updateCollection(sessionContext, 'missing', collection as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateCollection(sessionContext, 'missing', collection as never),
+    ).rejects.toBeInstanceOf(ApiException);
     slotRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.updateSlot(sessionContext, 'exp_001', 'missing', { isAvailable: true })).rejects.toBeInstanceOf(ApiException);
-    slotRepository.findOne.mockResolvedValueOnce({ ...slot, isAvailable: false });
-    await expect(service.createReservation(sessionContext, { stayId: 'stay_001', experienceId: 'exp_001', slotId: 'slot_001' })).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateSlot(sessionContext, 'exp_001', 'missing', {
+        isAvailable: true,
+      }),
+    ).rejects.toBeInstanceOf(ApiException);
+    slotRepository.findOne.mockResolvedValueOnce({
+      ...slot,
+      isAvailable: false,
+    });
+    await expect(
+      service.createReservation(sessionContext, {
+        stayId: 'stay_001',
+        experienceId: 'exp_001',
+        slotId: 'slot_001',
+      }),
+    ).rejects.toBeInstanceOf(ApiException);
     stayRepository.findOne.mockResolvedValueOnce(null);
-    await expect(service.createReservation(sessionContext, { stayId: 'missing', experienceId: 'exp_001', slotId: 'slot_001' })).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.createReservation(sessionContext, {
+        stayId: 'missing',
+        experienceId: 'exp_001',
+        slotId: 'slot_001',
+      }),
+    ).rejects.toBeInstanceOf(ApiException);
     reservationQueryBuilder.getOne.mockResolvedValueOnce(null);
-    await expect(service.updateReservationStatus(sessionContext, 'missing', { status: 'cancelled' })).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.updateReservationStatus(sessionContext, 'missing', {
+        status: 'cancelled',
+      }),
+    ).rejects.toBeInstanceOf(ApiException);
   });
 
   it('delegates from admin experience and reservation controllers', async () => {
@@ -678,22 +1038,80 @@ describe('admin module', () => {
       createReservation: jest.fn().mockResolvedValue({ id: 'res_002' }),
       updateReservationStatus: jest.fn().mockResolvedValue({ id: 'res_001' }),
     };
-    const experiencesController = new AdminExperiencesController(service as never);
-    const collectionsController = new AdminExperienceCollectionsController(service as never);
-    const reservationsController = new AdminReservationsController(service as never);
+    const experiencesController = new AdminExperiencesController(
+      service as never,
+    );
+    const collectionsController = new AdminExperienceCollectionsController(
+      service as never,
+    );
+    const reservationsController = new AdminReservationsController(
+      service as never,
+    );
 
-    await expect(experiencesController.listExperiences()).resolves.toHaveLength(1);
-    await expect(experiencesController.createExperience(sessionContext, experience as never)).resolves.toHaveProperty('id', 'exp_002');
-    await expect(experiencesController.updateExperience(sessionContext, 'exp_001', experience as never)).resolves.toHaveProperty('id', 'exp_001');
-    await expect(experiencesController.listSlots('exp_001')).resolves.toHaveLength(1);
-    await expect(experiencesController.createSlot(sessionContext, 'exp_001', {} as never)).resolves.toHaveProperty('id', 'slot_002');
-    await expect(experiencesController.updateSlot(sessionContext, 'exp_001', 'slot_001', {} as never)).resolves.toHaveProperty('id', 'slot_001');
-    await expect(collectionsController.listCollections()).resolves.toHaveLength(1);
-    await expect(collectionsController.createCollection(sessionContext, collection as never)).resolves.toHaveProperty('id', 'col_002');
-    await expect(collectionsController.updateCollection(sessionContext, 'col_001', collection as never)).resolves.toHaveProperty('id', 'col_001');
-    await expect(collectionsController.linkExperience(sessionContext, 'col_001', { experienceId: 'exp_001', position: 1 })).resolves.toHaveProperty('id', 'col_item_001');
-    await expect(reservationsController.listReservations(sessionContext, {})).resolves.toHaveLength(1);
-    await expect(reservationsController.createReservation(sessionContext, {} as never)).resolves.toHaveProperty('id', 'res_002');
-    await expect(reservationsController.updateReservationStatus(sessionContext, 'res_001', { status: 'confirmed' })).resolves.toHaveProperty('id', 'res_001');
+    await expect(experiencesController.listExperiences()).resolves.toHaveLength(
+      1,
+    );
+    await expect(
+      experiencesController.createExperience(
+        sessionContext,
+        experience as never,
+      ),
+    ).resolves.toHaveProperty('id', 'exp_002');
+    await expect(
+      experiencesController.updateExperience(
+        sessionContext,
+        'exp_001',
+        experience as never,
+      ),
+    ).resolves.toHaveProperty('id', 'exp_001');
+    await expect(
+      experiencesController.listSlots('exp_001'),
+    ).resolves.toHaveLength(1);
+    await expect(
+      experiencesController.createSlot(sessionContext, 'exp_001', {} as never),
+    ).resolves.toHaveProperty('id', 'slot_002');
+    await expect(
+      experiencesController.updateSlot(
+        sessionContext,
+        'exp_001',
+        'slot_001',
+        {} as never,
+      ),
+    ).resolves.toHaveProperty('id', 'slot_001');
+    await expect(collectionsController.listCollections()).resolves.toHaveLength(
+      1,
+    );
+    await expect(
+      collectionsController.createCollection(
+        sessionContext,
+        collection as never,
+      ),
+    ).resolves.toHaveProperty('id', 'col_002');
+    await expect(
+      collectionsController.updateCollection(
+        sessionContext,
+        'col_001',
+        collection as never,
+      ),
+    ).resolves.toHaveProperty('id', 'col_001');
+    await expect(
+      collectionsController.linkExperience(sessionContext, 'col_001', {
+        experienceId: 'exp_001',
+        position: 1,
+      }),
+    ).resolves.toHaveProperty('id', 'col_item_001');
+    await expect(
+      reservationsController.listReservations(sessionContext, {}),
+    ).resolves.toHaveLength(1);
+    await expect(
+      reservationsController.createReservation(sessionContext, {} as never),
+    ).resolves.toHaveProperty('id', 'res_002');
+    await expect(
+      reservationsController.updateReservationStatus(
+        sessionContext,
+        'res_001',
+        { status: 'confirmed' },
+      ),
+    ).resolves.toHaveProperty('id', 'res_001');
   });
 });

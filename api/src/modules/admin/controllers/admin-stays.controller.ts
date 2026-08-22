@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, Version } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+  Version,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
@@ -7,6 +18,7 @@ import {
   AdminGuestListQueryDto,
   AdminGuestResponseDto,
   AdminStayListQueryDto,
+  AdminStayListResponseDto,
   AdminStayResponseDto,
   AdminStayUsefulInfoResponseDto,
   AdminConsumptionItemResponseDto,
@@ -16,6 +28,7 @@ import {
   CreateAdminStayUsefulInfoDto,
   UpdateAdminStayDto,
   UpdateAdminStayWifiDto,
+  UpdateAdminConsumptionItemDto,
 } from '../dto/admin-stays.dto';
 import { AdminStaysService } from '../services/admin-stays.service';
 
@@ -56,7 +69,7 @@ export class AdminStaysController {
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminStayResponseDto] })
+  @ApiOkResponse({ type: AdminStayListResponseDto })
   async listStays(
     @CurrentAdminSession() session: AdminSessionContext,
     @Query() query: AdminStayListQueryDto,
@@ -193,5 +206,36 @@ export class AdminStaysController {
     @Body() body: CreateAdminConsumptionItemDto,
   ) {
     return this.adminStaysService.createConsumption(session, stayId, body);
+  }
+
+  @Patch(':stayId/consumption/:consumptionId')
+  @Version('1')
+  @ApiOkResponse({ type: AdminConsumptionItemResponseDto })
+  async updateConsumption(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+    @Param('consumptionId') consumptionId: string,
+    @Body() body: UpdateAdminConsumptionItemDto,
+  ) {
+    return this.adminStaysService.updateConsumption(
+      session,
+      stayId,
+      consumptionId,
+      body,
+    );
+  }
+
+  @Delete(':stayId/consumption/:consumptionId')
+  @Version('1')
+  async deleteConsumption(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('stayId') stayId: string,
+    @Param('consumptionId') consumptionId: string,
+  ) {
+    return this.adminStaysService.deleteConsumption(
+      session,
+      stayId,
+      consumptionId,
+    );
   }
 }

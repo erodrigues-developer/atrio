@@ -23,6 +23,7 @@ import { AddRevokedAtToGuestSessions1718300000017 } from '../database/migrations
 import { AddServicePublishing1718300000018 } from '../database/migrations/1718300000018-AddServicePublishing';
 import { AddInternalNoteToStayRequests1718300000019 } from '../database/migrations/1718300000019-AddInternalNoteToStayRequests';
 import { AddExperiencePublishing1718300000020 } from '../database/migrations/1718300000020-AddExperiencePublishing';
+import { AddHotelGuestSettings1718300000022 } from '../database/migrations/1718300000022-AddHotelGuestSettings';
 import InitialSeeder from '../database/seeds/initial.seeder';
 import UniqueSeeder from '../database/seeds/unique.seeder';
 
@@ -38,6 +39,7 @@ describe('database setup', () => {
       createTable: jest.fn(),
       dropTable: jest.fn(),
       getTable: jest.fn().mockResolvedValue({ findColumnByName: jest.fn().mockReturnValue(null) }),
+      hasColumn: jest.fn().mockResolvedValue(false),
       addColumn: jest.fn(),
       dropColumn: jest.fn(),
       query: jest.fn(),
@@ -70,22 +72,24 @@ describe('database setup', () => {
       new AddServicePublishing1718300000018(),
       new AddInternalNoteToStayRequests1718300000019(),
       new AddExperiencePublishing1718300000020(),
+      new AddHotelGuestSettings1718300000022(),
     ];
 
     for (const migration of incrementalMigrations) {
       await migration.up(queryRunner as never);
     }
 
-    expect(queryRunner.createTable).toHaveBeenCalledTimes(18);
+    expect(queryRunner.createTable).toHaveBeenCalledTimes(19);
 
     queryRunner.hasTable.mockResolvedValue(true);
+    queryRunner.hasColumn.mockResolvedValue(true);
 
     for (const migration of incrementalMigrations) {
       await migration.up(queryRunner as never);
       await migration.down(queryRunner as never);
     }
 
-    expect(queryRunner.dropTable).toHaveBeenCalledTimes(18);
+    expect(queryRunner.dropTable).toHaveBeenCalledTimes(19);
 
     const legacyMigration = new CreateAtrioSchema1718300000000();
     await legacyMigration.up(queryRunner as never);

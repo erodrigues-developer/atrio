@@ -364,18 +364,26 @@ export default function TodayScreen() {
             </YStack>
 
             <YStack marginTop={SECTION_SPACING.reservationsToInfo}>
-              <SectionBlock title="Informações úteis">
+              <SectionBlock title="Informações do hotel">
                 <Card borderRadius={radius.xl} paddingHorizontal={spacing.lg} paddingVertical={spacing.sm}>
-                  {dashboard.usefulInfo.map((item, index) => (
-                    <InfoListItem
-                      key={item.id}
-                      description={item.description}
-                      icon={usefulInfoIcons[item.id] ?? ScrollText}
-                      isLast={index === dashboard.usefulInfo.length - 1}
-                      onPress={() => router.push(getUsefulInfoHref(item.id))}
-                      title={item.title}
-                    />
-                  ))}
+                  {dashboard.usefulInfo.length > 0 ? (
+                    dashboard.usefulInfo.map((item, index) => (
+                      <InfoListItem
+                        key={item.id}
+                        description={item.description}
+                        icon={usefulInfoIcons[item.id] ?? ScrollText}
+                        isLast={index === dashboard.usefulInfo.length - 1}
+                        onPress={() => router.push(getUsefulInfoHref(item.id))}
+                        title={item.title}
+                      />
+                    ))
+                  ) : (
+                    <YStack paddingVertical={spacing.md}>
+                      <Text colorToken="textSecondary" variant="body">
+                        Nenhuma informação do hotel disponível no momento.
+                      </Text>
+                    </YStack>
+                  )}
                 </Card>
               </SectionBlock>
             </YStack>

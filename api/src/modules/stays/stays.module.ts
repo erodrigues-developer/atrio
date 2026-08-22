@@ -5,6 +5,7 @@ import { StaysController } from './controllers/stays.controller';
 import { ConsumptionItem } from './entities/consumption-item.entity';
 import { Guest } from './entities/guest.entity';
 import { Hotel } from './entities/hotel.entity';
+import { HotelUsefulInfo } from './entities/hotel-useful-info.entity';
 import { Stay } from './entities/stay.entity';
 import { StayUsefulInfo } from './entities/stay-useful-info.entity';
 import { StayRepository } from './repositories/stay.repository';
@@ -12,7 +13,7 @@ import { StaysService } from './services/stays.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Hotel, Guest, Stay, StayUsefulInfo, ConsumptionItem]),
+    TypeOrmModule.forFeature([Hotel, Guest, Stay, StayUsefulInfo, HotelUsefulInfo, ConsumptionItem]),
     forwardRef(() => AuthModule),
   ],
   controllers: [StaysController],

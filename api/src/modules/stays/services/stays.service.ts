@@ -15,7 +15,7 @@ export class StaysService {
   async getStaySummary(stayId: string, session: AuthSessionContext) {
     this.assertStayAccess(stayId, session);
     const stay = await this.getRequiredStay(stayId);
-    const usefulInfo = await this.stayRepository.listUsefulInfo(stayId, 'stay');
+    const usefulInfo = await this.stayRepository.listHotelUsefulInfo(stay.hotelId, 'stay');
     const [{ count: requestsCountRaw }] = await this.dataSource.query(
       'SELECT COUNT(*)::int AS count FROM stay_requests WHERE stay_id = $1',
       [stayId],
@@ -55,7 +55,7 @@ export class StaysService {
   async getDashboard(stayId: string, session: AuthSessionContext) {
     this.assertStayAccess(stayId, session);
     const stay = await this.getRequiredStay(stayId);
-    const usefulInfo = await this.stayRepository.listUsefulInfo(stayId, 'dashboard');
+    const usefulInfo = await this.stayRepository.listHotelUsefulInfo(stay.hotelId, 'dashboard');
     const requests = await this.dataSource.query(
       `SELECT public_id AS id, title, status, status_label AS "statusLabel", quantity, room_number AS "roomNumber", created_at AS "createdAt"
        FROM stay_requests WHERE stay_id = $1 ORDER BY created_at DESC LIMIT 3`,
@@ -98,8 +98,8 @@ export class StaysService {
     const stay = await this.getRequiredStay(stayId);
 
     return {
-      network: stay.wifiNetwork,
-      password: stay.wifiPassword,
+      network: stay.hotel.wifiNetwork ?? '',
+      password: stay.hotel.wifiPassword ?? '',
       updatedAt: new Date().toISOString(),
     };
   }

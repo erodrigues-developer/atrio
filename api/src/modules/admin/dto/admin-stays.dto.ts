@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class AdminGuestResponseDto {
   @ApiProperty()
@@ -50,8 +61,33 @@ export class AdminStayListQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
+  @IsIn(['scheduled', 'active', 'checked_out', 'cancelled'])
   status?: string;
+
+  @ApiProperty({ required: false, example: '2026-08-01' })
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @ApiProperty({ required: false, example: '2026-08-31' })
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
 
 export class CreateAdminStayDto {
@@ -86,16 +122,6 @@ export class CreateAdminStayDto {
   @IsOptional()
   @IsIn(['scheduled', 'active', 'checked_out', 'cancelled'])
   status?: string;
-
-  @ApiProperty()
-  @IsString()
-  @MaxLength(150)
-  wifiNetwork!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MaxLength(150)
-  wifiPassword!: string;
 
   @ApiProperty()
   @IsBoolean()
@@ -165,12 +191,6 @@ export class AdminStayResponseDto {
   checkOutTime!: string;
 
   @ApiProperty()
-  wifiNetwork!: string;
-
-  @ApiProperty()
-  wifiPassword!: string;
-
-  @ApiProperty()
   consumptionEnabled!: boolean;
 
   @ApiProperty()
@@ -181,6 +201,23 @@ export class AdminStayResponseDto {
 
   @ApiProperty()
   activeGuestSessions!: number;
+}
+
+export class AdminStayListResponseDto {
+  @ApiProperty({ type: [AdminStayResponseDto] })
+  items!: AdminStayResponseDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
 }
 
 export class UpdateAdminStayWifiDto {
@@ -255,6 +292,8 @@ export class CreateAdminConsumptionItemDto {
   @IsDateString()
   occurredAt!: string;
 }
+
+export class UpdateAdminConsumptionItemDto extends CreateAdminConsumptionItemDto {}
 
 export class AdminConsumptionItemResponseDto extends CreateAdminConsumptionItemDto {
   @ApiProperty()

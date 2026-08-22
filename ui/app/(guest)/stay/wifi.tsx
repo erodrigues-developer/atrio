@@ -117,7 +117,7 @@ export default function WifiScreen() {
               Wi-Fi
             </Text>
             <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-              Acesse a rede de internet disponível para sua hospedagem.
+              Acesse a rede de internet disponível no hotel.
             </Text>
           </YStack>
 

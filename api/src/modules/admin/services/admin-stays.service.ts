@@ -7,16 +7,20 @@ import { AuthService } from 'src/modules/auth/services/auth.service';
 import { GuestSession } from 'src/modules/auth/entities/guest-session.entity';
 import { ConsumptionItem } from 'src/modules/stays/entities/consumption-item.entity';
 import { Guest } from 'src/modules/stays/entities/guest.entity';
+import { Hotel } from 'src/modules/stays/entities/hotel.entity';
+import { HotelUsefulInfo } from 'src/modules/stays/entities/hotel-useful-info.entity';
 import { Stay } from 'src/modules/stays/entities/stay.entity';
 import { StayUsefulInfo } from 'src/modules/stays/entities/stay-useful-info.entity';
 import { Brackets, ILike, IsNull, MoreThan, Repository } from 'typeorm';
 import {
+  AdminStayListQueryDto,
   CreateAdminConsumptionItemDto,
   CreateAdminGuestDto,
   CreateAdminStayDto,
   CreateAdminStayUsefulInfoDto,
   UpdateAdminStayDto,
   UpdateAdminStayWifiDto,
+  UpdateAdminConsumptionItemDto,
 } from '../dto/admin-stays.dto';
 import { AuditService } from './audit.service';
 
@@ -27,10 +31,14 @@ export class AdminStaysService {
     private readonly guestRepository: Repository<Guest>,
     @InjectRepository(Stay)
     private readonly stayRepository: Repository<Stay>,
+    @InjectRepository(Hotel)
+    private readonly hotelRepository: Repository<Hotel>,
     @InjectRepository(GuestSession)
     private readonly guestSessionRepository: Repository<GuestSession>,
     @InjectRepository(StayUsefulInfo)
     private readonly usefulInfoRepository: Repository<StayUsefulInfo>,
+    @InjectRepository(HotelUsefulInfo)
+    private readonly hotelUsefulInfoRepository: Repository<HotelUsefulInfo>,
     @InjectRepository(ConsumptionItem)
     private readonly consumptionItemRepository: Repository<ConsumptionItem>,
     private readonly authService: AuthService,
@@ -77,14 +85,16 @@ export class AdminStaysService {
     return this.mapGuest(guest);
   }
 
-  async listStays(session: AdminSessionContext, query: { search?: string; status?: string }) {
+  async listStays(session: AdminSessionContext, query: AdminStayListQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
     const builder = this.stayRepository
       .createQueryBuilder('stay')
       .leftJoinAndSelect('stay.guest', 'guest')
       .where('stay.hotelId = :hotelId', { hotelId: session.hotelId })
       .orderBy('stay.checkInDate', 'DESC')
       .addOrderBy('stay.roomNumber', 'ASC')
-      .limit(80);
+      .addOrderBy('stay.publicId', 'ASC');
 
     if (query.status) {
       builder.andWhere('stay.status = :status', { status: query.status });
@@ -93,17 +103,46 @@ export class AdminStaysService {
     if (query.search) {
       builder.andWhere(
         new Brackets((qb) => {
-          qb.where('stay.roomNumber ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('guest.firstName ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('guest.lastName ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('guest.phoneNumber ILIKE :search', { search: `%${query.search}%` });
+          qb.where('stay.roomNumber ILIKE :search', {
+            search: `%${query.search}%`,
+          })
+            .orWhere('guest.firstName ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('guest.lastName ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('guest.phoneNumber ILIKE :search', {
+              search: `%${query.search}%`,
+            });
         }),
       );
     }
 
-    const stays = await builder.getMany();
+    if (query.dateFrom && query.dateTo) {
+      const dateFrom =
+        query.dateFrom <= query.dateTo ? query.dateFrom : query.dateTo;
+      const dateTo =
+        query.dateFrom <= query.dateTo ? query.dateTo : query.dateFrom;
+      builder.andWhere(
+        'stay.checkInDate <= :dateTo AND stay.checkOutDate >= :dateFrom',
+        { dateFrom, dateTo },
+      );
+    }
 
-    return Promise.all(stays.map((stay) => this.mapStay(stay)));
+    const [stays, total] = await builder
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+    const items = await Promise.all(stays.map((stay) => this.mapStay(stay)));
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
   async getStay(session: AdminSessionContext, stayId: string) {
@@ -113,6 +152,7 @@ export class AdminStaysService {
 
   async createStay(session: AdminSessionContext, input: CreateAdminStayDto) {
     const guest = await this.resolveGuest(input);
+    const hotel = await this.getRequiredHotel(session.hotelId);
     const stay = new Stay();
     stay.publicId = buildResourceId('stay');
     stay.hotelId = session.hotelId;
@@ -123,8 +163,8 @@ export class AdminStaysService {
     stay.checkInDate = input.checkInDate;
     stay.checkOutDate = input.checkOutDate;
     stay.checkOutTime = input.checkOutTime;
-    stay.wifiNetwork = input.wifiNetwork;
-    stay.wifiPassword = input.wifiPassword;
+    stay.wifiNetwork = hotel.wifiNetwork ?? '';
+    stay.wifiPassword = hotel.wifiPassword ?? '';
     stay.consumptionEnabled = input.consumptionEnabled;
     stay.consumptionView = input.consumptionView;
 
@@ -143,11 +183,17 @@ export class AdminStaysService {
     return this.mapStay(savedStay);
   }
 
-  async updateStay(session: AdminSessionContext, stayId: string, input: UpdateAdminStayDto) {
+  async updateStay(
+    session: AdminSessionContext,
+    stayId: string,
+    input: UpdateAdminStayDto,
+  ) {
     const stay = await this.getRequiredStay(session, stayId);
 
     if (input.guestId && input.guestId !== stay.guestId) {
-      const guest = await this.guestRepository.findOne({ where: { publicId: input.guestId } });
+      const guest = await this.guestRepository.findOne({
+        where: { publicId: input.guestId },
+      });
 
       if (!guest) {
         throw new ApiException(404, 'GUEST_NOT_FOUND', 'Guest was not found.');
@@ -182,7 +228,11 @@ export class AdminStaysService {
     const stay = await this.getRequiredStay(session, stayId);
 
     if (stay.status !== 'scheduled') {
-      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only scheduled stays can be checked in.');
+      throw new ApiException(
+        409,
+        'INVALID_STAY_STATUS',
+        'Only scheduled stays can be checked in.',
+      );
     }
 
     stay.status = 'active';
@@ -205,7 +255,11 @@ export class AdminStaysService {
     const stay = await this.getRequiredStay(session, stayId);
 
     if (stay.status !== 'active') {
-      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only active stays can be checked out.');
+      throw new ApiException(
+        409,
+        'INVALID_STAY_STATUS',
+        'Only active stays can be checked out.',
+      );
     }
 
     stay.status = 'checked_out';
@@ -226,14 +280,21 @@ export class AdminStaysService {
       metadata: { revokedSessions: result.affected ?? 0 },
     });
 
-    return { stay: await this.mapStay(savedStay), revokedSessions: result.affected ?? 0 };
+    return {
+      stay: await this.mapStay(savedStay),
+      revokedSessions: result.affected ?? 0,
+    };
   }
 
   async cancelStay(session: AdminSessionContext, stayId: string) {
     const stay = await this.getRequiredStay(session, stayId);
 
     if (stay.status !== 'scheduled') {
-      throw new ApiException(409, 'INVALID_STAY_STATUS', 'Only scheduled stays can be cancelled.');
+      throw new ApiException(
+        409,
+        'INVALID_STAY_STATUS',
+        'Only scheduled stays can be cancelled.',
+      );
     }
 
     stay.status = 'cancelled';
@@ -254,7 +315,8 @@ export class AdminStaysService {
 
   async resendAccess(session: AdminSessionContext, stayId: string) {
     await this.getRequiredStay(session, stayId);
-    const challenge = await this.authService.createStayAccessChallengeForStay(stayId);
+    const challenge =
+      await this.authService.createStayAccessChallengeForStay(stayId);
 
     await this.auditService.record({
       hotelId: session.hotelId,
@@ -288,29 +350,33 @@ export class AdminStaysService {
     return { revokedSessions: result.affected ?? 0 };
   }
 
-  async updateWifi(session: AdminSessionContext, stayId: string, input: UpdateAdminStayWifiDto) {
-    const stay = await this.getRequiredStay(session, stayId);
-    stay.wifiNetwork = input.wifiNetwork;
-    stay.wifiPassword = input.wifiPassword;
-
-    const savedStay = await this.stayRepository.save(stay);
+  async updateWifi(
+    session: AdminSessionContext,
+    stayId: string,
+    input: UpdateAdminStayWifiDto,
+  ) {
+    await this.getRequiredStay(session, stayId);
+    const hotel = await this.getRequiredHotel(session.hotelId);
+    hotel.wifiNetwork = input.wifiNetwork;
+    hotel.wifiPassword = input.wifiPassword;
+    await this.hotelRepository.save(hotel);
 
     await this.auditService.record({
       hotelId: session.hotelId,
       adminUserId: session.adminUserId,
-      action: 'stay.wifi.update',
-      resourceType: 'stay',
-      resourceId: stayId,
-      summary: `${session.email} updated Wi-Fi for ${stayId}.`,
+      action: 'hotel.wifi.update',
+      resourceType: 'hotel',
+      resourceId: session.hotelId,
+      summary: `${session.email} updated hotel Wi-Fi from stay ${stayId}.`,
     });
 
-    return this.mapStay(savedStay);
+    return this.mapStay(await this.getRequiredStay(session, stayId));
   }
 
   async listUsefulInfo(session: AdminSessionContext, stayId: string) {
     await this.getRequiredStay(session, stayId);
-    const items = await this.usefulInfoRepository.find({
-      where: { stayId },
+    const items = await this.hotelUsefulInfoRepository.find({
+      where: { hotelId: session.hotelId },
       order: { scope: 'ASC', position: 'ASC' },
     });
 
@@ -323,24 +389,28 @@ export class AdminStaysService {
     }));
   }
 
-  async createUsefulInfo(session: AdminSessionContext, stayId: string, input: CreateAdminStayUsefulInfoDto) {
+  async createUsefulInfo(
+    session: AdminSessionContext,
+    stayId: string,
+    input: CreateAdminStayUsefulInfoDto,
+  ) {
     await this.getRequiredStay(session, stayId);
-    const item = new StayUsefulInfo();
+    const item = new HotelUsefulInfo();
     item.publicId = buildResourceId('info');
-    item.stayId = stayId;
+    item.hotelId = session.hotelId;
     item.scope = input.scope;
     item.title = input.title;
     item.description = input.description;
     item.position = input.position;
 
-    const savedItem = await this.usefulInfoRepository.save(item);
+    const savedItem = await this.hotelUsefulInfoRepository.save(item);
     await this.auditService.record({
       hotelId: session.hotelId,
       adminUserId: session.adminUserId,
-      action: 'stay.useful_info.create',
-      resourceType: 'stay_useful_info',
+      action: 'hotel.useful_info.create',
+      resourceType: 'hotel_useful_info',
       resourceId: savedItem.publicId,
-      summary: `${session.email} created useful info for ${stayId}.`,
+      summary: `${session.email} created hotel useful info from stay ${stayId}.`,
     });
 
     return {
@@ -362,7 +432,11 @@ export class AdminStaysService {
     return items.map((item) => this.mapConsumptionItem(item));
   }
 
-  async createConsumption(session: AdminSessionContext, stayId: string, input: CreateAdminConsumptionItemDto) {
+  async createConsumption(
+    session: AdminSessionContext,
+    stayId: string,
+    input: CreateAdminConsumptionItemDto,
+  ) {
     await this.getRequiredStay(session, stayId);
     const item = new ConsumptionItem();
     item.publicId = buildResourceId('cons');
@@ -383,15 +457,83 @@ export class AdminStaysService {
       resourceType: 'consumption_item',
       resourceId: savedItem.publicId,
       summary: `${session.email} created consumption item for ${stayId}.`,
-      metadata: { amountCents: savedItem.amountCents, currency: savedItem.currency },
+      metadata: {
+        amountCents: savedItem.amountCents,
+        currency: savedItem.currency,
+      },
     });
 
     return this.mapConsumptionItem(savedItem);
   }
 
+  async updateConsumption(
+    session: AdminSessionContext,
+    stayId: string,
+    consumptionId: string,
+    input: UpdateAdminConsumptionItemDto,
+  ) {
+    const item = await this.getRequiredConsumptionItem(
+      session,
+      stayId,
+      consumptionId,
+    );
+    item.title = input.title;
+    item.description = input.description;
+    item.category = input.category;
+    item.icon = input.icon;
+    item.amountCents = input.amountCents;
+    item.currency = input.currency;
+    item.occurredAt = new Date(input.occurredAt);
+
+    const savedItem = await this.consumptionItemRepository.save(item);
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.consumption.update',
+      resourceType: 'consumption_item',
+      resourceId: savedItem.publicId,
+      summary: `${session.email} updated consumption item for ${stayId}.`,
+      metadata: {
+        amountCents: savedItem.amountCents,
+        currency: savedItem.currency,
+      },
+    });
+
+    return this.mapConsumptionItem(savedItem);
+  }
+
+  async deleteConsumption(
+    session: AdminSessionContext,
+    stayId: string,
+    consumptionId: string,
+  ) {
+    const item = await this.getRequiredConsumptionItem(
+      session,
+      stayId,
+      consumptionId,
+    );
+    await this.consumptionItemRepository.remove(item);
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'stay.consumption.delete',
+      resourceType: 'consumption_item',
+      resourceId: consumptionId,
+      summary: `${session.email} deleted consumption item from ${stayId}.`,
+      metadata: {
+        amountCents: item.amountCents,
+        currency: item.currency,
+      },
+    });
+
+    return { id: consumptionId };
+  }
+
   private async resolveGuest(input: CreateAdminStayDto) {
     if (input.guestId) {
-      const guest = await this.guestRepository.findOne({ where: { publicId: input.guestId } });
+      const guest = await this.guestRepository.findOne({
+        where: { publicId: input.guestId },
+      });
 
       if (!guest) {
         throw new ApiException(404, 'GUEST_NOT_FOUND', 'Guest was not found.');
@@ -404,7 +546,11 @@ export class AdminStaysService {
       return this.createGuestEntity(input.guest);
     }
 
-    throw new ApiException(400, 'GUEST_REQUIRED', 'Provide an existing guest or guest data.');
+    throw new ApiException(
+      400,
+      'GUEST_REQUIRED',
+      'Provide an existing guest or guest data.',
+    );
   }
 
   private async createGuestEntity(input: CreateAdminGuestDto) {
@@ -431,9 +577,25 @@ export class AdminStaysService {
     return stay;
   }
 
+  private async getRequiredHotel(hotelId: string) {
+    const hotel = await this.hotelRepository.findOne({
+      where: { publicId: hotelId },
+    });
+
+    if (!hotel) {
+      throw new ApiException(404, 'HOTEL_NOT_FOUND', 'Hotel was not found.');
+    }
+
+    return hotel;
+  }
+
   private async mapStay(stay: Stay) {
     const activeGuestSessions = await this.guestSessionRepository.count({
-      where: { stayId: stay.publicId, revokedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+      where: {
+        stayId: stay.publicId,
+        revokedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
     });
 
     return {
@@ -445,8 +607,6 @@ export class AdminStaysService {
       checkInDate: stay.checkInDate,
       checkOutDate: stay.checkOutDate,
       checkOutTime: stay.checkOutTime,
-      wifiNetwork: stay.wifiNetwork,
-      wifiPassword: stay.wifiPassword,
       consumptionEnabled: stay.consumptionEnabled,
       consumptionView: stay.consumptionView,
       guest: this.mapGuest(stay.guest),
@@ -490,6 +650,27 @@ export class AdminStaysService {
       currency: item.currency,
       occurredAt: item.occurredAt.toISOString(),
     };
+  }
+
+  private async getRequiredConsumptionItem(
+    session: AdminSessionContext,
+    stayId: string,
+    consumptionId: string,
+  ) {
+    await this.getRequiredStay(session, stayId);
+    const item = await this.consumptionItemRepository.findOne({
+      where: { publicId: consumptionId, stayId },
+    });
+
+    if (!item) {
+      throw new ApiException(
+        404,
+        'CONSUMPTION_ITEM_NOT_FOUND',
+        'Consumption item was not found.',
+      );
+    }
+
+    return item;
   }
 
   private statusLabel(status: string) {
