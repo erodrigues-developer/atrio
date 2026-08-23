@@ -131,7 +131,7 @@ export function AdminShell({
             </Dropdown>
           </div>
         </header>
-        {activeView !== 'stays' ? (
+        {!['stays', 'guests'].includes(activeView) ? (
           <header className="page-heading shared-page-heading">
             <div>
               <Typography.Title level={1}>{viewTitle(activeView)}</Typography.Title>
