@@ -1,5 +1,14 @@
-const API_BASE_URL = import.meta.env.VITE_ATRIO_API_URL ?? 'http://localhost:3101/v1';
-export const ADMIN_SESSION_EXPIRED_EVENT = 'atrio-admin-session-expired';
+import { z } from 'zod';
+import {
+  accessChallengeSchema, adminSessionSchema, adminUserSchema, checkoutSchema, collectionSchema,
+  consumptionSchema, conversationSchema, dashboardSchema, experienceSchema, guestSchema,
+  hotelSettingsSchema, idSchema, mediaSchema, messageSchema, okSchema, reservationSchema,
+  revokedSessionsSchema, serviceRequestSchema, serviceSchema, slotSchema, stayPageSchema,
+  staySchema, usefulInfoSchema,
+} from './contracts';
+import { apiRequest, apiUpload, downloadFile } from './http-client';
+
+export { ADMIN_SESSION_EXPIRED_EVENT, ApiClientError } from './http-client';
 
 export type AdminUser = {
   adminUserId: string;
@@ -263,62 +272,50 @@ export type ConciergeMessage = {
   createdAt: string;
 };
 
-export class ApiClientError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly code?: string,
-  ) {
-    super(message);
-    this.name = 'ApiClientError';
-  }
+function responseSchemaFor(path: string, method = 'GET'): z.ZodType<unknown> {
+  const pathname = path.split('?')[0] ?? path;
+
+  if (pathname === '/admin/auth/login') return adminSessionSchema;
+  if (pathname === '/admin/auth/logout') return okSchema;
+  if (pathname === '/admin/me') return adminUserSchema;
+  if (pathname === '/admin/dashboard') return dashboardSchema;
+  if (pathname === '/admin/guests') return method === 'GET' ? z.array(guestSchema) : guestSchema;
+  if (pathname === '/admin/stays') return method === 'GET' ? stayPageSchema : staySchema;
+  if (/\/admin\/stays\/[^/]+\/access\/resend$/.test(pathname)) return accessChallengeSchema;
+  if (/\/admin\/stays\/[^/]+\/check-out$/.test(pathname)) return checkoutSchema;
+  if (/\/admin\/stays\/[^/]+\/sessions\/revoke$/.test(pathname)) return revokedSessionsSchema;
+  if (/\/admin\/stays\/[^/]+\/useful-info$/.test(pathname)) return method === 'GET' ? z.array(usefulInfoSchema) : usefulInfoSchema;
+  if (/\/admin\/stays\/[^/]+\/consumption\/[^/]+$/.test(pathname)) return method === 'DELETE' ? idSchema : consumptionSchema;
+  if (/\/admin\/stays\/[^/]+\/consumption$/.test(pathname)) return method === 'GET' ? z.array(consumptionSchema) : consumptionSchema;
+  if (/\/admin\/stays\/[^/]+(?:\/check-in|\/cancel|\/wifi)?$/.test(pathname)) return staySchema;
+  if (pathname === '/admin/services') return method === 'GET' ? z.array(serviceSchema) : serviceSchema;
+  if (/\/admin\/services\/[^/]+/.test(pathname)) return serviceSchema;
+  if (pathname === '/admin/requests') return z.array(serviceRequestSchema);
+  if (/\/admin\/requests\/[^/]+\/status$/.test(pathname)) return serviceRequestSchema;
+  if (pathname === '/admin/experiences') return method === 'GET' ? z.array(experienceSchema) : experienceSchema;
+  if (pathname === '/admin/experience-collections') return method === 'GET' ? z.array(collectionSchema) : collectionSchema;
+  if (/\/admin\/experience-collections\/[^/]+\/items$/.test(pathname)) return idSchema;
+  if (/\/admin\/experiences\/[^/]+\/slots$/.test(pathname)) return method === 'GET' ? z.array(slotSchema) : slotSchema;
+  if (/\/admin\/experiences\/[^/]+\/slots\/[^/]+$/.test(pathname)) return slotSchema;
+  if (pathname === '/admin/reservations') return method === 'GET' ? z.array(reservationSchema) : reservationSchema;
+  if (/\/admin\/reservations\/[^/]+\/status$/.test(pathname)) return reservationSchema;
+  if (pathname === '/admin/concierge/conversations') return z.array(conversationSchema);
+  if (/\/admin\/concierge\/conversations\/[^/]+\/messages$/.test(pathname)) return method === 'GET' ? z.array(messageSchema) : messageSchema;
+  if (pathname === '/admin/hotels/current') return hotelSettingsSchema;
+  if (pathname === '/admin/hotels/current/wifi') return hotelSettingsSchema;
+  if (pathname === '/admin/hotels/current/useful-info') return usefulInfoSchema;
+
+  throw new Error(`Contrato de resposta não configurado para ${method} ${pathname}`);
 }
 
-function notifySessionExpired(status: number) {
-  if (status === 401 || status === 403) {
-    window.dispatchEvent(new CustomEvent(ADMIN_SESSION_EXPIRED_EVENT));
-  }
+function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const schema = responseSchemaFor(path, options.method ?? 'GET') as unknown as z.ZodType<T>;
+  return apiRequest(path, schema, options);
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers ?? {}),
-    },
-  });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message = payload?.error?.message ?? 'Não foi possível completar a operação.';
-    notifySessionExpired(response.status);
-    throw new ApiClientError(message, response.status, payload?.error?.code);
-  }
-
-  return payload as T;
-}
-
-async function upload<T>(path: string, accessToken: string, file: File): Promise<T> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: formData,
-  });
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    const message = payload?.error?.message ?? 'Não foi possível enviar a mídia.';
-    notifySessionExpired(response.status);
-    throw new ApiClientError(message, response.status, payload?.error?.code);
-  }
-
-  return payload as T;
+function upload<T>(path: string, accessToken: string, file: File): Promise<T> {
+  const schema = (path.includes('/hotels/current/') ? hotelSettingsSchema : mediaSchema) as unknown as z.ZodType<T>;
+  return apiUpload(path, accessToken, file, schema);
 }
 
 export function login(email: string, password: string) {
@@ -764,20 +761,9 @@ export async function downloadReport(accessToken: string, report: 'stays' | 'req
   if (query.from) params.set('from', query.from);
   if (query.to) params.set('to', query.to);
 
-  const response = await fetch(`${API_BASE_URL}/admin/reports/${report}.csv${params.size ? `?${params}` : ''}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    notifySessionExpired(response.status);
-    throw new ApiClientError('Não foi possível baixar o relatório.', response.status);
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${report}.csv`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+  await downloadFile(
+    `/admin/reports/${report}.csv${params.size ? `?${params}` : ''}`,
+    accessToken,
+    `${report}.csv`,
+  );
 }

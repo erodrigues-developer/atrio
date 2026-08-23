@@ -3269,3 +3269,39 @@ td {
     display: none;
   }
 }
+/* Application-level feedback shared by bootstrap and route boundaries. */
+.app-loading,
+.fatal-error {
+  align-items: center;
+  background: #f6f8fc;
+  color: #17233b;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.view-loading {
+  color: #65718b;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.fatal-error section {
+  background: #fff;
+  border: 1px solid #dce3ee;
+  border-radius: 12px;
+  max-width: 520px;
+  padding: 32px;
+}
+
+.fatal-error button {
+  background: #0b63f6;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  margin-top: 8px;
+  padding: 10px 16px;
+}
