@@ -12,6 +12,7 @@ import { clearStoredAdminSession } from '@/features/auth';
 import { formatTodayLabel } from '@/shared/lib/presentation';
 import { getDashboard, logout, type AdminSession } from './api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
+import { Toast } from '@/shared/components/Toast';
 
 const DashboardView = lazy(async () => ({ default: (await import('@/features/dashboard')).DashboardView }));
 const StaysView = lazy(async () => ({ default: (await import('@/features/stays')).StaysView }));
@@ -109,9 +110,9 @@ export function AdminShell({
         <header className="topbar">
           <div className="global-search"><Input prefix={<SearchOutlined />} placeholder="Buscar no sistema..." /></div>
           <div className="account">
-            <Button aria-label="Notificações" className="topbar-icon-button" icon={<BellOutlined />} type="text" />
-            <Button aria-label="Mensagens" className="topbar-icon-button" icon={<MailOutlined />} type="text" />
-            <Button aria-label="Ajuda" className="topbar-icon-button" icon={<QuestionCircleOutlined />} type="text" />
+            <Button aria-label="Notificações" className="topbar-icon-button" icon={<BellOutlined />} title="Notificações" type="text" />
+            <Button aria-label="Mensagens" className="topbar-icon-button" icon={<MailOutlined />} title="Mensagens" type="text" />
+            <Button aria-label="Ajuda" className="topbar-icon-button" icon={<QuestionCircleOutlined />} title="Ajuda" type="text" />
             <Dropdown
               menu={{
                 items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Sair' }],
@@ -131,7 +132,7 @@ export function AdminShell({
             </Dropdown>
           </div>
         </header>
-        {!['stays', 'guests'].includes(activeView) ? (
+        {!['dashboard', 'stays', 'guests', 'services', 'requests', 'experiences', 'reservations', 'concierge', 'reports', 'settings'].includes(activeView) ? (
           <header className="page-heading shared-page-heading">
             <div>
               <Typography.Title level={1}>{viewTitle(activeView)}</Typography.Title>
@@ -143,7 +144,7 @@ export function AdminShell({
           {activeView === 'dashboard' ? (
             <>
               {dashboardQuery.isLoading ? <ViewLoading /> : null}
-              {dashboardQuery.error ? <div className="error-state">{dashboardQuery.error.message}</div> : null}
+              {dashboardQuery.error ? <Toast message={dashboardQuery.error.message} onClose={() => void dashboardQuery.refetch()} tone="error" /> : null}
               {!dashboardQuery.isLoading && !dashboardQuery.error && dashboardQuery.data ? (
                 <DashboardView
                   accessToken={session.accessToken}
@@ -162,7 +163,9 @@ export function AdminShell({
           {activeView === 'requests' ? <RequestsView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} /> : null}
           {activeView === 'experiences' ? <ExperiencesView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} /> : null}
           {activeView === 'reservations' ? <ReservationsView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} /> : null}
-          {activeView === 'concierge' ? <ConciergeView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} /> : null}
+          {activeView === 'concierge' ? (
+            <ConciergeView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} onNavigate={navigateToView} />
+          ) : null}
           {activeView === 'reports' ? <ReportsView accessToken={session.accessToken} /> : null}
           {activeView === 'settings' ? <SettingsView accessToken={session.accessToken} cacheScope={session.admin.hotel.id} /> : null}
         </Suspense>

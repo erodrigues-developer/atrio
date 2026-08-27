@@ -1,13 +1,21 @@
-import { useState } from 'react';
-import { Button, Checkbox, Empty, Input, Select as AntSelect, Table, Tag, Typography } from 'antd';
+import { type FormEvent, type ReactNode, useState } from 'react';
+import {
+  Button, Checkbox, Dropdown, Input, Pagination as AntPagination, Select as AntSelect, Table, Tag, Typography,
+} from 'antd';
+import {
+  AppstoreOutlined, EditOutlined, EyeOutlined, FileTextOutlined, MoreOutlined, PlusOutlined,
+  SearchOutlined, StopOutlined, TeamOutlined, UploadOutlined,
+} from '@ant-design/icons';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import servicesEmptyImage from '@/assets/services-empty.webp';
 import {
-  createAdminService, listAdminServices, setAdminServicePublished, type ServiceDefinition,
+  createAdminService, listAdminServices, setAdminServicePublished, updateAdminService,
+  type ServiceDefinition,
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
-import { ConfirmActionModal } from '@/shared/components/Modal';
+import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { Toast } from '@/shared/components/Toast';
 import { serviceFormSchema, type ServiceFormValues } from '../schemas/service-form-schema';
 
@@ -16,6 +24,12 @@ type ServicesViewProps = {
   cacheScope: string;
 };
 
+type ServiceFilters = {
+  search: string;
+  status: '' | 'published' | 'draft';
+};
+
+const PAGE_SIZE = 10;
 const defaultValues: ServiceFormValues = {
   id: '',
   title: '',
@@ -31,127 +45,494 @@ const defaultValues: ServiceFormValues = {
 
 export function ServicesView({ accessToken, cacheScope }: ServicesViewProps) {
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<ServiceFilters['status']>('');
+  const [filters, setFilters] = useState<ServiceFilters>({ search: '', status: '' });
+  const [page, setPage] = useState(1);
+  const [detailService, setDetailService] = useState<ServiceDefinition | null>(null);
+  const [formService, setFormService] = useState<ServiceDefinition | 'new' | null>(null);
   const [publishCandidate, setPublishCandidate] = useState<ServiceDefinition | null>(null);
-  const {
-    control,
-    formState: { errors },
-    handleSubmit,
-    register,
-    reset,
-  } = useForm<ServiceFormValues>({ resolver: zodResolver(serviceFormSchema), defaultValues });
+  const [message, setMessage] = useState<string | null>(null);
   const servicesQuery = useQuery({
-    queryKey: adminQueryKeys.services(cacheScope),
-    queryFn: () => listAdminServices(accessToken),
+    queryKey: adminQueryKeys.serviceList(cacheScope, { ...filters, page, pageSize: PAGE_SIZE }),
+    queryFn: () => listAdminServices(accessToken, { ...filters, page, pageSize: PAGE_SIZE }),
   });
-  const createMutation = useMutation({
-    mutationFn: (values: ServiceFormValues) => createAdminService(accessToken, {
-      ...(values.id ? { id: values.id } : {}),
-      title: values.title,
-      description: values.description,
-      icon: values.icon,
-      fulfillmentType: values.fulfillmentType,
-      published: values.published,
-      requestSchema: {
-        fields: [{
-          name: values.fieldName,
-          label: values.fieldLabel,
-          type: values.fieldType,
-          required: values.fieldRequired,
-          ...(values.fieldType === 'string' ? { maxLength: 500 } : {}),
-        }],
-      },
-    }),
-    onSuccess: async () => {
-      reset(defaultValues);
-      setMessage('Serviço cadastrado.');
+  const saveMutation = useMutation({
+    mutationFn: ({ service, values }: { service?: ServiceDefinition; values: ServiceFormValues }) => {
+      const payload = servicePayload(values);
+      return service
+        ? updateAdminService(accessToken, service.id, payload)
+        : createAdminService(accessToken, { ...payload, ...(values.id ? { id: values.id } : {}) });
+    },
+    onSuccess: async (savedService, variables) => {
+      setFormService(null);
+      setDetailService((current) => current?.id === savedService.id ? savedService : current);
+      setMessage(variables.service ? 'Serviço atualizado com sucesso.' : 'Serviço cadastrado com sucesso.');
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.services(cacheScope) });
     },
   });
   const publishMutation = useMutation({
     mutationFn: (service: ServiceDefinition) => setAdminServicePublished(accessToken, service.id, !service.published),
-    onSuccess: async (_, service) => {
-      setMessage(service.published ? 'Serviço despublicado.' : 'Serviço publicado.');
+    onSuccess: async (savedService, service) => {
+      setDetailService((current) => current?.id === savedService.id ? savedService : current);
+      setPage(1);
+      setMessage(service.published ? 'Serviço despublicado com sucesso.' : 'Serviço publicado com sucesso.');
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.services(cacheScope) });
     },
   });
-  const error = servicesQuery.error ?? createMutation.error ?? publishMutation.error;
+
+  const services = servicesQuery.data?.items ?? [];
+  const totalItems = servicesQuery.data?.total ?? 0;
+  const queryError = servicesQuery.error ?? publishMutation.error;
+
+  function applyFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPage(1);
+    setFilters({ search: search.trim(), status });
+  }
+
+  function clearFilters() {
+    setSearch('');
+    setStatus('');
+    setFilters({ search: '', status: '' });
+    setPage(1);
+  }
+
+  function openCreateModal() {
+    saveMutation.reset();
+    setFormService('new');
+  }
+
+  function openEditModal(service: ServiceDefinition) {
+    saveMutation.reset();
+    setFormService(service);
+  }
 
   return (
-    <div className="management-grid">
-      <section className="table-panel">
-        <header className="panel-toolbar"><Typography.Title level={2}>Catálogo de serviços</Typography.Title></header>
-        {message || error ? (
-          <Toast
-            tone={error ? 'error' : 'success'}
-            message={error instanceof Error ? error.message : message ?? ''}
-            onClose={() => { setMessage(null); if (error) void servicesQuery.refetch(); }}
-          />
-        ) : null}
-        {servicesQuery.isLoading ? <p className="empty-state" role="status">Carregando serviços...</p> : null}
-        {!servicesQuery.isLoading && (servicesQuery.data?.length ?? 0) === 0
-          ? <Empty description="Nenhum serviço cadastrado." image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          : (
-            <Table
-              columns={[
-                { title: 'Serviço', key: 'service', render: (_: unknown, service: ServiceDefinition) => <><strong>{service.title}</strong><br /><span className="muted-text">{service.description}</span></> },
-                { title: 'Formulário', key: 'form', render: (_: unknown, service: ServiceDefinition) => `${service.requestSchema.fields.length} campo(s)` },
-                { title: 'Status', key: 'status', render: (_: unknown, service: ServiceDefinition) => <Tag>{service.published ? 'Publicado' : 'Rascunho'}</Tag> },
-                { title: 'Ações', key: 'actions', render: (_: unknown, service: ServiceDefinition) => <Button onClick={() => setPublishCandidate(service)} size="small">{service.published ? 'Despublicar' : 'Publicar'}</Button> },
+    <div className="services-layout">
+      <header className="page-heading services-page-heading">
+        <div>
+          <Typography.Title level={1}>Serviços</Typography.Title>
+          <p>Gerencie o catálogo de serviços oferecidos aos hóspedes durante a estadia.</p>
+        </div>
+        <Button icon={<PlusOutlined />} onClick={openCreateModal} size="large" type="primary">Novo serviço</Button>
+      </header>
+
+      <section className="services-filter-panel">
+        <form className="services-toolbar" onSubmit={applyFilters}>
+          <label className="services-filter-field">
+            <span>Buscar serviço</span>
+            <Input
+              aria-label="Buscar serviço"
+              placeholder="Buscar por título, descrição ou atendimento"
+              prefix={<SearchOutlined />}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <label className="services-filter-field">
+            <span>Status</span>
+            <AntSelect
+              aria-label="Status do serviço"
+              onChange={setStatus}
+              options={[
+                { label: 'Todos', value: '' },
+                { label: 'Publicados', value: 'published' },
+                { label: 'Rascunhos', value: 'draft' },
               ]}
-              dataSource={servicesQuery.data ?? []}
-              loading={servicesQuery.isLoading}
-              pagination={false}
-              rowKey="id"
-            />
-          )}
-      </section>
-      <section className="form-panel">
-        <Typography.Title level={2}>Novo serviço</Typography.Title>
-        <form className="stack-form" noValidate onSubmit={handleSubmit((values) => createMutation.mutate(values))}>
-          <label>ID opcional<Input {...register('id')} /></label>
-          <label>Título<Input {...register('title')} aria-invalid={Boolean(errors.title)} /></label>
-          <FieldError message={errors.title?.message} />
-          <label>Descrição<Input {...register('description')} aria-invalid={Boolean(errors.description)} /></label>
-          <FieldError message={errors.description?.message} />
-          <div className="two-columns">
-            <label>Ícone<Input {...register('icon')} aria-invalid={Boolean(errors.icon)} /></label>
-            <label>Atendimento<Input {...register('fulfillmentType')} aria-invalid={Boolean(errors.fulfillmentType)} /></label>
-          </div>
-          <Typography.Title level={3}>Campo do formulário</Typography.Title>
-          <div className="two-columns">
-            <label>Nome<Input {...register('fieldName')} aria-invalid={Boolean(errors.fieldName)} /></label>
-            <label>Label<Input {...register('fieldLabel')} aria-invalid={Boolean(errors.fieldLabel)} /></label>
-          </div>
-          <label>Tipo
-            <Controller
-              control={control}
-              name="fieldType"
-              render={({ field }) => <AntSelect onChange={field.onChange} options={[{ label: 'Texto', value: 'string' }, { label: 'Número', value: 'number' }]} value={field.value} />}
+              value={status}
             />
           </label>
-          <label className="check-row">
-            <Controller control={control} name="published" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />
-            Publicado
-          </label>
-          <Button htmlType="submit" loading={createMutation.isPending} type="primary">Cadastrar serviço</Button>
+          <Button className="filter-clear-button" onClick={clearFilters}>Limpar filtros</Button>
+          <Button htmlType="submit" type="primary">Aplicar filtros</Button>
         </form>
       </section>
-      {publishCandidate ? (
-        <ConfirmActionModal
-          confirmLabel={publishCandidate.published ? 'Despublicar serviço' : 'Publicar serviço'}
-          message={`O serviço "${publishCandidate.title}" será ${publishCandidate.published ? 'removido do catálogo publicado' : 'publicado no catálogo'}.`}
-          onCancel={() => setPublishCandidate(null)}
-          onConfirm={() => {
-            publishMutation.mutate(publishCandidate);
-            setPublishCandidate(null);
-          }}
-          title={publishCandidate.published ? 'Despublicar serviço?' : 'Publicar serviço?'}
-          tone={publishCandidate.published ? 'danger' : 'primary'}
+
+      <section className="table-panel services-results-panel">
+        <header className="services-results-header">
+          <span>Total de {totalItems} {totalItems === 1 ? 'registro' : 'registros'}</span>
+        </header>
+        {message || queryError ? (
+          <Toast
+            tone={queryError ? 'error' : 'success'}
+            message={queryError instanceof Error ? queryError.message : message ?? ''}
+            onClose={() => {
+              setMessage(null);
+              if (queryError) void servicesQuery.refetch();
+            }}
+          />
+        ) : null}
+        <ServicesTable
+          emptyContent={<ServicesEmptyState onClearFilters={clearFilters} onCreate={openCreateModal} />}
+          isLoading={servicesQuery.isLoading}
+          onEdit={openEditModal}
+          onPublish={setPublishCandidate}
+          onSelect={setDetailService}
+          services={services}
         />
+        <ServicesPagination currentPage={page} totalItems={totalItems} onPageChange={setPage} />
+      </section>
+
+      {detailService ? (
+        <ServiceDetailModal
+          onClose={() => setDetailService(null)}
+          onEdit={openEditModal}
+          onPublish={setPublishCandidate}
+          service={detailService}
+        />
+      ) : null}
+      {formService ? (
+        <ServiceFormModal
+          error={saveMutation.error}
+          isSubmitting={saveMutation.isPending}
+          layer={detailService ? 'secondary' : 'primary'}
+          onCancel={() => {
+            saveMutation.reset();
+            setFormService(null);
+          }}
+          onSubmit={(values) => saveMutation.mutate({
+            values,
+            ...(formService === 'new' ? {} : { service: formService }),
+          })}
+          {...(formService === 'new' ? {} : { service: formService })}
+        />
+      ) : null}
+      {publishCandidate ? (
+        <Modal
+          layer={detailService ? 'secondary' : 'primary'}
+          onClose={() => setPublishCandidate(null)}
+          size="compact"
+          title={publishCandidate.published ? 'Despublicar serviço?' : 'Publicar serviço?'}
+        >
+          <p className="muted-text">O serviço “{publishCandidate.title}” será {publishCandidate.published ? 'removido do catálogo publicado' : 'publicado no catálogo dos hóspedes'}.</p>
+          <div className="modal-footer">
+            <Button onClick={() => setPublishCandidate(null)}>Cancelar</Button>
+            <Button
+              danger={publishCandidate.published}
+              onClick={() => {
+                publishMutation.mutate(publishCandidate);
+                setPublishCandidate(null);
+              }}
+              type="primary"
+            >
+              {publishCandidate.published ? 'Despublicar serviço' : 'Publicar serviço'}
+            </Button>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );
+}
+
+function ServicesTable({
+  emptyContent,
+  isLoading,
+  onEdit,
+  onPublish,
+  onSelect,
+  services,
+}: {
+  emptyContent: ReactNode;
+  isLoading: boolean;
+  onEdit: (service: ServiceDefinition) => void;
+  onPublish: (service: ServiceDefinition) => void;
+  onSelect: (service: ServiceDefinition) => void;
+  services: ServiceDefinition[];
+}) {
+  return (
+    <Table
+      className="services-table"
+      columns={[
+        {
+          title: 'Serviço',
+          key: 'service',
+          render: (_: unknown, service: ServiceDefinition) => (
+            <div className="service-table-primary">
+              <strong>{service.title}</strong>
+              <span>{service.description}</span>
+            </div>
+          ),
+        },
+        { title: 'Atendimento', dataIndex: 'fulfillmentType', key: 'fulfillmentType', render: serviceFulfillmentLabel },
+        { title: 'Formulário', key: 'form', align: 'center', render: (_: unknown, service: ServiceDefinition) => `${service.requestSchema.fields.length} ${service.requestSchema.fields.length === 1 ? 'campo' : 'campos'}` },
+        { title: 'Status', key: 'status', render: (_: unknown, service: ServiceDefinition) => <Tag color={service.published ? 'success' : 'default'}>{service.published ? 'Publicado' : 'Rascunho'}</Tag> },
+        {
+          title: 'Ações',
+          key: 'actions',
+          width: 148,
+          render: (_: unknown, service: ServiceDefinition) => (
+            <div className="service-table-actions" onClick={(event) => event.stopPropagation()}>
+              <Button aria-label={`Ver detalhes de ${service.title}`} icon={<EyeOutlined />} onClick={() => onSelect(service)} title={`Ver detalhes de ${service.title}`} type="text" />
+              <Button aria-label={`Editar ${service.title}`} icon={<EditOutlined />} onClick={() => onEdit(service)} title={`Editar ${service.title}`} type="text" />
+              <Button
+                aria-label={`${service.published ? 'Despublicar' : 'Publicar'} ${service.title}`}
+                danger={service.published}
+                icon={service.published ? <StopOutlined /> : <UploadOutlined />}
+                onClick={() => onPublish(service)}
+                title={`${service.published ? 'Despublicar' : 'Publicar'} ${service.title}`}
+                type="text"
+              />
+            </div>
+          ),
+        },
+      ]}
+      dataSource={services}
+      loading={isLoading}
+      locale={{ emptyText: emptyContent }}
+      onRow={(service) => ({
+        'aria-label': `Ver detalhes de ${service.title}`,
+        onClick: () => onSelect(service),
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSelect(service);
+          }
+        },
+        role: 'button',
+        tabIndex: 0,
+      })}
+      pagination={false}
+      rowClassName="clickable-row"
+      rowKey="id"
+      scroll={{ x: 840 }}
+    />
+  );
+}
+
+function ServicesEmptyState({ onClearFilters, onCreate }: { onClearFilters: () => void; onCreate: () => void }) {
+  return (
+    <div className="services-empty-state">
+      <img alt="Campainha de serviço de hotel, toalhas e itens de amenidades" src={servicesEmptyImage} />
+      <Typography.Title level={3}>Nenhum serviço encontrado</Typography.Title>
+      <p>Tente ajustar os filtros ou cadastre um novo serviço para o catálogo.</p>
+      <div className="empty-state-actions">
+        <Button onClick={onClearFilters}>Limpar filtros</Button>
+        <Button icon={<PlusOutlined />} onClick={onCreate} type="primary">Novo serviço</Button>
+      </div>
+    </div>
+  );
+}
+
+function ServicesPagination({
+  currentPage,
+  onPageChange,
+  totalItems,
+}: {
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+}) {
+  return (
+    <footer className="pagination-bar">
+      <div className="pagination-size">
+        <span>Itens por página</span>
+        <AntSelect options={[{ label: String(PAGE_SIZE), value: PAGE_SIZE }]} value={PAGE_SIZE} />
+      </div>
+      <AntPagination current={currentPage} disabled={totalItems === 0} onChange={onPageChange} pageSize={PAGE_SIZE} showSizeChanger={false} total={Math.max(totalItems, 1)} />
+    </footer>
+  );
+}
+
+function ServiceDetailModal({
+  onClose,
+  onEdit,
+  onPublish,
+  service,
+}: {
+  onClose: () => void;
+  onEdit: (service: ServiceDefinition) => void;
+  onPublish: (service: ServiceDefinition) => void;
+  service: ServiceDefinition;
+}) {
+  return (
+    <Modal title="Detalhes do serviço" onClose={onClose} size="large">
+      <div className="service-detail-content">
+        <header className="service-detail-hero">
+          <div className="service-detail-identity">
+            <div className="service-identity-chip"><AppstoreOutlined /> {service.title}</div>
+            <Tag color={service.published ? 'success' : 'default'}>{service.published ? 'Publicado' : 'Rascunho'}</Tag>
+          </div>
+          <div className="service-detail-actions">
+            <Button icon={<EditOutlined />} onClick={() => onEdit(service)} type="primary">Editar serviço</Button>
+            <Dropdown
+              menu={{
+                items: [{
+                  danger: service.published,
+                  icon: service.published ? <StopOutlined /> : <UploadOutlined />,
+                  key: 'publication',
+                  label: service.published ? 'Despublicar serviço' : 'Publicar serviço',
+                }],
+                onClick: () => onPublish(service),
+              }}
+            >
+              <Button aria-label="Mais ações" icon={<MoreOutlined />} title="Mais ações" />
+            </Dropdown>
+          </div>
+        </header>
+        <p className="service-detail-description">{service.description}</p>
+        <section className="service-summary-grid">
+          <article className="service-summary-card">
+            <span>Atendimento</span>
+            <strong><TeamOutlined /> {serviceFulfillmentLabel(service.fulfillmentType)}</strong>
+            <small>Responsável pela execução</small>
+          </article>
+          <article className="service-summary-card">
+            <span>Formulário</span>
+            <strong><FileTextOutlined /> {service.requestSchema.fields.length} {service.requestSchema.fields.length === 1 ? 'campo' : 'campos'}</strong>
+            <small>Informações solicitadas ao hóspede</small>
+          </article>
+          <article className="service-summary-card">
+            <span>Visibilidade</span>
+            <strong><AppstoreOutlined /> {service.published ? 'Disponível no catálogo' : 'Oculto do catálogo'}</strong>
+            <small>{service.published ? 'Publicado para os hóspedes' : 'Salvo como rascunho'}</small>
+          </article>
+        </section>
+        <ServiceFieldsPanel fields={service.requestSchema.fields} />
+      </div>
+    </Modal>
+  );
+}
+
+function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>> }) {
+  return (
+    <section className="service-fields-panel">
+      <header><Typography.Title level={3}>Campos do formulário</Typography.Title></header>
+      <Table
+        columns={[
+          { title: 'Nome interno', key: 'name', render: (_: unknown, field: Record<string, unknown>) => textValue(field.name, '—') },
+          { title: 'Label para o hóspede', key: 'label', render: (_: unknown, field: Record<string, unknown>) => textValue(field.label, '—') },
+          { title: 'Tipo', key: 'type', render: (_: unknown, field: Record<string, unknown>) => field.type === 'number' ? 'Número' : 'Texto' },
+          { title: 'Obrigatório', key: 'required', render: (_: unknown, field: Record<string, unknown>) => field.required ? 'Sim' : 'Não' },
+        ]}
+        dataSource={fields.map((field, index) => ({ ...field, _key: `${textValue(field.name, 'field')}-${index}` }))}
+        locale={{ emptyText: 'Nenhum campo configurado.' }}
+        pagination={false}
+        rowKey="_key"
+        scroll={{ x: 560 }}
+        size="small"
+      />
+    </section>
+  );
+}
+
+function ServiceFormModal({
+  error,
+  isSubmitting,
+  layer,
+  onCancel,
+  onSubmit,
+  service,
+}: {
+  error: Error | null;
+  isSubmitting: boolean;
+  layer: 'primary' | 'secondary';
+  onCancel: () => void;
+  onSubmit: (values: ServiceFormValues) => void;
+  service?: ServiceDefinition;
+}) {
+  const {
+    control,
+    formState: { errors },
+    handleSubmit,
+    register,
+  } = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceFormSchema),
+    defaultValues: service ? serviceFormValues(service) : defaultValues,
+  });
+
+  return (
+    <Modal className="operational-form-modal service-form-modal" layer={layer} title={service ? 'Editar serviço' : 'Novo serviço'} onClose={onCancel} width={600}>
+      <form className="service-modal-form" noValidate onSubmit={handleSubmit(onSubmit)}>
+        {!service ? <label className="service-form-wide">ID opcional<Input {...register('id')} placeholder="Identificador técnico opcional" /></label> : null}
+        <label>Título
+          <Input {...register('title')} aria-invalid={Boolean(errors.title)} autoFocus />
+          <FieldError message={errors.title?.message} />
+        </label>
+        <label>Ícone
+          <Input {...register('icon')} aria-invalid={Boolean(errors.icon)} />
+          <FieldError message={errors.icon?.message} />
+        </label>
+        <label className="service-form-wide">Descrição
+          <Input.TextArea {...register('description')} aria-invalid={Boolean(errors.description)} autoSize={{ minRows: 2, maxRows: 4 }} />
+          <FieldError message={errors.description?.message} />
+        </label>
+        <label>Atendimento
+          <Input {...register('fulfillmentType')} aria-invalid={Boolean(errors.fulfillmentType)} />
+          <FieldError message={errors.fulfillmentType?.message} />
+        </label>
+        <label className="service-form-check">
+          <Controller control={control} name="published" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />
+          Publicado no catálogo
+        </label>
+
+        <div className="service-form-section"><Typography.Title level={3}>Campo do formulário</Typography.Title><p>Defina a informação solicitada ao hóspede.</p></div>
+        <label>Nome interno
+          <Input {...register('fieldName')} aria-invalid={Boolean(errors.fieldName)} />
+          <FieldError message={errors.fieldName?.message} />
+        </label>
+        <label>Label para o hóspede
+          <Input {...register('fieldLabel')} aria-invalid={Boolean(errors.fieldLabel)} />
+          <FieldError message={errors.fieldLabel?.message} />
+        </label>
+        <label>Tipo
+          <Controller
+            control={control}
+            name="fieldType"
+            render={({ field }) => <AntSelect onChange={field.onChange} options={[{ label: 'Texto', value: 'string' }, { label: 'Número', value: 'number' }]} value={field.value} />}
+          />
+        </label>
+        <label className="service-form-check">
+          <Controller control={control} name="fieldRequired" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />
+          Campo obrigatório
+        </label>
+        {error ? <Toast message={error.message} onClose={() => undefined} tone="error" /> : null}
+        <ModalFooter isSubmitting={isSubmitting} onCancel={onCancel} submitLabel={service ? 'Salvar alterações' : 'Cadastrar serviço'} />
+      </form>
+    </Modal>
+  );
+}
+
+function servicePayload(values: ServiceFormValues): Omit<ServiceDefinition, 'id'> {
+  return {
+    title: values.title,
+    description: values.description,
+    icon: values.icon,
+    fulfillmentType: values.fulfillmentType,
+    published: values.published,
+    requestSchema: {
+      fields: [{
+        name: values.fieldName,
+        label: values.fieldLabel,
+        type: values.fieldType,
+        required: values.fieldRequired,
+        ...(values.fieldType === 'string' ? { maxLength: 500 } : {}),
+      }],
+    },
+  };
+}
+
+function serviceFormValues(service: ServiceDefinition): ServiceFormValues {
+  const field = service.requestSchema.fields[0] ?? {};
+  return {
+    id: service.id,
+    title: service.title,
+    description: service.description,
+    icon: service.icon,
+    fulfillmentType: service.fulfillmentType,
+    fieldName: textValue(field.name, 'note'),
+    fieldLabel: textValue(field.label, 'Detalhes'),
+    fieldType: field.type === 'number' ? 'number' : 'string',
+    fieldRequired: field.required !== false,
+    published: service.published,
+  };
+}
+
+function serviceFulfillmentLabel(value: string) {
+  return ({ hotel_staff: 'Equipe do hotel' } as Record<string, string>)[value] ?? value.replace(/_/g, ' ');
+}
+
+function textValue(value: unknown, fallback: string) {
+  return typeof value === 'string' && value ? value : fallback;
 }
 
 function FieldError({ message }: { message: string | undefined }) {

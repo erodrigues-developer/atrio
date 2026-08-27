@@ -1,10 +1,21 @@
 import { useState } from 'react';
 import { Button, Dropdown, Empty, Table, Tag, Typography } from 'antd';
+import {
+  CalendarOutlined,
+  CustomerServiceOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+  MessageOutlined,
+  ReloadOutlined,
+  StarOutlined,
+  TeamOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import { isAdminView, type AdminView } from '@/app/router/admin-routes';
 import { updateAdminRequestStatus, type Dashboard } from '../api';
 import { ConfirmActionModal } from '@/shared/components/Modal';
 import {
-  canCancelRequest, formatDate, formatDuration, formatShortSchedule, movementLabel,
+  canCancelRequest, formatDate, formatDuration, formatShortSchedule, formatTodayLabel, movementLabel,
   nextRequestAction, requestActionConfirmLabel, requestActionTitle, requestStatusLabel,
   statusToneClass,
 } from '@/shared/lib/presentation';
@@ -30,49 +41,81 @@ export function DashboardView({
   onNavigate: (view: AdminView) => void;
   onRefresh: () => Promise<void>;
 }) {
+  const [refreshing, setRefreshing] = useState(false);
+
   async function updateRequest(itemId: string, status: string) {
     await updateAdminRequestStatus(accessToken, itemId, { status });
     await onRefresh();
   }
 
+  async function refreshDashboard() {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
-    <div className="dashboard">
-      <section className="dashboard-columns operational-layout">
-        <header className="dashboard-heading">
-          <Typography.Title level={2}>Operação de hoje</Typography.Title>
-        </header>
-        <div className="main-stack">
-          <section className="metrics-grid today-grid" aria-label="Operação de hoje">
-            {dashboard.todayMetrics.map((metric) => (
-              <MetricCard key={metric.label} metric={metric} onNavigate={onNavigate} />
-            ))}
-          </section>
-          <Typography.Title level={2} className="dashboard-section-title">Pendências</Typography.Title>
-          <section className="metrics-grid attention-grid" aria-label="Atenção necessária">
-            {dashboard.attentionMetrics.map((metric) => (
-              <MetricCard key={metric.label} metric={metric} onNavigate={onNavigate} />
-            ))}
-          </section>
-          <RequestPriorityList items={dashboard.pendingRequests} onNavigate={onNavigate} onUpdateStatus={updateRequest} />
+    <div className="dashboard premium-dashboard">
+      <header className="page-heading premium-page-heading dashboard-page-heading">
+        <div>
+          <Typography.Title level={1}>Dashboard</Typography.Title>
+          <p>{dashboard.hotelName} · {formatTodayLabel()}</p>
         </div>
-        <aside className="side-stack">
-          <AttentionList alerts={dashboard.alerts} onNavigate={onNavigate} />
-          <MovementsList items={dashboard.upcomingMovements} onNavigate={onNavigate} />
-          <CompactOperationalList
-            actionLabel="Ver experiências"
-            emptyLabel="Nenhuma experiência aguardando confirmação."
-            items={dashboard.pendingExperiences}
-            onNavigate={() => onNavigate('reservations')}
-            title="Experiências pendentes"
-          />
-          <CompactOperationalList
-            actionLabel="Ver concierge"
-            emptyLabel="Tudo em dia. Nenhuma conversa pendente."
-            items={dashboard.conciergeConversations}
-            onNavigate={() => onNavigate('concierge')}
-            title="Concierge"
-          />
-        </aside>
+        <Button icon={<ReloadOutlined />} loading={refreshing} onClick={refreshDashboard}>Atualizar dados</Button>
+      </header>
+
+      <section className="dashboard-overview-section">
+        <header className="dashboard-section-heading">
+          <div>
+            <Typography.Title level={2}>Operação de hoje</Typography.Title>
+            <p>Acompanhe os principais movimentos e indicadores do hotel.</p>
+          </div>
+        </header>
+        <div className="premium-dashboard-metrics" aria-label="Operação de hoje">
+          {dashboard.todayMetrics.map((metric) => (
+            <MetricCard key={metric.label} metric={metric} onNavigate={onNavigate} />
+          ))}
+        </div>
+      </section>
+
+      <section className="dashboard-overview-section">
+        <header className="dashboard-section-heading">
+          <div>
+            <Typography.Title level={2}>Pendências operacionais</Typography.Title>
+            <p>Itens que dependem de acompanhamento ou ação da equipe.</p>
+          </div>
+        </header>
+        <div className="premium-dashboard-metrics attention" aria-label="Pendências operacionais">
+          {dashboard.attentionMetrics.map((metric) => (
+            <MetricCard key={metric.label} metric={metric} onNavigate={onNavigate} />
+          ))}
+        </div>
+      </section>
+
+      <section className="premium-dashboard-primary-grid">
+        <RequestPriorityList items={dashboard.pendingRequests} onNavigate={onNavigate} onUpdateStatus={updateRequest} />
+        <AttentionList alerts={dashboard.alerts} onNavigate={onNavigate} />
+      </section>
+
+      <section className="premium-dashboard-secondary-grid">
+        <MovementsList items={dashboard.upcomingMovements} onNavigate={onNavigate} />
+        <CompactOperationalList
+          actionLabel="Ver experiências"
+          emptyLabel="Nenhuma experiência aguardando confirmação."
+          items={dashboard.pendingExperiences}
+          onNavigate={() => onNavigate('reservations')}
+          title="Experiências pendentes"
+        />
+        <CompactOperationalList
+          actionLabel="Ver concierge"
+          emptyLabel="Tudo em dia. Nenhuma conversa pendente."
+          items={dashboard.conciergeConversations}
+          onNavigate={() => onNavigate('concierge')}
+          title="Concierge"
+        />
       </section>
     </div>
   );
@@ -86,9 +129,12 @@ function AttentionList({
   onNavigate: (view: AdminView) => void;
 }) {
   return (
-    <section className="table-panel compact-panel">
-      <header>
-        <Typography.Title level={2}>Atenção necessária</Typography.Title>
+    <section className="premium-surface dashboard-panel dashboard-attention-panel">
+      <header className="panel-toolbar">
+        <div className="dashboard-panel-title">
+          <span><WarningOutlined /></span>
+          <div><Typography.Title level={2}>Atenção necessária</Typography.Title><p>Exceções que exigem prioridade da equipe.</p></div>
+        </div>
       </header>
       {alerts.length === 0 ? (
         <div className="empty-action">
@@ -132,6 +178,7 @@ function MetricCard({
   onNavigate: (view: AdminView) => void;
 }) {
   const canNavigate = isAdminView(metric.targetView);
+  const icon = metricIcon(metric.label);
 
   return (
     <Button
@@ -144,7 +191,7 @@ function MetricCard({
       }}
       type="text"
     >
-      <span>{metric.label}</span>
+      <span className="dashboard-metric-top"><span className="dashboard-metric-icon">{icon}</span><span className="dashboard-metric-label">{metric.label}</span></span>
       {metric.detail ? (
         <p className="metric-value-line"><strong>{metric.value}</strong> {metric.helper}</p>
       ) : (
@@ -159,6 +206,15 @@ function MetricCard({
   );
 }
 
+function metricIcon(label: string) {
+  if (label.includes('Hóspedes')) return <TeamOutlined />;
+  if (label.includes('Check-ins')) return <LoginOutlined />;
+  if (label.includes('Check-outs')) return <LogoutOutlined />;
+  if (label.includes('Solicitações')) return <MessageOutlined />;
+  if (label.includes('Experiências')) return <StarOutlined />;
+  return <CustomerServiceOutlined />;
+}
+
 function RequestPriorityList({
   items,
   onNavigate,
@@ -171,11 +227,14 @@ function RequestPriorityList({
   const [statusCandidate, setStatusCandidate] = useState<{ item: Dashboard['pendingRequests'][number]; status: string } | null>(null);
 
   return (
-    <section className="table-panel request-panel">
+    <section className="premium-surface dashboard-panel request-panel">
       <header className="panel-toolbar">
-        <div>
-          <Typography.Title level={2}>Solicitações em andamento</Typography.Title>
-          <p className="muted-text">Priorizadas por espera e criticidade.</p>
+        <div className="dashboard-panel-title">
+          <span><MessageOutlined /></span>
+          <div>
+            <Typography.Title level={2}>Solicitações em andamento</Typography.Title>
+            <p>Priorizadas por espera e criticidade.</p>
+          </div>
         </div>
         <Button onClick={() => onNavigate('requests')} size="small">Ver todas</Button>
       </header>
@@ -188,7 +247,7 @@ function RequestPriorityList({
             { title: 'Hóspede', key: 'guest', render: (_: unknown, item: Dashboard['pendingRequests'][number]) => <><strong className="table-primary">{item.guestName ?? 'Hóspede'}</strong><span className="table-secondary">Quarto {item.roomNumber}</span></> },
             { title: 'Status', dataIndex: 'statusLabel', key: 'statusLabel', render: (value: string) => <Tag>{value}</Tag> },
             { title: 'Espera', key: 'wait', render: (_: unknown, item: Dashboard['pendingRequests'][number]) => <strong className="wait-time" title={formatDate(item.createdAt)}>{formatDuration(item.waitMinutes)}</strong> },
-            { title: 'Ações', key: 'actions', render: (_: unknown, item: Dashboard['pendingRequests'][number]) => <div className="row-actions dashboard-actions">{nextRequestAction(item.status) ? <Button onClick={() => { const action = nextRequestAction(item.status); if (action) setStatusCandidate({ item, status: action.status }); }} size="small" type="primary">{nextRequestAction(item.status)?.label}</Button> : null}{canCancelRequest(item.status) ? <Button danger onClick={() => setStatusCandidate({ item, status: 'cancelled' })} size="small">Cancelar</Button> : null}<Dropdown menu={{ items: [{ key: 'details', label: 'Abrir detalhes' }, ...(canCancelRequest(item.status) ? [{ danger: true, key: 'cancel', label: 'Cancelar' }] : [])], onClick: ({ key }) => { if (key === 'details') onNavigate('requests'); if (key === 'cancel') setStatusCandidate({ item, status: 'cancelled' }); } }}><Button aria-label="Mais ações" type="text">•••</Button></Dropdown></div> },
+            { title: 'Ações', key: 'actions', render: (_: unknown, item: Dashboard['pendingRequests'][number]) => <div className="row-actions dashboard-actions">{nextRequestAction(item.status) ? <Button onClick={() => { const action = nextRequestAction(item.status); if (action) setStatusCandidate({ item, status: action.status }); }} size="small" type="primary">{nextRequestAction(item.status)?.label}</Button> : null}{canCancelRequest(item.status) ? <Button danger onClick={() => setStatusCandidate({ item, status: 'cancelled' })} size="small">Cancelar</Button> : null}<Dropdown menu={{ items: [{ key: 'details', label: 'Abrir detalhes' }, ...(canCancelRequest(item.status) ? [{ danger: true, key: 'cancel', label: 'Cancelar' }] : [])], onClick: ({ key }) => { if (key === 'details') onNavigate('requests'); if (key === 'cancel') setStatusCandidate({ item, status: 'cancelled' }); } }}><Button aria-label="Mais ações" title="Mais ações" type="text">•••</Button></Dropdown></div> },
           ]}
           dataSource={items}
           onRow={() => ({ onClick: () => onNavigate('requests') })}
@@ -222,9 +281,9 @@ function MovementsList({
   onNavigate: (view: AdminView) => void;
 }) {
   return (
-    <section className="table-panel compact-panel">
+    <section className="premium-surface dashboard-panel compact-panel dashboard-movements-panel">
       <header className="panel-toolbar">
-        <Typography.Title level={2}>Próximas movimentações</Typography.Title>
+        <div className="dashboard-panel-title"><span><CalendarOutlined /></span><div><Typography.Title level={2}>Próximas movimentações</Typography.Title><p>Agenda operacional de hoje.</p></div></div>
         <Button onClick={() => onNavigate('stays')} size="small">Ver estadias</Button>
       </header>
       {items.length === 0 ? (
@@ -260,9 +319,9 @@ function CompactOperationalList({
   title: string;
 }) {
   return (
-    <section className="table-panel compact-panel">
+    <section className="premium-surface dashboard-panel compact-panel">
       <header className="panel-toolbar">
-        <Typography.Title level={2}>{title}</Typography.Title>
+        <div className="dashboard-panel-title"><span>{title === 'Concierge' ? <CustomerServiceOutlined /> : <StarOutlined />}</span><div><Typography.Title level={2}>{title}</Typography.Title><p>{title === 'Concierge' ? 'Conversas aguardando retorno.' : 'Confirmações que aguardam revisão.'}</p></div></div>
         <Button onClick={onNavigate} size="small">{actionLabel}</Button>
       </header>
       {items.length === 0 ? (

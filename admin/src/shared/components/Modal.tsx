@@ -16,7 +16,7 @@ export function Modal({ children, className, layer = 'primary', onClose, size = 
     <AntModal
       centered
       className={`atrio-modal${className ? ` ${className}` : ''}`}
-      destroyOnClose
+      destroyOnHidden
       footer={null}
       onCancel={onClose}
       open

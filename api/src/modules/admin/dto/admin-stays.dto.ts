@@ -46,11 +46,45 @@ export class CreateAdminGuestDto {
   phoneNumber!: string;
 }
 
+export class UpdateAdminGuestDto extends CreateAdminGuestDto {}
+
 export class AdminGuestListQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+}
+
+export class AdminGuestListResponseDto {
+  @ApiProperty({ type: [AdminGuestResponseDto] })
+  items!: AdminGuestResponseDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
 }
 
 export class AdminStayListQueryDto {

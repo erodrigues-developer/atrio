@@ -26,13 +26,17 @@ export class AdminConciergeService {
       .where('stay.hotel_id = :hotelId', { hotelId: session.hotelId })
       .groupBy('stay.public_id')
       .addGroupBy('stay.room_number')
+      .addGroupBy('stay.status')
       .addGroupBy('guest.first_name')
       .addGroupBy('guest.last_name')
       .select([
         'stay.public_id AS "stayId"',
         'stay.room_number AS "roomNumber"',
+        'stay.status AS "stayStatus"',
         "CONCAT(guest.first_name, ' ', guest.last_name) AS \"guestName\"",
         'MAX(message.created_at) AS "lastMessageAt"',
+        '(ARRAY_AGG(message.text ORDER BY message.created_at DESC) FILTER (WHERE message.id IS NOT NULL))[1] AS "lastMessageText"',
+        '(ARRAY_AGG(message.sender ORDER BY message.created_at DESC) FILTER (WHERE message.id IS NOT NULL))[1] AS "lastMessageSender"',
         "COUNT(message.id) FILTER (WHERE message.sender = 'guest')::int AS \"guestMessageCount\"",
       ])
       .orderBy('"lastMessageAt"', 'DESC', 'NULLS LAST')
@@ -108,4 +112,3 @@ export class AdminConciergeService {
     };
   }
 }
-

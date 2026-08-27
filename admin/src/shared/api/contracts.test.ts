@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { adminSessionSchema, stayPageSchema } from './contracts';
+import {
+  adminSessionSchema,
+  dashboardSchema,
+  experiencePageSchema,
+  guestPageSchema,
+  reservationPageSchema,
+  servicePageSchema,
+  serviceRequestPageSchema,
+  stayPageSchema,
+} from './contracts';
 
 describe('API contracts', () => {
   it('accepts a valid admin session', () => {
@@ -17,6 +26,39 @@ describe('API contracts', () => {
 
   it('rejects malformed persisted and server data', () => {
     expect(adminSessionSchema.safeParse({ accessToken: '' }).success).toBe(false);
-    expect(stayPageSchema.safeParse({ items: 'not-an-array' }).success).toBe(false);
+    for (const schema of [
+      stayPageSchema,
+      guestPageSchema,
+      servicePageSchema,
+      serviceRequestPageSchema,
+      experiencePageSchema,
+      reservationPageSchema,
+    ]) {
+      expect(schema.safeParse({ items: 'not-an-array' }).success).toBe(false);
+    }
+  });
+
+  it('normalizes a null dashboard movement schedule returned by PostgreSQL', () => {
+    const result = dashboardSchema.parse({
+      hotelId: 'hotel-1',
+      hotelName: 'Atrio',
+      metrics: [],
+      todayMetrics: [],
+      attentionMetrics: [],
+      alerts: [],
+      pendingRequests: [],
+      pendingExperiences: [],
+      conciergeConversations: [],
+      upcomingMovements: [{
+        id: 'checkin-stay-1',
+        timeLabel: 'Hoje',
+        type: 'check-in',
+        title: 'Mariana Costa',
+        helper: 'Quarto 305',
+        scheduledAt: null,
+      }],
+    });
+
+    expect(result.upcomingMovements[0]?.scheduledAt).toBeUndefined();
   });
 });

@@ -2,5 +2,6 @@ export {
   createAdminExperience, createAdminExperienceCollection, createAdminExperienceSlot,
   linkExperienceToCollection, listAdminExperienceCollections, listAdminExperiences,
   listAdminExperienceSlots, updateAdminExperienceSlot, uploadAdminExperienceCollectionImage,
-  uploadAdminExperienceImage, type AdminExperience, type AdminExperienceSlot,
+  uploadAdminExperienceImage, type AdminExperience, type AdminExperienceCollection,
+  type AdminExperienceSlot,
 } from '@/shared/api/atrio-api';

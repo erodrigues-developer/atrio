@@ -1,1 +1,4 @@
-export { createAdminService, listAdminServices, setAdminServicePublished, type ServiceDefinition } from '@/shared/api/atrio-api';
+export {
+  createAdminService, listAdminServices, setAdminServicePublished, updateAdminService,
+  type ServiceDefinition,
+} from '@/shared/api/atrio-api';

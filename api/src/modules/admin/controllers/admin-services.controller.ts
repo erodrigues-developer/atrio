@@ -1,11 +1,24 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, Version } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+  Version,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
 import { AdminSessionContext } from 'src/common/interfaces/admin-session-context.interface';
 import {
   AdminServiceDefinitionDto,
+  AdminServiceDefinitionListResponseDto,
+  AdminServiceDefinitionQueryDto,
   AdminServiceRequestQueryDto,
+  AdminStayRequestListResponseDto,
   AdminStayRequestDto,
   UpdateAdminStayRequestStatusDto,
   UpsertAdminServiceDefinitionDto,
@@ -21,9 +34,9 @@ export class AdminServicesController {
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminServiceDefinitionDto] })
-  async listServices() {
-    return this.adminServicesService.listServices();
+  @ApiOkResponse({ type: AdminServiceDefinitionListResponseDto })
+  async listServices(@Query() query: AdminServiceDefinitionQueryDto) {
+    return this.adminServicesService.listServices(query);
   }
 
   @Post()
@@ -54,7 +67,11 @@ export class AdminServicesController {
     @CurrentAdminSession() session: AdminSessionContext,
     @Param('serviceId') serviceId: string,
   ) {
-    return this.adminServicesService.setServicePublished(session, serviceId, true);
+    return this.adminServicesService.setServicePublished(
+      session,
+      serviceId,
+      true,
+    );
   }
 
   @Post(':serviceId/unpublish')
@@ -64,7 +81,11 @@ export class AdminServicesController {
     @CurrentAdminSession() session: AdminSessionContext,
     @Param('serviceId') serviceId: string,
   ) {
-    return this.adminServicesService.setServicePublished(session, serviceId, false);
+    return this.adminServicesService.setServicePublished(
+      session,
+      serviceId,
+      false,
+    );
   }
 }
 
@@ -77,7 +98,7 @@ export class AdminRequestsController {
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminStayRequestDto] })
+  @ApiOkResponse({ type: AdminStayRequestListResponseDto })
   async listRequests(
     @CurrentAdminSession() session: AdminSessionContext,
     @Query() query: AdminServiceRequestQueryDto,
@@ -93,6 +114,10 @@ export class AdminRequestsController {
     @Param('requestId') requestId: string,
     @Body() body: UpdateAdminStayRequestStatusDto,
   ) {
-    return this.adminServicesService.updateRequestStatus(session, requestId, body);
+    return this.adminServicesService.updateRequestStatus(
+      session,
+      requestId,
+      body,
+    );
   }
 }

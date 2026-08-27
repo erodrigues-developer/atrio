@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { ConfigProvider } from 'antd';
+import { App as AntApp, ConfigProvider } from 'antd';
 import ptBR from 'antd/locale/pt_BR';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
@@ -31,7 +31,7 @@ export function AppProviders({ children }: AppProvidersProps) {
           },
         }}
         >
-          {children}
+          <AntApp message={{ maxCount: 3, top: 24 }}>{children}</AntApp>
         </ConfigProvider>
       </QueryClientProvider>
     </BrowserRouter>

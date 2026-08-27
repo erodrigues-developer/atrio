@@ -1,4 +1,10 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  DeleteDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Stay } from './stay.entity';
 
 @Entity({ name: 'guests' })
@@ -20,6 +26,9 @@ export class Guest {
 
   @Column({ name: 'masked_phone', type: 'varchar', length: 30 })
   maskedPhone!: string;
+
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt!: Date | null;
 
   @OneToMany(() => Stay, (stay) => stay.guest)
   stays!: Stay[];

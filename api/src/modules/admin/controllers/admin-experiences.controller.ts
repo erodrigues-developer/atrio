@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards, Version } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+  Version,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
@@ -6,8 +16,11 @@ import { AdminSessionContext } from 'src/common/interfaces/admin-session-context
 import {
   AdminCollectionDto,
   AdminExperienceDto,
+  AdminExperienceListResponseDto,
+  AdminExperienceQueryDto,
   AdminExperienceSlotDto,
   AdminReservationDto,
+  AdminReservationListResponseDto,
   AdminReservationQueryDto,
   CreateAdminExperienceSlotDto,
   CreateAdminReservationDto,
@@ -24,19 +37,24 @@ import { AdminExperiencesService } from '../services/admin-experiences.service';
 @UseGuards(AdminAccessTokenGuard)
 @Controller('admin/experiences')
 export class AdminExperiencesController {
-  constructor(private readonly adminExperiencesService: AdminExperiencesService) {}
+  constructor(
+    private readonly adminExperiencesService: AdminExperiencesService,
+  ) {}
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminExperienceDto] })
-  async listExperiences() {
-    return this.adminExperiencesService.listExperiences();
+  @ApiOkResponse({ type: AdminExperienceListResponseDto })
+  async listExperiences(@Query() query: AdminExperienceQueryDto) {
+    return this.adminExperiencesService.listExperiences(query);
   }
 
   @Post()
   @Version('1')
   @ApiOkResponse({ type: AdminExperienceDto })
-  async createExperience(@CurrentAdminSession() session: AdminSessionContext, @Body() body: UpsertAdminExperienceDto) {
+  async createExperience(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Body() body: UpsertAdminExperienceDto,
+  ) {
     return this.adminExperiencesService.createExperience(session, body);
   }
 
@@ -48,7 +66,11 @@ export class AdminExperiencesController {
     @Param('experienceId') experienceId: string,
     @Body() body: UpsertAdminExperienceDto,
   ) {
-    return this.adminExperiencesService.updateExperience(session, experienceId, body);
+    return this.adminExperiencesService.updateExperience(
+      session,
+      experienceId,
+      body,
+    );
   }
 
   @Get(':experienceId/slots')
@@ -78,7 +100,12 @@ export class AdminExperiencesController {
     @Param('slotId') slotId: string,
     @Body() body: UpdateAdminExperienceSlotDto,
   ) {
-    return this.adminExperiencesService.updateSlot(session, experienceId, slotId, body);
+    return this.adminExperiencesService.updateSlot(
+      session,
+      experienceId,
+      slotId,
+      body,
+    );
   }
 }
 
@@ -87,7 +114,9 @@ export class AdminExperiencesController {
 @UseGuards(AdminAccessTokenGuard)
 @Controller('admin/experience-collections')
 export class AdminExperienceCollectionsController {
-  constructor(private readonly adminExperiencesService: AdminExperiencesService) {}
+  constructor(
+    private readonly adminExperiencesService: AdminExperiencesService,
+  ) {}
 
   @Get()
   @Version('1')
@@ -99,7 +128,10 @@ export class AdminExperienceCollectionsController {
   @Post()
   @Version('1')
   @ApiOkResponse({ type: AdminCollectionDto })
-  async createCollection(@CurrentAdminSession() session: AdminSessionContext, @Body() body: UpsertAdminCollectionDto) {
+  async createCollection(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Body() body: UpsertAdminCollectionDto,
+  ) {
     return this.adminExperiencesService.createCollection(session, body);
   }
 
@@ -111,7 +143,11 @@ export class AdminExperienceCollectionsController {
     @Param('collectionId') collectionId: string,
     @Body() body: UpsertAdminCollectionDto,
   ) {
-    return this.adminExperiencesService.updateCollection(session, collectionId, body);
+    return this.adminExperiencesService.updateCollection(
+      session,
+      collectionId,
+      body,
+    );
   }
 
   @Post(':collectionId/items')
@@ -121,7 +157,11 @@ export class AdminExperienceCollectionsController {
     @Param('collectionId') collectionId: string,
     @Body() body: LinkExperienceToCollectionDto,
   ) {
-    return this.adminExperiencesService.linkExperience(session, collectionId, body);
+    return this.adminExperiencesService.linkExperience(
+      session,
+      collectionId,
+      body,
+    );
   }
 }
 
@@ -130,19 +170,27 @@ export class AdminExperienceCollectionsController {
 @UseGuards(AdminAccessTokenGuard)
 @Controller('admin/reservations')
 export class AdminReservationsController {
-  constructor(private readonly adminExperiencesService: AdminExperiencesService) {}
+  constructor(
+    private readonly adminExperiencesService: AdminExperiencesService,
+  ) {}
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminReservationDto] })
-  async listReservations(@CurrentAdminSession() session: AdminSessionContext, @Query() query: AdminReservationQueryDto) {
+  @ApiOkResponse({ type: AdminReservationListResponseDto })
+  async listReservations(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Query() query: AdminReservationQueryDto,
+  ) {
     return this.adminExperiencesService.listReservations(session, query);
   }
 
   @Post()
   @Version('1')
   @ApiOkResponse({ type: AdminReservationDto })
-  async createReservation(@CurrentAdminSession() session: AdminSessionContext, @Body() body: CreateAdminReservationDto) {
+  async createReservation(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Body() body: CreateAdminReservationDto,
+  ) {
     return this.adminExperiencesService.createReservation(session, body);
   }
 
@@ -154,6 +202,10 @@ export class AdminReservationsController {
     @Param('reservationId') reservationId: string,
     @Body() body: UpdateAdminReservationStatusDto,
   ) {
-    return this.adminExperiencesService.updateReservationStatus(session, reservationId, body);
+    return this.adminExperiencesService.updateReservationStatus(
+      session,
+      reservationId,
+      body,
+    );
   }
 }

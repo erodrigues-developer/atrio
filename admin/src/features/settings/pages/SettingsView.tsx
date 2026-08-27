@@ -1,16 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Button, Input, Select as AntSelect, Typography, Upload } from 'antd';
+import { type ReactNode, useEffect, useState } from 'react';
+import { Button, Empty, Input, Select as AntSelect, Skeleton, Tag, Typography, Upload } from 'antd';
+import {
+  BankOutlined,
+  InfoCircleOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  UploadOutlined,
+  WifiOutlined,
+} from '@ant-design/icons';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createHotelUsefulInfo, getHotelSettings, updateHotelWifi, uploadHotelHeroImage, uploadHotelLogo,
+  createHotelUsefulInfo,
+  getHotelSettings,
+  updateHotelWifi,
+  uploadHotelHeroImage,
+  uploadHotelLogo,
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
-import { MiniList } from '@/shared/components/MiniList';
 import { Toast } from '@/shared/components/Toast';
 import {
-  usefulInfoFormSchema, wifiFormSchema, type UsefulInfoFormValues, type WifiFormValues,
+  usefulInfoFormSchema,
+  wifiFormSchema,
+  type UsefulInfoFormValues,
+  type WifiFormValues,
 } from '../schemas/settings-form-schemas';
 
 type SettingsViewProps = { accessToken: string; cacheScope: string };
@@ -18,14 +32,28 @@ type SettingsViewProps = { accessToken: string; cacheScope: string };
 export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
-  const settingsQuery = useQuery({ queryKey: adminQueryKeys.settings(cacheScope), queryFn: () => getHotelSettings(accessToken) });
-  const wifiForm = useForm<WifiFormValues>({ resolver: zodResolver(wifiFormSchema), defaultValues: { wifiNetwork: '', wifiPassword: '' } });
-  const infoForm = useForm<UsefulInfoFormValues>({ resolver: zodResolver(usefulInfoFormSchema), defaultValues: { scope: 'stay', title: '', description: '' } });
+  const settingsQuery = useQuery({
+    queryKey: adminQueryKeys.settings(cacheScope),
+    queryFn: () => getHotelSettings(accessToken),
+  });
+  const wifiForm = useForm<WifiFormValues>({
+    resolver: zodResolver(wifiFormSchema),
+    defaultValues: { wifiNetwork: '', wifiPassword: '' },
+  });
+  const infoForm = useForm<UsefulInfoFormValues>({
+    resolver: zodResolver(usefulInfoFormSchema),
+    defaultValues: { scope: 'stay', title: '', description: '' },
+  });
 
   const resetWifiForm = wifiForm.reset;
 
   useEffect(() => {
-    if (settingsQuery.data) resetWifiForm({ wifiNetwork: settingsQuery.data.wifiNetwork, wifiPassword: settingsQuery.data.wifiPassword });
+    if (settingsQuery.data) {
+      resetWifiForm({
+        wifiNetwork: settingsQuery.data.wifiNetwork,
+        wifiPassword: settingsQuery.data.wifiPassword,
+      });
+    }
   }, [settingsQuery.data, resetWifiForm]);
 
   const wifiMutation = useMutation({
@@ -37,7 +65,10 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
     },
   });
   const infoMutation = useMutation({
-    mutationFn: (values: UsefulInfoFormValues) => createHotelUsefulInfo(accessToken, { ...values, position: (settingsQuery.data?.usefulInfo.length ?? 0) + 1 }),
+    mutationFn: (values: UsefulInfoFormValues) => createHotelUsefulInfo(accessToken, {
+      ...values,
+      position: (settingsQuery.data?.usefulInfo.length ?? 0) + 1,
+    }),
     onSuccess: async () => {
       infoForm.reset({ scope: 'stay', title: '', description: '' });
       setMessage('Informação do hotel adicionada.');
@@ -45,61 +76,263 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
     },
   });
   const mediaMutation = useMutation({
-    mutationFn: ({ kind, file }: { kind: 'logo' | 'hero'; file: File }) => kind === 'logo' ? uploadHotelLogo(accessToken, file) : uploadHotelHeroImage(accessToken, file),
+    mutationFn: ({ kind, file }: { kind: 'logo' | 'hero'; file: File }) => (
+      kind === 'logo' ? uploadHotelLogo(accessToken, file) : uploadHotelHeroImage(accessToken, file)
+    ),
     onSuccess: (settings) => {
       queryClient.setQueryData(adminQueryKeys.settings(cacheScope), settings);
-      setMessage('Mídia do hotel atualizada.');
+      setMessage('Identidade visual do hotel atualizada.');
     },
   });
   const error = settingsQuery.error ?? wifiMutation.error ?? infoMutation.error ?? mediaMutation.error;
   const settings = settingsQuery.data;
 
+  function closeFeedback() {
+    setMessage(null);
+    wifiMutation.reset();
+    infoMutation.reset();
+    mediaMutation.reset();
+  }
+
   return (
-    <section className="table-panel narrow-panel">
-      <header className="panel-toolbar"><Typography.Title level={2}>Hotel</Typography.Title></header>
-      {message || error ? <Toast tone={error ? 'error' : 'success'} message={error instanceof Error ? error.message : message ?? ''} onClose={() => setMessage(null)} /> : null}
-      {settings ? (
-        <div className="settings-grid">
-          <article><strong>{settings.name}</strong><span className="muted-text">ID {settings.id}</span></article>
-          <section className="settings-section">
-            <Typography.Title level={3}>Identidade visual</Typography.Title>
-            <MediaUpload label="Logo" loading={mediaMutation.isPending} onSelect={(file) => mediaMutation.mutate({ kind: 'logo', file })} />
-            {settings.logoUrl ? <img alt="Logo do hotel" className="media-preview" src={settings.logoUrl} /> : null}
-            <MediaUpload label="Imagem principal" loading={mediaMutation.isPending} onSelect={(file) => mediaMutation.mutate({ kind: 'hero', file })} />
-            {settings.heroImageUrl ? <img alt="Imagem principal do hotel" className="media-preview hero" src={settings.heroImageUrl} /> : null}
-          </section>
-          <section className="settings-section">
-            <Typography.Title level={3}>Wi-Fi do hotel</Typography.Title>
-            <form className="stack-form" noValidate onSubmit={wifiForm.handleSubmit((values) => wifiMutation.mutate(values))}>
-              <label>Rede<Input {...wifiForm.register('wifiNetwork')} aria-invalid={Boolean(wifiForm.formState.errors.wifiNetwork)} /></label>
-              <FieldError message={wifiForm.formState.errors.wifiNetwork?.message} />
-              <label>Senha<Input.Password {...wifiForm.register('wifiPassword')} aria-invalid={Boolean(wifiForm.formState.errors.wifiPassword)} /></label>
-              <FieldError message={wifiForm.formState.errors.wifiPassword?.message} />
-              <div className="modal-footer settings-footer"><Button htmlType="submit" loading={wifiMutation.isPending} type="primary">Salvar Wi-Fi</Button></div>
-            </form>
-          </section>
-          <section className="settings-section">
-            <Typography.Title level={3}>Informações para hóspedes</Typography.Title>
-            <MiniList items={settings.usefulInfo.map((item) => `${item.title}: ${item.description}`)} emptyLabel="Nenhuma informação cadastrada." />
-            <form className="stack-form modal-grid-form" noValidate onSubmit={infoForm.handleSubmit((values) => infoMutation.mutate(values))}>
-              <label>Exibição<Controller control={infoForm.control} name="scope" render={({ field }) => <AntSelect {...field} options={[{ label: 'Hoje', value: 'dashboard' }, { label: 'Estadia', value: 'stay' }]} />} /></label>
-              <label>Título<Input {...infoForm.register('title')} aria-invalid={Boolean(infoForm.formState.errors.title)} placeholder="Horário do café da manhã" /></label>
-              <FieldError message={infoForm.formState.errors.title?.message} />
-              <label className="wide-field">Descrição<Input.TextArea {...infoForm.register('description')} aria-invalid={Boolean(infoForm.formState.errors.description)} placeholder="Servido das 06:30 às 10:30 no restaurante do térreo." rows={3} /></label>
-              <FieldError message={infoForm.formState.errors.description?.message} />
-              <div className="modal-footer settings-footer"><Button htmlType="submit" loading={infoMutation.isPending} type="primary">Adicionar informação</Button></div>
-            </form>
-          </section>
+    <div className="settings-page">
+      <header className="page-heading premium-page-heading">
+        <div>
+          <Typography.Title level={1}>Configurações</Typography.Title>
+          <p>Personalize a identidade e as informações compartilhadas pelo hotel.</p>
         </div>
-      ) : <p className="empty-state" role="status">Carregando configurações...</p>}
-    </section>
+      </header>
+
+      {message || error ? (
+        <Toast
+          message={error instanceof Error ? error.message : message ?? ''}
+          onClose={closeFeedback}
+          tone={error ? 'error' : 'success'}
+        />
+      ) : null}
+
+      {settingsQuery.isLoading ? <SettingsSkeleton /> : null}
+      {!settingsQuery.isLoading && !settings ? (
+        <section className="premium-surface settings-load-error">
+          <Empty
+            description="Não foi possível carregar as configurações."
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button onClick={() => void settingsQuery.refetch()} type="primary">Tentar novamente</Button>
+          </Empty>
+        </section>
+      ) : null}
+
+      {settings ? (
+        <>
+          <section className="premium-surface settings-hotel-summary">
+            <div className="settings-hotel-logo">
+              {settings.logoUrl ? <img alt={`Logo de ${settings.name}`} src={settings.logoUrl} /> : <BankOutlined />}
+            </div>
+            <div>
+              <span className="settings-summary-label">Hotel configurado</span>
+              <Typography.Title level={2}>{settings.name}</Typography.Title>
+              <p>Identificador: {settings.id}</p>
+            </div>
+            <Tag className="settings-active-tag">Configuração ativa</Tag>
+          </section>
+
+          <div className="settings-content-grid">
+            <section className="premium-surface settings-card settings-visual-card">
+              <SettingsSectionHeading
+                description="Imagens utilizadas nos ambientes digitais acessados pelos hóspedes."
+                icon={<PictureOutlined />}
+                title="Identidade visual"
+              />
+              <div className="settings-media-grid">
+                <MediaUpload
+                  description="Preferencialmente uma imagem quadrada em PNG ou WebP."
+                  label="Logo do hotel"
+                  loading={mediaMutation.isPending}
+                  onSelect={(file) => mediaMutation.mutate({ kind: 'logo', file })}
+                  previewUrl={settings.logoUrl}
+                  variant="logo"
+                />
+                <MediaUpload
+                  description="Imagem horizontal exibida como destaque para os hóspedes."
+                  label="Imagem principal"
+                  loading={mediaMutation.isPending}
+                  onSelect={(file) => mediaMutation.mutate({ kind: 'hero', file })}
+                  previewUrl={settings.heroImageUrl}
+                  variant="hero"
+                />
+              </div>
+            </section>
+
+            <section className="premium-surface settings-card settings-wifi-card">
+              <SettingsSectionHeading
+                description="Credenciais apresentadas aos hóspedes durante a estadia."
+                icon={<WifiOutlined />}
+                title="Wi-Fi do hotel"
+              />
+              <form className="settings-wifi-form" noValidate onSubmit={wifiForm.handleSubmit((values) => wifiMutation.mutate(values))}>
+                <label>
+                  Nome da rede
+                  <Input
+                    {...wifiForm.register('wifiNetwork')}
+                    aria-invalid={Boolean(wifiForm.formState.errors.wifiNetwork)}
+                    placeholder="Ex.: Atrio Hóspedes"
+                  />
+                </label>
+                <FieldError message={wifiForm.formState.errors.wifiNetwork?.message} />
+                <label>
+                  Senha da rede
+                  <Input.Password
+                    {...wifiForm.register('wifiPassword')}
+                    aria-invalid={Boolean(wifiForm.formState.errors.wifiPassword)}
+                    placeholder="Informe a senha"
+                  />
+                </label>
+                <FieldError message={wifiForm.formState.errors.wifiPassword?.message} />
+                <footer className="settings-card-footer">
+                  <Button htmlType="submit" loading={wifiMutation.isPending} type="primary">Salvar alterações</Button>
+                </footer>
+              </form>
+            </section>
+
+            <section className="premium-surface settings-card settings-info-card">
+              <SettingsSectionHeading
+                description="Conteúdos úteis exibidos no dashboard ou durante a estadia."
+                icon={<InfoCircleOutlined />}
+                title="Informações para hóspedes"
+              />
+              <div className="settings-info-content">
+                <div className="settings-info-list">
+                  {settings.usefulInfo.length === 0 ? (
+                    <Empty description="Nenhuma informação cadastrada." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  ) : settings.usefulInfo.map((item) => (
+                    <article className="settings-info-item" key={item.id}>
+                      <span className="settings-info-item-icon"><InfoCircleOutlined /></span>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.description}</p>
+                      </div>
+                      <Tag>{item.scope === 'dashboard' ? 'Hoje' : 'Estadia'}</Tag>
+                    </article>
+                  ))}
+                </div>
+
+                <form className="settings-info-form" noValidate onSubmit={infoForm.handleSubmit((values) => infoMutation.mutate(values))}>
+                  <Typography.Title level={3}>Adicionar informação</Typography.Title>
+                  <label>
+                    Exibição
+                    <Controller
+                      control={infoForm.control}
+                      name="scope"
+                      render={({ field }) => (
+                        <AntSelect
+                          {...field}
+                          options={[
+                            { label: 'Hoje', value: 'dashboard' },
+                            { label: 'Durante a estadia', value: 'stay' },
+                          ]}
+                        />
+                      )}
+                    />
+                  </label>
+                  <label>
+                    Título
+                    <Input
+                      {...infoForm.register('title')}
+                      aria-invalid={Boolean(infoForm.formState.errors.title)}
+                      placeholder="Horário do café da manhã"
+                    />
+                  </label>
+                  <FieldError message={infoForm.formState.errors.title?.message} />
+                  <label>
+                    Descrição
+                    <Input.TextArea
+                      {...infoForm.register('description')}
+                      aria-invalid={Boolean(infoForm.formState.errors.description)}
+                      placeholder="Servido das 06:30 às 10:30 no restaurante do térreo."
+                      rows={4}
+                    />
+                  </label>
+                  <FieldError message={infoForm.formState.errors.description?.message} />
+                  <Button icon={<PlusOutlined />} htmlType="submit" loading={infoMutation.isPending} type="primary">Adicionar informação</Button>
+                </form>
+              </div>
+            </section>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
-function MediaUpload({ label, loading, onSelect }: { label: string; loading: boolean; onSelect: (file: File) => void }) {
-  return <label>{label}<Upload accept="image/*" beforeUpload={(file) => { onSelect(file); return false; }} disabled={loading} showUploadList={false}><Button loading={loading}>Selecionar imagem</Button></Upload></label>;
+function SettingsSectionHeading({
+  description,
+  icon,
+  title,
+}: {
+  description: string;
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <header className="premium-section-heading settings-section-heading">
+      <span className="premium-section-icon">{icon}</span>
+      <div>
+        <Typography.Title level={2}>{title}</Typography.Title>
+        <p>{description}</p>
+      </div>
+    </header>
+  );
+}
+
+function MediaUpload({
+  description,
+  label,
+  loading,
+  onSelect,
+  previewUrl,
+  variant,
+}: {
+  description: string;
+  label: string;
+  loading: boolean;
+  onSelect: (file: File) => void;
+  previewUrl: string | null;
+  variant: 'logo' | 'hero';
+}) {
+  return (
+    <article className="settings-media-item">
+      <div className={`settings-media-preview ${variant}`}>
+        {previewUrl ? <img alt={label} src={previewUrl} /> : <PictureOutlined />}
+      </div>
+      <div className="settings-media-copy">
+        <strong>{label}</strong>
+        <p>{description}</p>
+        <Upload
+          accept="image/*"
+          beforeUpload={(file) => {
+            onSelect(file);
+            return false;
+          }}
+          disabled={loading}
+          showUploadList={false}
+        >
+          <Button icon={<UploadOutlined />} loading={loading}>{previewUrl ? 'Alterar imagem' : 'Selecionar imagem'}</Button>
+        </Upload>
+      </div>
+    </article>
+  );
+}
+
+function SettingsSkeleton() {
+  return (
+    <div className="settings-skeleton" role="status">
+      <section className="premium-surface"><Skeleton active avatar paragraph={{ rows: 1 }} /></section>
+      <div><section className="premium-surface"><Skeleton active /></section><section className="premium-surface"><Skeleton active /></section></div>
+    </div>
+  );
 }
 
 function FieldError({ message }: { message: string | undefined }) {
-  return message ? <span className="form-error" role="alert">{message}</span> : null;
+  return message ? <span className="premium-field-error" role="alert">{message}</span> : null;
 }

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Alert } from 'antd';
+import { useEffect, useId, useRef } from 'react';
+import { App } from 'antd';
 
 type ToastProps = {
   message: string;
@@ -8,10 +8,31 @@ type ToastProps = {
 };
 
 export function Toast({ message, onClose, tone }: ToastProps) {
-  useEffect(() => {
-    const timeout = window.setTimeout(onClose, 4_200);
-    return () => window.clearTimeout(timeout);
-  }, [message, onClose]);
+  const { message: messageApi } = App.useApp();
+  const messageKey = useId();
+  const onCloseRef = useRef(onClose);
 
-  return <Alert closable message={message} onClose={onClose} showIcon type={tone} />;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    void messageApi.open({
+      content: message,
+      duration: 4.2,
+      key: messageKey,
+      onClose: () => {
+        if (isActive) onCloseRef.current();
+      },
+      type: tone,
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [message, messageApi, messageKey, tone]);
+
+  return null;
 }

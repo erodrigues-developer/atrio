@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Button, Input, Typography } from 'antd';
 import { login, type AdminSession } from '../api';
+import { Toast } from '@/shared/components/Toast';
 
 type LoginScreenProps = {
   onAuthenticated: (session: AdminSession) => void;
@@ -37,7 +38,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps) {
         <form className="login-form" onSubmit={handleSubmit}>
           <label>Email<Input autoComplete="email" inputMode="email" required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>Senha<Input.Password autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-          {error ? <p aria-live="polite" className="form-error">{error}</p> : null}
+          {error ? <Toast message={error} onClose={() => setError(null)} tone="error" /> : null}
           <Button block htmlType="submit" loading={isSubmitting} type="primary">Entrar</Button>
         </form>
       </section>

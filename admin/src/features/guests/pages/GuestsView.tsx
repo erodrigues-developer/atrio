@@ -1,15 +1,16 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import {
   Button, Input, Pagination as AntPagination, Select as AntSelect, Table, Tag, Typography,
 } from 'antd';
 import {
-  EyeOutlined, PhoneOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined,
+  DeleteOutlined, EditOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyCertificateOutlined,
+  SearchOutlined, UserOutlined,
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import guestsEmptyImage from '@/assets/guests-empty.webp';
-import { createGuest, listGuests, type AdminGuest } from '../api';
+import { createGuest, deleteGuest, listGuests, updateGuest, type AdminGuest } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { Toast } from '@/shared/components/Toast';
@@ -28,29 +29,52 @@ export function GuestsView({ accessToken, cacheScope }: GuestsViewProps) {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [detailGuest, setDetailGuest] = useState<AdminGuest | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [formGuest, setFormGuest] = useState<AdminGuest | 'new' | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<AdminGuest | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const guestsQuery = useQuery({
-    queryKey: adminQueryKeys.guestList(cacheScope, appliedSearch),
-    queryFn: () => listGuests(accessToken, appliedSearch),
+    queryKey: adminQueryKeys.guestList(cacheScope, { search: appliedSearch, page, pageSize: PAGE_SIZE }),
+    queryFn: () => listGuests(accessToken, { search: appliedSearch, page, pageSize: PAGE_SIZE }),
   });
-  const createMutation = useMutation({
-    mutationFn: (values: GuestFormValues) => createGuest(accessToken, values),
+  const saveMutation = useMutation({
+    mutationFn: ({ guest, values }: { guest?: AdminGuest; values: GuestFormValues }) => (
+      guest ? updateGuest(accessToken, guest.id, values) : createGuest(accessToken, values)
+    ),
+    onSuccess: async (savedGuest, variables) => {
+      setFormGuest(null);
+      setDetailGuest((current) => current?.id === savedGuest.id ? savedGuest : current);
+      if (!variables.guest) {
+        setSearch('');
+        setAppliedSearch('');
+        setPage(1);
+      }
+      setMessage(variables.guest ? 'Hóspede atualizado com sucesso.' : 'Hóspede cadastrado com sucesso.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.guests(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.stays(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.requests(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.reservations(cacheScope) }),
+      ]);
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (guest: AdminGuest) => deleteGuest(accessToken, guest.id),
     onSuccess: async () => {
-      setIsCreateOpen(false);
-      setSearch('');
-      setAppliedSearch('');
-      setPage(1);
-      setMessage('Hóspede cadastrado com sucesso.');
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.guests(cacheScope) });
+      setDeleteCandidate(null);
+      setDetailGuest(null);
+      if (guests.length === 1 && page > 1) setPage(page - 1);
+      setMessage('Hóspede excluído com sucesso.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.guests(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.stays(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.requests(cacheScope) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.reservations(cacheScope) }),
+      ]);
     },
   });
 
-  const guests = guestsQuery.data ?? [];
-  const totalItems = guests.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const visibleGuests = guests.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const guests = guestsQuery.data?.items ?? [];
+  const totalItems = guestsQuery.data?.total ?? 0;
 
   function applySearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,8 +89,18 @@ export function GuestsView({ accessToken, cacheScope }: GuestsViewProps) {
   }
 
   function openCreateModal() {
-    createMutation.reset();
-    setIsCreateOpen(true);
+    saveMutation.reset();
+    setFormGuest('new');
+  }
+
+  function openEditModal(guest: AdminGuest) {
+    saveMutation.reset();
+    setFormGuest(guest);
+  }
+
+  function openDeleteModal(guest: AdminGuest) {
+    deleteMutation.reset();
+    setDeleteCandidate(guest);
   }
 
   return (
@@ -112,23 +146,40 @@ export function GuestsView({ accessToken, cacheScope }: GuestsViewProps) {
         ) : null}
         <GuestsTable
           emptyContent={<GuestsEmptyState onClearFilters={clearFilters} onCreate={openCreateModal} />}
-          guests={visibleGuests}
+          guests={guests}
           isLoading={guestsQuery.isLoading}
+          onDelete={openDeleteModal}
+          onEdit={openEditModal}
           onSelect={setDetailGuest}
         />
-        <GuestsPagination currentPage={currentPage} totalItems={totalItems} onPageChange={setPage} />
+        <GuestsPagination currentPage={page} totalItems={totalItems} onPageChange={setPage} />
       </section>
 
-      {detailGuest ? <GuestDetailModal guest={detailGuest} onClose={() => setDetailGuest(null)} /> : null}
-      {isCreateOpen ? (
-        <GuestCreateModal
-          error={createMutation.error}
-          isSubmitting={createMutation.isPending}
+      {detailGuest ? <GuestDetailModal guest={detailGuest} onClose={() => setDetailGuest(null)} onDelete={openDeleteModal} onEdit={openEditModal} /> : null}
+      {formGuest ? (
+        <GuestFormModal
+          error={saveMutation.error}
+          isSubmitting={saveMutation.isPending}
+          layer={detailGuest ? 'secondary' : 'primary'}
           onCancel={() => {
-            createMutation.reset();
-            setIsCreateOpen(false);
+            saveMutation.reset();
+            setFormGuest(null);
           }}
-          onSubmit={(values) => createMutation.mutate(values)}
+          onSubmit={(values) => saveMutation.mutate({
+            values,
+            ...(formGuest === 'new' ? {} : { guest: formGuest }),
+          })}
+          {...(formGuest === 'new' ? {} : { guest: formGuest })}
+        />
+      ) : null}
+      {deleteCandidate ? (
+        <GuestDeleteModal
+          error={deleteMutation.error}
+          guest={deleteCandidate}
+          isDeleting={deleteMutation.isPending}
+          layer={detailGuest ? 'secondary' : 'primary'}
+          onCancel={() => { deleteMutation.reset(); setDeleteCandidate(null); }}
+          onConfirm={() => deleteMutation.mutate(deleteCandidate)}
         />
       ) : null}
     </div>
@@ -139,11 +190,15 @@ function GuestsTable({
   emptyContent,
   guests,
   isLoading,
+  onDelete,
+  onEdit,
   onSelect,
 }: {
   emptyContent: ReactNode;
   guests: AdminGuest[];
   isLoading: boolean;
+  onDelete: (guest: AdminGuest) => void;
+  onEdit: (guest: AdminGuest) => void;
   onSelect: (guest: AdminGuest) => void;
 }) {
   return (
@@ -157,10 +212,12 @@ function GuestsTable({
         {
           title: 'Ações',
           key: 'actions',
-          width: 96,
+          width: 144,
           render: (_: unknown, guest: AdminGuest) => (
             <div className="guest-table-actions" onClick={(event) => event.stopPropagation()}>
-              <Button aria-label={`Ver detalhes de ${guest.firstName} ${guest.lastName}`} icon={<EyeOutlined />} onClick={() => onSelect(guest)} type="text" />
+              <Button aria-label={`Ver detalhes de ${guest.firstName} ${guest.lastName}`} icon={<EyeOutlined />} onClick={() => onSelect(guest)} title={`Ver detalhes de ${guest.firstName} ${guest.lastName}`} type="text" />
+              <Button aria-label={`Editar ${guest.firstName} ${guest.lastName}`} icon={<EditOutlined />} onClick={() => onEdit(guest)} title={`Editar ${guest.firstName} ${guest.lastName}`} type="text" />
+              <Button aria-label={`Excluir ${guest.firstName} ${guest.lastName}`} danger icon={<DeleteOutlined />} onClick={() => onDelete(guest)} title={`Excluir ${guest.firstName} ${guest.lastName}`} type="text" />
             </div>
           ),
         },
@@ -229,7 +286,7 @@ function GuestsPagination({
   );
 }
 
-function GuestDetailModal({ guest, onClose }: { guest: AdminGuest; onClose: () => void }) {
+function GuestDetailModal({ guest, onClose, onDelete, onEdit }: { guest: AdminGuest; onClose: () => void; onDelete: (guest: AdminGuest) => void; onEdit: (guest: AdminGuest) => void }) {
   const guestName = `${guest.firstName} ${guest.lastName}`;
 
   return (
@@ -239,6 +296,10 @@ function GuestDetailModal({ guest, onClose }: { guest: AdminGuest; onClose: () =
           <div className="guest-detail-identity">
             <div className="guest-identity-chip"><UserOutlined /> {guestName}</div>
             <Tag color="success">Cadastrado</Tag>
+          </div>
+          <div className="guest-detail-actions">
+            <Button icon={<EditOutlined />} onClick={() => onEdit(guest)} type="primary">Editar hóspede</Button>
+            <Button danger icon={<DeleteOutlined />} onClick={() => onDelete(guest)}>Excluir hóspede</Button>
           </div>
         </header>
         <section className="guest-summary-grid">
@@ -263,40 +324,64 @@ function GuestDetailModal({ guest, onClose }: { guest: AdminGuest; onClose: () =
   );
 }
 
-function GuestCreateModal({
+export function GuestFormModal({
   error,
+  guest,
   isSubmitting,
+  layer,
   onCancel,
   onSubmit,
 }: {
   error: Error | null;
+  guest?: AdminGuest;
   isSubmitting: boolean;
+  layer: 'primary' | 'secondary';
   onCancel: () => void;
   onSubmit: (values: GuestFormValues) => void;
 }) {
-  const { formState: { errors }, handleSubmit, register } = useForm<GuestFormValues>({
+  const formValues = useMemo<GuestFormValues>(() => guest
+    ? { firstName: guest.firstName, lastName: guest.lastName, phoneNumber: guest.phoneNumber }
+    : { firstName: '', lastName: '', phoneNumber: '' }, [guest]);
+  const { control, formState: { errors }, handleSubmit } = useForm<GuestFormValues>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: { firstName: '', lastName: '', phoneNumber: '' },
+    values: formValues,
   });
 
   return (
-    <Modal className="operational-form-modal guest-form-modal" title="Novo hóspede" onClose={onCancel} width={600}>
+    <Modal className="operational-form-modal guest-form-modal" layer={layer} title={guest ? 'Editar hóspede' : 'Novo hóspede'} onClose={onCancel} width={600}>
       <form className="guest-modal-form" noValidate onSubmit={handleSubmit(onSubmit)}>
         <label>Nome
-          <Input {...register('firstName')} aria-invalid={Boolean(errors.firstName)} autoFocus />
+          <Controller control={control} name="firstName" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.firstName)} autoFocus />} />
           <FieldError message={errors.firstName?.message} />
         </label>
         <label>Sobrenome
-          <Input {...register('lastName')} aria-invalid={Boolean(errors.lastName)} />
+          <Controller control={control} name="lastName" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.lastName)} />} />
           <FieldError message={errors.lastName?.message} />
         </label>
         <label className="guest-form-wide">Telefone
-          <Input {...register('phoneNumber')} aria-invalid={Boolean(errors.phoneNumber)} inputMode="tel" placeholder="Informe o telefone com DDD" />
+          <Controller control={control} name="phoneNumber" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.phoneNumber)} inputMode="tel" placeholder="Informe o telefone com DDD" />} />
           <FieldError message={errors.phoneNumber?.message} />
         </label>
-        {error ? <p aria-live="polite" className="form-error guest-form-wide">{error.message}</p> : null}
-        <ModalFooter isSubmitting={isSubmitting} onCancel={onCancel} submitLabel="Cadastrar hóspede" />
+        {error ? <Toast message={error.message} onClose={() => undefined} tone="error" /> : null}
+        <ModalFooter isSubmitting={isSubmitting} onCancel={onCancel} submitLabel={guest ? 'Salvar alterações' : 'Cadastrar hóspede'} />
       </form>
+    </Modal>
+  );
+}
+
+function GuestDeleteModal({ error, guest, isDeleting, layer, onCancel, onConfirm }: { error: Error | null; guest: AdminGuest; isDeleting: boolean; layer: 'primary' | 'secondary'; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <Modal layer={layer} title="Excluir hóspede?" onClose={onCancel} size="compact">
+      <div className="confirmation-summary">
+        <strong>{guest.firstName} {guest.lastName}</strong>
+        <span><PhoneOutlined /> {guest.maskedPhone}</span>
+      </div>
+      <p className="muted-text">O cadastro deixará de aparecer nas listagens, mas os dados vinculados às estadias serão preservados.</p>
+      {error ? <Toast message={error.message} onClose={() => undefined} tone="error" /> : null}
+      <div className="modal-footer">
+        <Button disabled={isDeleting} onClick={onCancel}>Cancelar</Button>
+        <Button danger loading={isDeleting} onClick={onConfirm} type="primary">Excluir hóspede</Button>
+      </div>
     </Modal>
   );
 }

@@ -10,6 +10,7 @@ import {
 import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { shortStayStatus } from '@/shared/lib/presentation';
 import { stayFormSchema, type StayFormValues } from '../schemas/stay-form-schema';
+import { Toast } from '@/shared/components/Toast';
 
 export function StayModal({
   accessToken,
@@ -215,7 +216,7 @@ function StayForm({
       </label>
 
       <p className="stay-form-status">Status operacional: <strong>{stay ? shortStayStatus(stay.status) : 'Agendada'}</strong></p>
-      {requestError ? <p aria-live="polite" className="form-error">{requestError}</p> : null}
+      {requestError ? <Toast message={requestError} onClose={() => setRequestError(null)} tone="error" /> : null}
       <ModalFooter isSubmitting={isSubmitting} onCancel={onCancel} submitLabel={stay ? 'Salvar alterações' : 'Cadastrar estadia'} />
     </form>
   );

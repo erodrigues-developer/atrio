@@ -26,6 +26,7 @@ export class StayRepository {
   ): Promise<Stay | null> {
     return this.stayRepository
       .createQueryBuilder('stay')
+      .withDeleted()
       .leftJoinAndSelect('stay.hotel', 'hotel')
       .leftJoinAndSelect('stay.guest', 'guest')
       .where('stay.hotelId = :hotelId', { hotelId })
@@ -37,6 +38,7 @@ export class StayRepository {
   async findById(stayId: string): Promise<Stay | null> {
     return this.stayRepository.findOne({
       where: { publicId: stayId },
+      withDeleted: true,
       relations: {
         hotel: true,
         guest: true,
@@ -44,14 +46,20 @@ export class StayRepository {
     });
   }
 
-  async listUsefulInfo(stayId: string, scope: 'dashboard' | 'stay'): Promise<StayUsefulInfo[]> {
+  async listUsefulInfo(
+    stayId: string,
+    scope: 'dashboard' | 'stay',
+  ): Promise<StayUsefulInfo[]> {
     return this.usefulInfoRepository.find({
       where: { stayId, scope },
       order: { position: 'ASC' },
     });
   }
 
-  async listHotelUsefulInfo(hotelId: string, scope: 'dashboard' | 'stay'): Promise<HotelUsefulInfo[]> {
+  async listHotelUsefulInfo(
+    hotelId: string,
+    scope: 'dashboard' | 'stay',
+  ): Promise<HotelUsefulInfo[]> {
     return this.hotelUsefulInfoRepository.find({
       where: { hotelId, scope },
       order: { position: 'ASC' },

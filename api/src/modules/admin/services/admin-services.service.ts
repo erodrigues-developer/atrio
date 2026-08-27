@@ -6,7 +6,12 @@ import { buildResourceId } from 'src/common/utils/id.util';
 import { StayRequest } from 'src/modules/requests/entities/stay-request.entity';
 import { ServiceDefinition } from 'src/modules/services/entities/service-definition.entity';
 import { Brackets, Repository } from 'typeorm';
-import { UpdateAdminStayRequestStatusDto, UpsertAdminServiceDefinitionDto } from '../dto/admin-services.dto';
+import {
+  AdminServiceDefinitionQueryDto,
+  AdminServiceRequestQueryDto,
+  UpdateAdminStayRequestStatusDto,
+  UpsertAdminServiceDefinitionDto,
+} from '../dto/admin-services.dto';
 import { AuditService } from './audit.service';
 
 @Injectable()
@@ -19,12 +24,54 @@ export class AdminServicesService {
     private readonly auditService: AuditService,
   ) {}
 
-  async listServices() {
-    const services = await this.serviceDefinitionRepository.find({ order: { title: 'ASC' } });
-    return services.map((service) => this.mapService(service));
+  async listServices(query: AdminServiceDefinitionQueryDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+    const builder = this.serviceDefinitionRepository
+      .createQueryBuilder('service')
+      .orderBy('service.title', 'ASC')
+      .addOrderBy('service.publicId', 'ASC');
+
+    if (query.search) {
+      builder.andWhere(
+        new Brackets((qb) => {
+          qb.where('service.title ILIKE :search', {
+            search: `%${query.search}%`,
+          })
+            .orWhere('service.description ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('service.fulfillmentType ILIKE :search', {
+              search: `%${query.search}%`,
+            });
+        }),
+      );
+    }
+
+    if (query.status) {
+      builder.andWhere('service.published = :published', {
+        published: query.status === 'published',
+      });
+    }
+
+    const [services, total] = await builder
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+
+    return {
+      items: services.map((service) => this.mapService(service)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
-  async createService(session: AdminSessionContext, input: UpsertAdminServiceDefinitionDto) {
+  async createService(
+    session: AdminSessionContext,
+    input: UpsertAdminServiceDefinitionDto,
+  ) {
     const service = new ServiceDefinition();
     service.publicId = input.id || buildResourceId('svc');
     this.assignService(service, input);
@@ -42,7 +89,11 @@ export class AdminServicesService {
     return this.mapService(savedService);
   }
 
-  async updateService(session: AdminSessionContext, serviceId: string, input: UpsertAdminServiceDefinitionDto) {
+  async updateService(
+    session: AdminSessionContext,
+    serviceId: string,
+    input: UpsertAdminServiceDefinitionDto,
+  ) {
     const service = await this.getRequiredService(serviceId);
     this.assignService(service, input);
 
@@ -59,7 +110,11 @@ export class AdminServicesService {
     return this.mapService(savedService);
   }
 
-  async setServicePublished(session: AdminSessionContext, serviceId: string, published: boolean) {
+  async setServicePublished(
+    session: AdminSessionContext,
+    serviceId: string,
+    published: boolean,
+  ) {
     const service = await this.getRequiredService(serviceId);
     service.published = published;
 
@@ -76,14 +131,47 @@ export class AdminServicesService {
     return this.mapService(savedService);
   }
 
-  async listRequests(session: AdminSessionContext, query: { status?: string; search?: string }) {
+  async listRequests(
+    session: AdminSessionContext,
+    query: AdminServiceRequestQueryDto,
+  ) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
     const builder = this.stayRequestRepository
       .createQueryBuilder('request')
       .innerJoin('stays', 'stay', 'stay.public_id = request.stay_id')
       .innerJoin('guests', 'guest', 'guest.public_id = stay.guest_id')
       .where('stay.hotel_id = :hotelId', { hotelId: session.hotelId })
       .orderBy('request.created_at', 'DESC')
-      .limit(100)
+      .addOrderBy('request.public_id', 'ASC');
+
+    if (query.status) {
+      builder.andWhere('request.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      builder.andWhere(
+        new Brackets((qb) => {
+          qb.where('request.room_number ILIKE :search', {
+            search: `%${query.search}%`,
+          })
+            .orWhere('request.title ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('guest.first_name ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('guest.last_name ILIKE :search', {
+              search: `%${query.search}%`,
+            });
+        }),
+      );
+    }
+
+    const total = await builder.getCount();
+    const rows = await builder
+      .offset((page - 1) * pageSize)
+      .limit(pageSize)
       .select([
         'request.public_id AS id',
         'request.stay_id AS "stayId"',
@@ -96,29 +184,27 @@ export class AdminServicesService {
         'request.internal_note AS "internalNote"',
         'request.room_number AS "roomNumber"',
         'request.created_at AS "createdAt"',
-        "CONCAT(guest.first_name, ' ', guest.last_name) AS \"guestName\"",
-      ]);
+        'CONCAT(guest.first_name, \' \', guest.last_name) AS "guestName"',
+      ])
+      .getRawMany();
 
-    if (query.status) {
-      builder.andWhere('request.status = :status', { status: query.status });
-    }
-
-    if (query.search) {
-      builder.andWhere(
-        new Brackets((qb) => {
-          qb.where('request.room_number ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('request.title ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('guest.first_name ILIKE :search', { search: `%${query.search}%` })
-            .orWhere('guest.last_name ILIKE :search', { search: `%${query.search}%` });
-        }),
-      );
-    }
-
-    const rows = await builder.getRawMany();
-    return rows.map((row) => ({ ...row, createdAt: new Date(row.createdAt).toISOString() }));
+    return {
+      items: rows.map((row) => ({
+        ...row,
+        createdAt: new Date(row.createdAt).toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
-  async updateRequestStatus(session: AdminSessionContext, requestId: string, input: UpdateAdminStayRequestStatusDto) {
+  async updateRequestStatus(
+    session: AdminSessionContext,
+    requestId: string,
+    input: UpdateAdminStayRequestStatusDto,
+  ) {
     const request = await this.stayRequestRepository
       .createQueryBuilder('request')
       .innerJoin('stays', 'stay', 'stay.public_id = request.stay_id')
@@ -127,7 +213,11 @@ export class AdminServicesService {
       .getOne();
 
     if (!request) {
-      throw new ApiException(404, 'REQUEST_NOT_FOUND', 'Stay request was not found.');
+      throw new ApiException(
+        404,
+        'REQUEST_NOT_FOUND',
+        'Stay request was not found.',
+      );
     }
 
     request.status = input.status;
@@ -161,16 +251,25 @@ export class AdminServicesService {
   }
 
   private async getRequiredService(serviceId: string) {
-    const service = await this.serviceDefinitionRepository.findOne({ where: { publicId: serviceId } });
+    const service = await this.serviceDefinitionRepository.findOne({
+      where: { publicId: serviceId },
+    });
 
     if (!service) {
-      throw new ApiException(404, 'SERVICE_NOT_FOUND', 'Service was not found.');
+      throw new ApiException(
+        404,
+        'SERVICE_NOT_FOUND',
+        'Service was not found.',
+      );
     }
 
     return service;
   }
 
-  private assignService(service: ServiceDefinition, input: UpsertAdminServiceDefinitionDto) {
+  private assignService(
+    service: ServiceDefinition,
+    input: UpsertAdminServiceDefinitionDto,
+  ) {
     service.title = input.title;
     service.description = input.description;
     service.icon = input.icon;

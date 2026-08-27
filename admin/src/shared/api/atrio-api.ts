@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import {
   accessChallengeSchema, adminSessionSchema, adminUserSchema, checkoutSchema, collectionSchema,
-  consumptionSchema, conversationSchema, dashboardSchema, experienceSchema, guestSchema,
+  consumptionSchema, conversationSchema, dashboardSchema, experiencePageSchema, experienceSchema, guestPageSchema, guestSchema,
   hotelSettingsSchema, idSchema, mediaSchema, messageSchema, okSchema, reservationSchema,
-  revokedSessionsSchema, serviceRequestSchema, serviceSchema, slotSchema, stayPageSchema,
+  reservationPageSchema, revokedSessionsSchema, servicePageSchema, serviceRequestPageSchema, serviceRequestSchema, serviceSchema, slotSchema, stayPageSchema,
   staySchema, usefulInfoSchema,
 } from './contracts';
 import { apiRequest, apiUpload, downloadFile } from './http-client';
@@ -133,6 +133,16 @@ export type AdminStayPage = {
   totalPages: number;
 };
 
+export type AdminPage<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type AdminGuestPage = AdminPage<AdminGuest>;
+
 export type CreateGuestPayload = {
   firstName: string;
   lastName: string;
@@ -189,6 +199,8 @@ export type ServiceDefinition = {
   published: boolean;
 };
 
+export type ServiceDefinitionPage = AdminPage<ServiceDefinition>;
+
 export type ServiceRequest = {
   id: string;
   stayId: string;
@@ -203,6 +215,8 @@ export type ServiceRequest = {
   guestName: string;
   createdAt: string;
 };
+
+export type ServiceRequestPage = AdminPage<ServiceRequest>;
 
 export type AdminExperience = {
   id: string;
@@ -221,6 +235,8 @@ export type AdminExperience = {
   included: string[];
   published: boolean;
 };
+
+export type AdminExperiencePage = AdminPage<AdminExperience>;
 
 export type AdminExperienceCollection = {
   id: string;
@@ -255,11 +271,16 @@ export type AdminReservation = {
   guestName: string;
 };
 
+export type AdminReservationPage = AdminPage<AdminReservation>;
+
 export type ConciergeConversation = {
   stayId: string;
   roomNumber: string;
   guestName: string;
+  stayStatus: string;
   lastMessageAt: string | null;
+  lastMessageText: string | null;
+  lastMessageSender: 'hotel' | 'guest' | null;
   guestMessageCount: number;
 };
 
@@ -279,7 +300,8 @@ function responseSchemaFor(path: string, method = 'GET'): z.ZodType<unknown> {
   if (pathname === '/admin/auth/logout') return okSchema;
   if (pathname === '/admin/me') return adminUserSchema;
   if (pathname === '/admin/dashboard') return dashboardSchema;
-  if (pathname === '/admin/guests') return method === 'GET' ? z.array(guestSchema) : guestSchema;
+  if (pathname === '/admin/guests') return method === 'GET' ? guestPageSchema : guestSchema;
+  if (/\/admin\/guests\/[^/]+$/.test(pathname)) return method === 'DELETE' ? idSchema : guestSchema;
   if (pathname === '/admin/stays') return method === 'GET' ? stayPageSchema : staySchema;
   if (/\/admin\/stays\/[^/]+\/access\/resend$/.test(pathname)) return accessChallengeSchema;
   if (/\/admin\/stays\/[^/]+\/check-out$/.test(pathname)) return checkoutSchema;
@@ -288,16 +310,16 @@ function responseSchemaFor(path: string, method = 'GET'): z.ZodType<unknown> {
   if (/\/admin\/stays\/[^/]+\/consumption\/[^/]+$/.test(pathname)) return method === 'DELETE' ? idSchema : consumptionSchema;
   if (/\/admin\/stays\/[^/]+\/consumption$/.test(pathname)) return method === 'GET' ? z.array(consumptionSchema) : consumptionSchema;
   if (/\/admin\/stays\/[^/]+(?:\/check-in|\/cancel|\/wifi)?$/.test(pathname)) return staySchema;
-  if (pathname === '/admin/services') return method === 'GET' ? z.array(serviceSchema) : serviceSchema;
+  if (pathname === '/admin/services') return method === 'GET' ? servicePageSchema : serviceSchema;
   if (/\/admin\/services\/[^/]+/.test(pathname)) return serviceSchema;
-  if (pathname === '/admin/requests') return z.array(serviceRequestSchema);
+  if (pathname === '/admin/requests') return serviceRequestPageSchema;
   if (/\/admin\/requests\/[^/]+\/status$/.test(pathname)) return serviceRequestSchema;
-  if (pathname === '/admin/experiences') return method === 'GET' ? z.array(experienceSchema) : experienceSchema;
+  if (pathname === '/admin/experiences') return method === 'GET' ? experiencePageSchema : experienceSchema;
   if (pathname === '/admin/experience-collections') return method === 'GET' ? z.array(collectionSchema) : collectionSchema;
   if (/\/admin\/experience-collections\/[^/]+\/items$/.test(pathname)) return idSchema;
   if (/\/admin\/experiences\/[^/]+\/slots$/.test(pathname)) return method === 'GET' ? z.array(slotSchema) : slotSchema;
   if (/\/admin\/experiences\/[^/]+\/slots\/[^/]+$/.test(pathname)) return slotSchema;
-  if (pathname === '/admin/reservations') return method === 'GET' ? z.array(reservationSchema) : reservationSchema;
+  if (pathname === '/admin/reservations') return method === 'GET' ? reservationPageSchema : reservationSchema;
   if (/\/admin\/reservations\/[^/]+\/status$/.test(pathname)) return reservationSchema;
   if (pathname === '/admin/concierge/conversations') return z.array(conversationSchema);
   if (/\/admin\/concierge\/conversations\/[^/]+\/messages$/.test(pathname)) return method === 'GET' ? z.array(messageSchema) : messageSchema;
@@ -350,14 +372,14 @@ export function logout(accessToken: string) {
   });
 }
 
-export function listGuests(accessToken: string, search = '') {
+export function listGuests(accessToken: string, query: { search?: string; page?: number; pageSize?: number } = {}) {
   const params = new URLSearchParams();
 
-  if (search) {
-    params.set('search', search);
-  }
+  if (query.search) params.set('search', query.search);
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
-  return request<AdminGuest[]>(`/admin/guests${params.size ? `?${params}` : ''}`, {
+  return request<AdminGuestPage>(`/admin/guests${params.size ? `?${params}` : ''}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -371,6 +393,25 @@ export function createGuest(accessToken: string, payload: CreateGuestPayload) {
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateGuest(accessToken: string, guestId: string, payload: CreateGuestPayload) {
+  return request<AdminGuest>(`/admin/guests/${guestId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteGuest(accessToken: string, guestId: string) {
+  return request<{ id: string }>(`/admin/guests/${guestId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 }
 
@@ -545,8 +586,14 @@ export function deleteStayConsumption(accessToken: string, stayId: string, consu
   });
 }
 
-export function listAdminServices(accessToken: string) {
-  return request<ServiceDefinition[]>('/admin/services', {
+export function listAdminServices(accessToken: string, query: { search?: string; status?: string; page?: number; pageSize?: number } = {}) {
+  const params = new URLSearchParams();
+  if (query.search) params.set('search', query.search);
+  if (query.status) params.set('status', query.status);
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
+
+  return request<ServiceDefinitionPage>(`/admin/services${params.size ? `?${params}` : ''}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -582,7 +629,7 @@ export function setAdminServicePublished(accessToken: string, serviceId: string,
   });
 }
 
-export function listAdminRequests(accessToken: string, query: { status?: string; search?: string } = {}) {
+export function listAdminRequests(accessToken: string, query: { status?: string; search?: string; page?: number; pageSize?: number } = {}) {
   const params = new URLSearchParams();
 
   if (query.status) {
@@ -592,8 +639,10 @@ export function listAdminRequests(accessToken: string, query: { status?: string;
   if (query.search) {
     params.set('search', query.search);
   }
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
-  return request<ServiceRequest[]>(`/admin/requests${params.size ? `?${params}` : ''}`, {
+  return request<ServiceRequestPage>(`/admin/requests${params.size ? `?${params}` : ''}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -610,8 +659,15 @@ export function updateAdminRequestStatus(accessToken: string, requestId: string,
   });
 }
 
-export function listAdminExperiences(accessToken: string) {
-  return request<AdminExperience[]>('/admin/experiences', {
+export function listAdminExperiences(accessToken: string, query: { search?: string; category?: string; status?: string; page?: number; pageSize?: number } = {}) {
+  const params = new URLSearchParams();
+  if (query.search) params.set('search', query.search);
+  if (query.category) params.set('category', query.category);
+  if (query.status) params.set('status', query.status);
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
+
+  return request<AdminExperiencePage>(`/admin/experiences${params.size ? `?${params}` : ''}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
@@ -676,12 +732,14 @@ export function updateAdminExperienceSlot(accessToken: string, experienceId: str
   });
 }
 
-export function listAdminReservations(accessToken: string, query: { status?: string; search?: string } = {}) {
+export function listAdminReservations(accessToken: string, query: { status?: string; search?: string; page?: number; pageSize?: number } = {}) {
   const params = new URLSearchParams();
   if (query.status) params.set('status', query.status);
   if (query.search) params.set('search', query.search);
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
-  return request<AdminReservation[]>(`/admin/reservations${params.size ? `?${params}` : ''}`, {
+  return request<AdminReservationPage>(`/admin/reservations${params.size ? `?${params}` : ''}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }

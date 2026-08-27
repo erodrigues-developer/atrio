@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class AdminServiceDefinitionDto {
   @ApiProperty()
@@ -60,6 +71,50 @@ export class UpsertAdminServiceDefinitionDto {
   published!: boolean;
 }
 
+export class AdminServiceDefinitionQueryDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({ enum: ['published', 'draft'], required: false })
+  @IsOptional()
+  @IsIn(['published', 'draft'])
+  status?: 'published' | 'draft';
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+}
+
+export class AdminServiceDefinitionListResponseDto {
+  @ApiProperty({ type: [AdminServiceDefinitionDto] })
+  items!: AdminServiceDefinitionDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
+}
+
 export class AdminServiceRequestQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
@@ -70,11 +125,34 @@ export class AdminServiceRequestQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
 
 export class UpdateAdminStayRequestStatusDto {
   @ApiProperty()
-  @IsIn(['received', 'accepted', 'in_progress', 'on_the_way', 'completed', 'cancelled', 'rejected'])
+  @IsIn([
+    'received',
+    'accepted',
+    'in_progress',
+    'on_the_way',
+    'completed',
+    'cancelled',
+    'rejected',
+  ])
   status!: string;
 
   @ApiProperty({ required: false })
@@ -120,4 +198,21 @@ export class AdminStayRequestDto {
 
   @ApiProperty()
   createdAt!: string;
+}
+
+export class AdminStayRequestListResponseDto {
+  @ApiProperty({ type: [AdminStayRequestDto] })
+  items!: AdminStayRequestDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
 }

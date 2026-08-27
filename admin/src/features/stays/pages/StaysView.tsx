@@ -45,11 +45,11 @@ export function StaysView({ accessToken, cacheScope }: { accessToken: string; ca
     }),
   });
   const guestsQuery = useQuery({
-    queryKey: adminQueryKeys.guests(cacheScope),
-    queryFn: () => listGuests(accessToken),
+    queryKey: adminQueryKeys.guestList(cacheScope, { page: 1, pageSize: 100, purpose: 'stay-form' }),
+    queryFn: () => listGuests(accessToken, { page: 1, pageSize: 100 }),
   });
   const stays = staysQuery.data?.items ?? [];
-  const guests = guestsQuery.data ?? [];
+  const guests = guestsQuery.data?.items ?? [];
   const totalItems = staysQuery.data?.total ?? 0;
   const totalPages = staysQuery.data?.totalPages ?? 0;
   const queryError = staysQuery.error ?? guestsQuery.error;

@@ -74,9 +74,9 @@ export function StaysTable({
       key: 'actions',
       render: (_: unknown, stay: AdminStay) => (
         <div className="stay-table-actions" onClick={(event) => event.stopPropagation()}>
-          <Button aria-label="Ver detalhes" icon={<EyeOutlined />} onClick={() => onSelect(stay)} type="text" />
-          <Button aria-label="Reenviar acesso" disabled={!['scheduled', 'active'].includes(stay.status)} icon={<SendOutlined />} onClick={() => setWorkflowCandidate({ action: 'resend', stay })} type="text" />
-          <Button aria-label="Cancelar estadia" danger disabled={stay.status !== 'scheduled'} icon={<DeleteOutlined />} onClick={() => setWorkflowCandidate({ action: 'cancel', stay })} type="text" />
+          <Button aria-label="Ver detalhes" icon={<EyeOutlined />} onClick={() => onSelect(stay)} title="Ver detalhes" type="text" />
+          <Button aria-label="Reenviar acesso" disabled={!['scheduled', 'active'].includes(stay.status)} icon={<SendOutlined />} onClick={() => setWorkflowCandidate({ action: 'resend', stay })} title="Reenviar acesso" type="text" />
+          <Button aria-label="Cancelar estadia" danger disabled={stay.status !== 'scheduled'} icon={<DeleteOutlined />} onClick={() => setWorkflowCandidate({ action: 'cancel', stay })} title="Cancelar estadia" type="text" />
         </div>
       ),
     },

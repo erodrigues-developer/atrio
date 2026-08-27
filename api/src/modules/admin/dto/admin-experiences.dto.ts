@@ -1,5 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpsertAdminExperienceDto {
   @ApiProperty({ required: false })
@@ -86,6 +98,55 @@ export class UpsertAdminExperienceDto {
 export class AdminExperienceDto extends UpsertAdminExperienceDto {
   @ApiProperty()
   id!: string;
+}
+
+export class AdminExperienceQueryDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiProperty({ enum: ['published', 'draft'], required: false })
+  @IsOptional()
+  @IsIn(['published', 'draft'])
+  status?: 'published' | 'draft';
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+}
+
+export class AdminExperienceListResponseDto {
+  @ApiProperty({ type: [AdminExperienceDto] })
+  items!: AdminExperienceDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
 }
 
 export class UpsertAdminCollectionDto {
@@ -196,6 +257,21 @@ export class AdminReservationQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiProperty({ default: 1, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiProperty({ default: 10, maximum: 100, minimum: 1, required: false })
+  @IsOptional()
+  @Transform(({ value }) => Number(value))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
 
 export class CreateAdminReservationDto {
@@ -220,7 +296,15 @@ export class CreateAdminReservationDto {
 
 export class UpdateAdminReservationStatusDto {
   @ApiProperty()
-  @IsIn(['requested', 'confirmed', 'waitlisted', 'cancelled', 'completed', 'no_show', 'rejected'])
+  @IsIn([
+    'requested',
+    'confirmed',
+    'waitlisted',
+    'cancelled',
+    'completed',
+    'no_show',
+    'rejected',
+  ])
   status!: string;
 }
 
@@ -251,4 +335,21 @@ export class AdminReservationDto {
 
   @ApiProperty()
   guestName!: string;
+}
+
+export class AdminReservationListResponseDto {
+  @ApiProperty({ type: [AdminReservationDto] })
+  items!: AdminReservationDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  page!: number;
+
+  @ApiProperty()
+  pageSize!: number;
+
+  @ApiProperty()
+  totalPages!: number;
 }

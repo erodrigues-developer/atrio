@@ -200,6 +200,13 @@ export class AdminDashboardService {
        LIMIT 5`,
       [session.hotelId],
     );
+    const normalizedUpcomingMovements = upcomingMovements.map(
+      ({ scheduledAt, ...movement }: { scheduledAt?: Date | string | null; [key: string]: unknown }) => (
+        scheduledAt
+          ? { ...movement, scheduledAt: new Date(scheduledAt).toISOString() }
+          : movement
+      ),
+    );
     const alerts = [
       ...pendingRequests
         .filter((request: { priority: string }) => request.priority === 'critical')
@@ -255,7 +262,7 @@ export class AdminDashboardService {
       pendingRequests,
       pendingExperiences,
       conciergeConversations,
-      upcomingMovements,
+      upcomingMovements: normalizedUpcomingMovements,
     };
   }
 }

@@ -19,6 +19,7 @@ import {
   parseCurrencyInput, shortStayStatus, stayStatusColor,
 } from '@/shared/lib/presentation';
 import { StayModal } from './StayForm';
+import { Toast } from '@/shared/components/Toast';
 
 export function StayDetailPanel({
   accessToken,
@@ -164,6 +165,8 @@ export function StayDetailPanel({
 
   return (
     <>
+      {success ? <Toast message={success} onClose={() => setSuccess(null)} tone="success" /> : null}
+      {error || consumptionQuery.error ? <Toast message={error ?? consumptionQuery.error?.message ?? 'Não foi possível carregar os consumos.'} onClose={() => { setError(null); if (consumptionQuery.error) void consumptionQuery.refetch(); }} tone="error" /> : null}
       <div className="detail-panel stay-detail-content">
         <header className="stay-detail-hero">
           <div className="stay-detail-identity">
@@ -174,11 +177,9 @@ export function StayDetailPanel({
             {primaryAction ? (
               <Button onClick={() => setActiveModal(primaryAction.modal)} type="primary">{primaryAction.label}</Button>
             ) : null}
-            <Dropdown menu={{ items: [{ key: 'edit', icon: <EditOutlined />, label: 'Editar estadia' }, ...(currentStatus === 'scheduled' || currentStatus === 'active' ? [{ key: 'resend', icon: <SendOutlined />, label: 'Reenviar acesso' }] : []), ...(currentStatus === 'scheduled' ? [{ danger: true, key: 'cancel', icon: <DeleteOutlined />, label: 'Cancelar estadia' }] : [])], onClick: ({ key }) => setActiveModal(key as typeof activeModal) }}><Button aria-label="Mais ações" icon={<MoreOutlined />} /></Dropdown>
+            <Dropdown menu={{ items: [{ key: 'edit', icon: <EditOutlined />, label: 'Editar estadia' }, ...(currentStatus === 'scheduled' || currentStatus === 'active' ? [{ key: 'resend', icon: <SendOutlined />, label: 'Reenviar acesso' }] : []), ...(currentStatus === 'scheduled' ? [{ danger: true, key: 'cancel', icon: <DeleteOutlined />, label: 'Cancelar estadia' }] : [])], onClick: ({ key }) => setActiveModal(key as typeof activeModal) }}><Button aria-label="Mais ações" icon={<MoreOutlined />} title="Mais ações" /></Dropdown>
           </div>
         </header>
-        {success ? <p className="success-state detail-feedback">{success}</p> : null}
-        {!activeModal && (error || consumptionQuery.error) ? <p className="form-error">{error ?? consumptionQuery.error?.message}</p> : null}
         <section className="stay-summary-grid">
           <article className="stay-summary-card"><span>Nome do hóspede</span><strong>{guestName}</strong><small><UserOutlined /> {stay.guest.maskedPhone}</small></article>
           <article className="stay-summary-card"><span>Data do check-in</span><strong><CalendarOutlined /> {formatStayDate(stay.checkInDate)}</strong><small><ClockCircleOutlined /> Estadia programada</small></article>
@@ -200,8 +201,8 @@ export function StayDetailPanel({
                 width: 78,
                 render: (_: unknown, item: ConsumptionItem) => (
                   <div className="consumption-row-actions">
-                    <Button aria-label={`Editar ${item.title}`} icon={<EditOutlined />} onClick={() => openEditConsumptionModal(item)} size="small" type="text" />
-                    <Button aria-label={`Excluir ${item.title}`} danger icon={<DeleteOutlined />} onClick={() => { setDeletingConsumption(item); setActiveModal('delete-consumption'); }} size="small" type="text" />
+                    <Button aria-label={`Editar ${item.title}`} icon={<EditOutlined />} onClick={() => openEditConsumptionModal(item)} size="small" title={`Editar ${item.title}`} type="text" />
+                    <Button aria-label={`Excluir ${item.title}`} danger icon={<DeleteOutlined />} onClick={() => { setDeletingConsumption(item); setActiveModal('delete-consumption'); }} size="small" title={`Excluir ${item.title}`} type="text" />
                   </div>
                 ),
               },
@@ -233,12 +234,11 @@ export function StayDetailPanel({
       ) : null}
       {activeModal === 'consumption' ? (
         <Modal className="operational-form-modal consumption-modal" layer="secondary" title={editingConsumptionId ? 'Editar consumo' : 'Adicionar consumo'} onClose={closeSecondaryModal} width={600}>
-          {error ? <p className="form-error">{error}</p> : null}
           <form className="consumption-modal-form" onSubmit={handleConsumptionSubmit}>
             <div className="consumption-form-grid">
               <label className="consumption-category">Categoria<AntSelect onChange={(value) => setConsumptionForm({ ...consumptionForm, category: value })} options={['Alimentos e Bebidas', 'Serviços', 'Minibar', 'Lavanderia', 'Outros'].map((value) => ({ label: value, value }))} value={consumptionForm.category} /></label>
               <label className="consumption-item">Item<Input placeholder="Digite o item" value={consumptionForm.title} onChange={(event) => setConsumptionForm({ ...consumptionForm, title: event.target.value })} required /></label>
-              <label className="consumption-quantity">Quantidade<div className="consumption-stepper"><Button aria-label="Diminuir quantidade" htmlType="button" icon={<MinusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, consumptionForm.quantity - 1) })} /><InputNumber controls={false} min={1} onChange={(value) => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, Number(value ?? 1)) })} value={consumptionForm.quantity} /><Button aria-label="Aumentar quantidade" htmlType="button" icon={<PlusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: consumptionForm.quantity + 1 })} /></div></label>
+              <label className="consumption-quantity">Quantidade<div className="consumption-stepper"><Button aria-label="Diminuir quantidade" htmlType="button" icon={<MinusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, consumptionForm.quantity - 1) })} title="Diminuir quantidade" /><InputNumber controls={false} min={1} onChange={(value) => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, Number(value ?? 1)) })} value={consumptionForm.quantity} /><Button aria-label="Aumentar quantidade" htmlType="button" icon={<PlusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: consumptionForm.quantity + 1 })} title="Aumentar quantidade" /></div></label>
               <label className="consumption-value">Valor unitário<Input addonBefore="R$" inputMode="numeric" placeholder="0,00" value={formatDecimalInput(consumptionForm.amountCents)} onChange={(event) => setConsumptionForm({ ...consumptionForm, amountCents: parseCurrencyInput(event.target.value) })} required /></label>
               <label className="consumption-date">Data/hora<DatePicker format="DD/MM/YYYY HH:mm" onChange={(value) => setConsumptionForm({ ...consumptionForm, occurredAt: value?.format('YYYY-MM-DDTHH:mm') ?? '' })} prefix={<CalendarOutlined />} showTime suffixIcon={null} value={consumptionForm.occurredAt ? dayjs(consumptionForm.occurredAt) : null} /></label>
               <label className="consumption-note">Observação (opcional)<Input placeholder="Adicione uma observação sobre o consumo" value={consumptionForm.description} onChange={(event) => setConsumptionForm({ ...consumptionForm, description: event.target.value })} /></label>
@@ -252,7 +252,6 @@ export function StayDetailPanel({
       ) : null}
       {activeModal === 'delete-consumption' && deletingConsumption ? (
         <Modal layer="secondary" title="Excluir consumo" onClose={closeSecondaryModal} size="compact">
-          {error ? <p className="form-error">{error}</p> : null}
           <p className="muted-text">O consumo “{deletingConsumption.title.replace(/\s×\d+$/, '')}” será excluído permanentemente.</p>
           <div className="modal-footer">
             <Button onClick={closeSecondaryModal}>Cancelar</Button>

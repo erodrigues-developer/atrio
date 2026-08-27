@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const optionalText = z.string().optional();
 const nullableText = z.string().nullable();
+const optionalNullableText = z.string().nullish().transform((value) => value ?? undefined);
 
 export const adminUserSchema = z.object({
   adminUserId: z.string(),
@@ -41,7 +42,7 @@ export const dashboardSchema = z.object({
   conciergeConversations: z.array(dashboardItemSchema),
   upcomingMovements: z.array(z.object({
     id: z.string(), timeLabel: z.string(), type: z.enum(['check-in', 'check-out', 'experience']),
-    title: z.string(), helper: z.string(), scheduledAt: optionalText,
+    title: z.string(), helper: z.string(), scheduledAt: optionalNullableText,
   })),
 });
 
@@ -59,6 +60,10 @@ export const stayPageSchema = z.object({
   items: z.array(staySchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
 });
 
+export const guestPageSchema = z.object({
+  items: z.array(guestSchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
+});
+
 export const usefulInfoSchema = z.object({
   id: z.string(), scope: z.enum(['dashboard', 'stay']), title: z.string(), description: z.string(), position: z.number(),
 });
@@ -73,10 +78,18 @@ export const serviceSchema = z.object({
   requestSchema: z.object({ fields: z.array(z.record(z.string(), z.unknown())) }), published: z.boolean(),
 });
 
+export const servicePageSchema = z.object({
+  items: z.array(serviceSchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
+});
+
 export const serviceRequestSchema = z.object({
   id: z.string(), stayId: z.string(), serviceId: z.string(), title: z.string(), status: z.string(),
   statusLabel: z.string(), quantity: z.number().nullable(), note: z.string(), internalNote: nullableText,
   roomNumber: z.string(), guestName: z.string(), createdAt: z.string(),
+});
+
+export const serviceRequestPageSchema = z.object({
+  items: z.array(serviceRequestSchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
 });
 
 export const experienceSchema = z.object({
@@ -84,6 +97,10 @@ export const experienceSchema = z.object({
   priceLabel: z.string(), badge: nullableText, imageUrl: z.string(), durationLabel: nullableText,
   availabilityLabel: nullableText, locationLabel: nullableText, locationDescription: nullableText,
   policy: nullableText, included: z.array(z.string()), published: z.boolean(),
+});
+
+export const experiencePageSchema = z.object({
+  items: z.array(experienceSchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
 });
 
 export const collectionSchema = z.object({
@@ -101,9 +118,14 @@ export const reservationSchema = z.object({
   statusLabel: z.string(), scheduledAt: z.string(), roomNumber: z.string(), guestName: z.string(),
 });
 
+export const reservationPageSchema = z.object({
+  items: z.array(reservationSchema), total: z.number(), page: z.number(), pageSize: z.number(), totalPages: z.number(),
+});
+
 export const conversationSchema = z.object({
   stayId: z.string(), roomNumber: z.string(), guestName: z.string(), lastMessageAt: nullableText,
-  guestMessageCount: z.number(),
+  lastMessageText: nullableText, lastMessageSender: z.enum(['hotel', 'guest']).nullable(),
+  stayStatus: z.string(), guestMessageCount: z.number(),
 });
 
 export const messageSchema = z.object({

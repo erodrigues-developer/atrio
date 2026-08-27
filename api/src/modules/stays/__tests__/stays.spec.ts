@@ -19,12 +19,17 @@ describe('stays module', () => {
     wifiPassword: 'password',
     consumptionEnabled: true,
     consumptionView: 'ready',
-    hotel: { name: 'Copacabana Palace', wifiNetwork: 'network', wifiPassword: 'password' },
+    hotel: {
+      name: 'Copacabana Palace',
+      wifiNetwork: 'network',
+      wifiPassword: 'password',
+    },
     guest: { firstName: 'Everton', lastName: 'Rodrigues' },
   };
 
   it('covers the stay repository', async () => {
     const queryBuilder = {
+      withDeleted: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -33,24 +38,43 @@ describe('stays module', () => {
     const findOne = jest.fn().mockResolvedValue(stay);
     const find = jest.fn().mockResolvedValue([{ publicId: 'info' }]);
     const repository = new StayRepository(
-      { createQueryBuilder: jest.fn().mockReturnValue(queryBuilder), findOne } as never,
+      {
+        createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+        findOne,
+      } as never,
       { find } as never,
       { find } as never,
       { find } as never,
     );
 
-    expect(await repository.findByHotelRoomAndLastName('h', '1', 'l')).toBe(stay);
+    expect(await repository.findByHotelRoomAndLastName('h', '1', 'l')).toBe(
+      stay,
+    );
     expect(await repository.findById('stay_001')).toBe(stay);
-    expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([{ publicId: 'info' }]);
-    expect(await repository.listHotelUsefulInfo('copacabana-palace', 'stay')).toEqual([{ publicId: 'info' }]);
-    expect(await repository.listConsumptionItems('stay_001')).toEqual([{ publicId: 'info' }]);
+    expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([
+      { publicId: 'info' },
+    ]);
+    expect(
+      await repository.listHotelUsefulInfo('copacabana-palace', 'stay'),
+    ).toEqual([{ publicId: 'info' }]);
+    expect(await repository.listConsumptionItems('stay_001')).toEqual([
+      { publicId: 'info' },
+    ]);
   });
 
   it('covers stay service flows and controller delegation', async () => {
     const stayRepository = {
       findById: jest.fn().mockResolvedValue(stay),
-      listUsefulInfo: jest.fn().mockResolvedValue([{ publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
-      listHotelUsefulInfo: jest.fn().mockResolvedValue([{ publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' }]),
+      listUsefulInfo: jest
+        .fn()
+        .mockResolvedValue([
+          { publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' },
+        ]),
+      listHotelUsefulInfo: jest
+        .fn()
+        .mockResolvedValue([
+          { publicId: 'wifi', title: 'Wi-Fi', description: 'Desc' },
+        ]),
       listConsumptionItems: jest.fn().mockResolvedValue([
         {
           publicId: 'cons_001',
@@ -82,7 +106,10 @@ describe('stays module', () => {
         return Promise.resolve([{ id: 'sunset-dinner', title: 'Sunset' }]);
       }),
     };
-    const service = new StaysService(stayRepository as never, dataSource as never);
+    const service = new StaysService(
+      stayRepository as never,
+      dataSource as never,
+    );
     const session = {
       stayId: 'stay_001',
       guestId: 'guest_001',
@@ -93,22 +120,49 @@ describe('stays module', () => {
       accessToken: 'token',
     };
 
-    expect((await service.getStaySummary('stay_001', session as never)).id).toBe('stay_001');
-    expect((await service.getDashboard('stay_001', session as never)).featuredExperience.id).toBe('sunset-dinner');
-    expect((await service.getWifi('stay_001', session as never)).network).toBe('network');
-    expect((await service.getConsumption('stay_001', session as never)).totalAmountCents).toBe(100);
-    stayRepository.findById.mockResolvedValueOnce({ ...stay, consumptionEnabled: false });
-    expect((await service.getConsumption('stay_001', session as never)).items).toHaveLength(0);
+    expect(
+      (await service.getStaySummary('stay_001', session as never)).id,
+    ).toBe('stay_001');
+    expect(
+      (await service.getDashboard('stay_001', session as never))
+        .featuredExperience.id,
+    ).toBe('sunset-dinner');
+    expect((await service.getWifi('stay_001', session as never)).network).toBe(
+      'network',
+    );
+    expect(
+      (await service.getConsumption('stay_001', session as never))
+        .totalAmountCents,
+    ).toBe(100);
+    stayRepository.findById.mockResolvedValueOnce({
+      ...stay,
+      consumptionEnabled: false,
+    });
+    expect(
+      (await service.getConsumption('stay_001', session as never)).items,
+    ).toHaveLength(0);
 
-    await expect(service.getStaySummary('another', session as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.getStaySummary('another', session as never),
+    ).rejects.toBeInstanceOf(ApiException);
     stayRepository.findById.mockResolvedValueOnce(null);
-    await expect(service.getWifi('stay_001', session as never)).rejects.toBeInstanceOf(ApiException);
+    await expect(
+      service.getWifi('stay_001', session as never),
+    ).rejects.toBeInstanceOf(ApiException);
     stayRepository.findById.mockResolvedValue(stay);
 
     const controller = new StaysController(service);
-    await expect(controller.getStay('stay_001', session as never)).resolves.toHaveProperty('id', 'stay_001');
-    await expect(controller.getDashboard('stay_001', session as never)).resolves.toHaveProperty('requests');
-    await expect(controller.getWifi('stay_001', session as never)).resolves.toHaveProperty('password', 'password');
-    await expect(controller.getConsumption('stay_001', session as never)).resolves.toHaveProperty('items');
+    await expect(
+      controller.getStay('stay_001', session as never),
+    ).resolves.toHaveProperty('id', 'stay_001');
+    await expect(
+      controller.getDashboard('stay_001', session as never),
+    ).resolves.toHaveProperty('requests');
+    await expect(
+      controller.getWifi('stay_001', session as never),
+    ).resolves.toHaveProperty('password', 'password');
+    await expect(
+      controller.getConsumption('stay_001', session as never),
+    ).resolves.toHaveProperty('items');
   });
 });

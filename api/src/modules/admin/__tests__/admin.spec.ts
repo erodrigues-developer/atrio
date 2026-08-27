@@ -342,7 +342,7 @@ describe('admin module', () => {
           return Promise.resolve([{ id: 'stay_001', title: 'Concierge' }]);
         }
         if (sql.includes('UNION ALL')) {
-          return Promise.resolve([{ id: 'move_001', title: 'Mariana Costa' }]);
+          return Promise.resolve([{ id: 'move_001', title: 'Mariana Costa', scheduledAt: null }]);
         }
 
         return Promise.resolve([]);
@@ -357,6 +357,7 @@ describe('admin module', () => {
     expect(response.pendingExperiences).toHaveLength(1);
     expect(response.conciergeConversations).toHaveLength(1);
     expect(response.upcomingMovements).toHaveLength(1);
+    expect(response.upcomingMovements[0]).not.toHaveProperty('scheduledAt');
   });
 
   it('delegates from controllers and guards admin tokens', async () => {
@@ -416,12 +417,22 @@ describe('admin module', () => {
   });
 
   it('handles admin guest and stay management flows', async () => {
+    const guestQueryBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[guest], 1]),
+    };
     const guestRepository = {
-      find: jest.fn().mockResolvedValue([guest]),
+      createQueryBuilder: jest.fn().mockReturnValue(guestQueryBuilder),
       findOne: jest.fn().mockResolvedValue(guest),
       save: jest.fn((entity) => Promise.resolve(entity)),
+      softRemove: jest.fn((entity) => Promise.resolve(entity)),
     };
     const queryBuilder = {
+      withDeleted: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
@@ -437,13 +448,11 @@ describe('admin module', () => {
       save: jest.fn((entity) => Promise.resolve({ ...entity, guest })),
     };
     const hotelRepository = {
-      findOne: jest
-        .fn()
-        .mockResolvedValue({
-          publicId: 'copacabana-palace',
-          wifiNetwork: 'Atrio Guest',
-          wifiPassword: 'atrio',
-        }),
+      findOne: jest.fn().mockResolvedValue({
+        publicId: 'copacabana-palace',
+        wifiNetwork: 'Atrio Guest',
+        wifiPassword: 'atrio',
+      }),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
     const guestSessionRepository = {
@@ -482,13 +491,33 @@ describe('admin module', () => {
       auditService as never,
     );
 
-    expect(await service.listGuests(sessionContext, 'everton')).toHaveLength(1);
+    const guests = await service.listGuests(sessionContext, {
+      search: 'everton',
+      page: 1,
+      pageSize: 10,
+    });
+    expect(guests.items).toHaveLength(1);
+    expect(guests.total).toBe(1);
     const createdGuest = await service.createGuest(sessionContext, {
       firstName: 'Ana',
       lastName: 'Silva',
       phoneNumber: '(31) 99999-9876',
     });
     expect(createdGuest.maskedPhone).toBe('*****-9876');
+    await expect(
+      service.updateGuest(sessionContext, 'guest_001', {
+        firstName: 'Everton',
+        lastName: 'Rodrigues',
+        phoneNumber: '+5531999991234',
+      }),
+    ).resolves.toMatchObject({
+      id: 'guest_001',
+      maskedPhone: '*****-1234',
+    });
+    await expect(
+      service.deleteGuest(sessionContext, 'guest_001'),
+    ).resolves.toEqual({ id: 'guest_001' });
+    expect(guestRepository.softRemove).toHaveBeenCalledWith(guest);
 
     const stays = await service.listStays(sessionContext, {
       search: '304',
@@ -640,17 +669,23 @@ describe('admin module', () => {
 
   it('delegates from admin guest and stay controllers', async () => {
     const service = {
-      listGuests: jest.fn().mockResolvedValue([{ id: 'guest_001' }]),
+      listGuests: jest.fn().mockResolvedValue({
+        items: [{ id: 'guest_001' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       createGuest: jest.fn().mockResolvedValue({ id: 'guest_002' }),
-      listStays: jest
-        .fn()
-        .mockResolvedValue({
-          items: [{ id: 'stay_001' }],
-          total: 1,
-          page: 1,
-          pageSize: 10,
-          totalPages: 1,
-        }),
+      updateGuest: jest.fn().mockResolvedValue({ id: 'guest_001' }),
+      deleteGuest: jest.fn().mockResolvedValue({ id: 'guest_001' }),
+      listStays: jest.fn().mockResolvedValue({
+        items: [{ id: 'stay_001' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       createStay: jest.fn().mockResolvedValue({ id: 'stay_002' }),
       getStay: jest.fn().mockResolvedValue({ id: 'stay_001' }),
       resendAccess: jest.fn().mockResolvedValue({ challengeId: 'chl_001' }),
@@ -658,12 +693,10 @@ describe('admin module', () => {
       checkInStay: jest
         .fn()
         .mockResolvedValue({ id: 'stay_001', status: 'active' }),
-      checkOutStay: jest
-        .fn()
-        .mockResolvedValue({
-          stay: { id: 'stay_001', status: 'checked_out' },
-          revokedSessions: 1,
-        }),
+      checkOutStay: jest.fn().mockResolvedValue({
+        stay: { id: 'stay_001', status: 'checked_out' },
+        revokedSessions: 1,
+      }),
       cancelStay: jest
         .fn()
         .mockResolvedValue({ id: 'stay_001', status: 'cancelled' }),
@@ -680,7 +713,7 @@ describe('admin module', () => {
 
     await expect(
       guestsController.listGuests(sessionContext, { search: 'ana' }),
-    ).resolves.toHaveLength(1);
+    ).resolves.toHaveProperty('total', 1);
     await expect(
       guestsController.createGuest(sessionContext, {
         firstName: 'Ana',
@@ -688,6 +721,16 @@ describe('admin module', () => {
         phoneNumber: '+5531999999999',
       }),
     ).resolves.toHaveProperty('id', 'guest_002');
+    await expect(
+      guestsController.updateGuest(sessionContext, 'guest_001', {
+        firstName: 'Ana',
+        lastName: 'Silva',
+        phoneNumber: '+5531999999999',
+      }),
+    ).resolves.toHaveProperty('id', 'guest_001');
+    await expect(
+      guestsController.deleteGuest(sessionContext, 'guest_001'),
+    ).resolves.toEqual({ id: 'guest_001' });
     await expect(
       staysController.listStays(sessionContext, { status: 'active' }),
     ).resolves.toHaveProperty('items.length', 1);
@@ -743,17 +786,21 @@ describe('admin module', () => {
       ),
     ).resolves.toHaveProperty('id', 'cons_001');
     await expect(
-      staysController.deleteConsumption(
-        sessionContext,
-        'stay_001',
-        'cons_001',
-      ),
+      staysController.deleteConsumption(sessionContext, 'stay_001', 'cons_001'),
     ).resolves.toHaveProperty('id', 'cons_001');
   });
 
   it('handles admin service catalog and request queue flows', async () => {
+    const serviceQueryBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[serviceDefinition], 1]),
+    };
     const serviceDefinitionRepository = {
-      find: jest.fn().mockResolvedValue([serviceDefinition]),
+      createQueryBuilder: jest.fn().mockReturnValue(serviceQueryBuilder),
       findOne: jest.fn().mockResolvedValue(serviceDefinition),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
@@ -762,8 +809,11 @@ describe('admin module', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(1),
       getRawMany: jest
         .fn()
         .mockResolvedValue([
@@ -782,7 +832,7 @@ describe('admin module', () => {
       auditService as never,
     );
 
-    await expect(service.listServices()).resolves.toHaveLength(1);
+    await expect(service.listServices({})).resolves.toMatchObject({ total: 1 });
     await expect(
       service.createService(sessionContext, serviceDefinition as never),
     ).resolves.toHaveProperty('id');
@@ -801,7 +851,7 @@ describe('admin module', () => {
         status: 'received',
         search: '304',
       }),
-    ).resolves.toHaveLength(1);
+    ).resolves.toMatchObject({ total: 1 });
     await expect(
       service.updateRequestStatus(sessionContext, 'req_001', {
         status: 'on_the_way',
@@ -827,17 +877,32 @@ describe('admin module', () => {
 
   it('delegates from admin services and requests controllers', async () => {
     const service = {
-      listServices: jest.fn().mockResolvedValue([{ id: 'towels' }]),
+      listServices: jest.fn().mockResolvedValue({
+        items: [{ id: 'towels' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       createService: jest.fn().mockResolvedValue({ id: 'laundry' }),
       updateService: jest.fn().mockResolvedValue({ id: 'towels' }),
       setServicePublished: jest.fn().mockResolvedValue({ id: 'towels' }),
-      listRequests: jest.fn().mockResolvedValue([{ id: 'req_001' }]),
+      listRequests: jest.fn().mockResolvedValue({
+        items: [{ id: 'req_001' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       updateRequestStatus: jest.fn().mockResolvedValue({ id: 'req_001' }),
     };
     const servicesController = new AdminServicesController(service as never);
     const requestsController = new AdminRequestsController(service as never);
 
-    await expect(servicesController.listServices()).resolves.toHaveLength(1);
+    await expect(servicesController.listServices({})).resolves.toHaveProperty(
+      'total',
+      1,
+    );
     await expect(
       servicesController.createService(
         sessionContext,
@@ -859,7 +924,7 @@ describe('admin module', () => {
     ).resolves.toHaveProperty('id', 'towels');
     await expect(
       requestsController.listRequests(sessionContext, { status: 'received' }),
-    ).resolves.toHaveLength(1);
+    ).resolves.toHaveProperty('total', 1);
     await expect(
       requestsController.updateRequestStatus(sessionContext, 'req_001', {
         status: 'completed',
@@ -868,8 +933,16 @@ describe('admin module', () => {
   });
 
   it('handles admin experience, collection, slot and reservation flows', async () => {
+    const experienceQueryBuilder = {
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[experience], 1]),
+    };
     const experienceRepository = {
-      find: jest.fn().mockResolvedValue([experience]),
+      createQueryBuilder: jest.fn().mockReturnValue(experienceQueryBuilder),
       findOne: jest.fn().mockResolvedValue(experience),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
@@ -893,18 +966,19 @@ describe('admin module', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
-      getRawMany: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            ...reservation,
-            id: 'res_001',
-            roomNumber: '304',
-            guestName: 'Everton Rodrigues',
-          },
-        ]),
+      getCount: jest.fn().mockResolvedValue(1),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          ...reservation,
+          id: 'res_001',
+          roomNumber: '304',
+          guestName: 'Everton Rodrigues',
+        },
+      ]),
       getOne: jest.fn().mockResolvedValue(reservation),
     };
     const reservationRepository = {
@@ -925,7 +999,9 @@ describe('admin module', () => {
       auditService as never,
     );
 
-    await expect(service.listExperiences()).resolves.toHaveLength(1);
+    await expect(service.listExperiences({})).resolves.toMatchObject({
+      total: 1,
+    });
     await expect(
       service.createExperience(sessionContext, experience as never),
     ).resolves.toHaveProperty('id');
@@ -963,7 +1039,7 @@ describe('admin module', () => {
         status: 'requested',
         search: '304',
       }),
-    ).resolves.toHaveLength(1);
+    ).resolves.toMatchObject({ total: 1 });
     slotRepository.findOne.mockResolvedValueOnce({
       ...slot,
       isAvailable: true,
@@ -1024,7 +1100,13 @@ describe('admin module', () => {
 
   it('delegates from admin experience and reservation controllers', async () => {
     const service = {
-      listExperiences: jest.fn().mockResolvedValue([{ id: 'exp_001' }]),
+      listExperiences: jest.fn().mockResolvedValue({
+        items: [{ id: 'exp_001' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       createExperience: jest.fn().mockResolvedValue({ id: 'exp_002' }),
       updateExperience: jest.fn().mockResolvedValue({ id: 'exp_001' }),
       listSlots: jest.fn().mockResolvedValue([{ id: 'slot_001' }]),
@@ -1034,7 +1116,13 @@ describe('admin module', () => {
       createCollection: jest.fn().mockResolvedValue({ id: 'col_002' }),
       updateCollection: jest.fn().mockResolvedValue({ id: 'col_001' }),
       linkExperience: jest.fn().mockResolvedValue({ id: 'col_item_001' }),
-      listReservations: jest.fn().mockResolvedValue([{ id: 'res_001' }]),
+      listReservations: jest.fn().mockResolvedValue({
+        items: [{ id: 'res_001' }],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        totalPages: 1,
+      }),
       createReservation: jest.fn().mockResolvedValue({ id: 'res_002' }),
       updateReservationStatus: jest.fn().mockResolvedValue({ id: 'res_001' }),
     };
@@ -1048,9 +1136,9 @@ describe('admin module', () => {
       service as never,
     );
 
-    await expect(experiencesController.listExperiences()).resolves.toHaveLength(
-      1,
-    );
+    await expect(
+      experiencesController.listExperiences({}),
+    ).resolves.toHaveProperty('total', 1);
     await expect(
       experiencesController.createExperience(
         sessionContext,
@@ -1102,7 +1190,7 @@ describe('admin module', () => {
     ).resolves.toHaveProperty('id', 'col_item_001');
     await expect(
       reservationsController.listReservations(sessionContext, {}),
-    ).resolves.toHaveLength(1);
+    ).resolves.toHaveProperty('total', 1);
     await expect(
       reservationsController.createReservation(sessionContext, {} as never),
     ).resolves.toHaveProperty('id', 'res_002');

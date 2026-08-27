@@ -16,6 +16,7 @@ import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guar
 import { AdminSessionContext } from 'src/common/interfaces/admin-session-context.interface';
 import {
   AdminGuestListQueryDto,
+  AdminGuestListResponseDto,
   AdminGuestResponseDto,
   AdminStayListQueryDto,
   AdminStayListResponseDto,
@@ -27,6 +28,7 @@ import {
   CreateAdminStayDto,
   CreateAdminStayUsefulInfoDto,
   UpdateAdminStayDto,
+  UpdateAdminGuestDto,
   UpdateAdminStayWifiDto,
   UpdateAdminConsumptionItemDto,
 } from '../dto/admin-stays.dto';
@@ -41,12 +43,12 @@ export class AdminGuestsController {
 
   @Get()
   @Version('1')
-  @ApiOkResponse({ type: [AdminGuestResponseDto] })
+  @ApiOkResponse({ type: AdminGuestListResponseDto })
   async listGuests(
     @CurrentAdminSession() session: AdminSessionContext,
     @Query() query: AdminGuestListQueryDto,
   ) {
-    return this.adminStaysService.listGuests(session, query.search);
+    return this.adminStaysService.listGuests(session, query);
   }
 
   @Post()
@@ -57,6 +59,26 @@ export class AdminGuestsController {
     @Body() body: CreateAdminGuestDto,
   ) {
     return this.adminStaysService.createGuest(session, body);
+  }
+
+  @Patch(':guestId')
+  @Version('1')
+  @ApiOkResponse({ type: AdminGuestResponseDto })
+  async updateGuest(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('guestId') guestId: string,
+    @Body() body: UpdateAdminGuestDto,
+  ) {
+    return this.adminStaysService.updateGuest(session, guestId, body);
+  }
+
+  @Delete(':guestId')
+  @Version('1')
+  async deleteGuest(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('guestId') guestId: string,
+  ) {
+    return this.adminStaysService.deleteGuest(session, guestId);
   }
 }
 

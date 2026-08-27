@@ -11,14 +11,16 @@ import { Hotel } from 'src/modules/stays/entities/hotel.entity';
 import { HotelUsefulInfo } from 'src/modules/stays/entities/hotel-useful-info.entity';
 import { Stay } from 'src/modules/stays/entities/stay.entity';
 import { StayUsefulInfo } from 'src/modules/stays/entities/stay-useful-info.entity';
-import { Brackets, ILike, IsNull, MoreThan, Repository } from 'typeorm';
+import { Brackets, IsNull, MoreThan, Repository } from 'typeorm';
 import {
+  AdminGuestListQueryDto,
   AdminStayListQueryDto,
   CreateAdminConsumptionItemDto,
   CreateAdminGuestDto,
   CreateAdminStayDto,
   CreateAdminStayUsefulInfoDto,
   UpdateAdminStayDto,
+  UpdateAdminGuestDto,
   UpdateAdminStayWifiDto,
   UpdateAdminConsumptionItemDto,
 } from '../dto/admin-stays.dto';
@@ -45,19 +47,38 @@ export class AdminStaysService {
     private readonly auditService: AuditService,
   ) {}
 
-  async listGuests(session: AdminSessionContext, search?: string) {
-    const where = search
-      ? [
-          { firstName: ILike(`%${search}%`) },
-          { lastName: ILike(`%${search}%`) },
-          { phoneNumber: ILike(`%${search}%`) },
-        ]
-      : {};
-    const guests = await this.guestRepository.find({
-      where,
-      order: { lastName: 'ASC', firstName: 'ASC' },
-      take: 50,
-    });
+  async listGuests(
+    session: AdminSessionContext,
+    query: AdminGuestListQueryDto,
+  ) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 10;
+    const builder = this.guestRepository
+      .createQueryBuilder('guest')
+      .orderBy('guest.lastName', 'ASC')
+      .addOrderBy('guest.firstName', 'ASC')
+      .addOrderBy('guest.publicId', 'ASC');
+
+    if (query.search) {
+      builder.andWhere(
+        new Brackets((qb) => {
+          qb.where('guest.firstName ILIKE :search', {
+            search: `%${query.search}%`,
+          })
+            .orWhere('guest.lastName ILIKE :search', {
+              search: `%${query.search}%`,
+            })
+            .orWhere('guest.phoneNumber ILIKE :search', {
+              search: `%${query.search}%`,
+            });
+        }),
+      );
+    }
+
+    const [guests, total] = await builder
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
 
     await this.auditService.record({
       hotelId: session.hotelId,
@@ -67,7 +88,13 @@ export class AdminStaysService {
       summary: `${session.email} listed guests.`,
     });
 
-    return guests.map((guest) => this.mapGuest(guest));
+    return {
+      items: guests.map((guest) => this.mapGuest(guest)),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
   async createGuest(session: AdminSessionContext, input: CreateAdminGuestDto) {
@@ -85,11 +112,49 @@ export class AdminStaysService {
     return this.mapGuest(guest);
   }
 
+  async updateGuest(
+    session: AdminSessionContext,
+    guestId: string,
+    input: UpdateAdminGuestDto,
+  ) {
+    const guest = await this.getRequiredGuest(guestId);
+    this.assignGuest(guest, input);
+    const savedGuest = await this.guestRepository.save(guest);
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'guest.update',
+      resourceType: 'guest',
+      resourceId: guestId,
+      summary: `${session.email} updated guest ${guestId}.`,
+    });
+
+    return this.mapGuest(savedGuest);
+  }
+
+  async deleteGuest(session: AdminSessionContext, guestId: string) {
+    const guest = await this.getRequiredGuest(guestId);
+    await this.guestRepository.softRemove(guest);
+
+    await this.auditService.record({
+      hotelId: session.hotelId,
+      adminUserId: session.adminUserId,
+      action: 'guest.delete',
+      resourceType: 'guest',
+      resourceId: guestId,
+      summary: `${session.email} soft-deleted guest ${guestId}.`,
+    });
+
+    return { id: guestId };
+  }
+
   async listStays(session: AdminSessionContext, query: AdminStayListQueryDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
     const builder = this.stayRepository
       .createQueryBuilder('stay')
+      .withDeleted()
       .leftJoinAndSelect('stay.guest', 'guest')
       .where('stay.hotelId = :hotelId', { hotelId: session.hotelId })
       .orderBy('stay.checkInDate', 'DESC')
@@ -556,18 +621,35 @@ export class AdminStaysService {
   private async createGuestEntity(input: CreateAdminGuestDto) {
     const guest = new Guest();
     guest.publicId = buildResourceId('guest');
+    this.assignGuest(guest, input);
+
+    return this.guestRepository.save(guest);
+  }
+
+  private async getRequiredGuest(guestId: string) {
+    const guest = await this.guestRepository.findOne({
+      where: { publicId: guestId },
+    });
+
+    if (!guest) {
+      throw new ApiException(404, 'GUEST_NOT_FOUND', 'Guest was not found.');
+    }
+
+    return guest;
+  }
+
+  private assignGuest(guest: Guest, input: CreateAdminGuestDto) {
     guest.firstName = input.firstName.trim();
     guest.lastName = input.lastName.trim();
     guest.phoneNumber = this.normalizePhone(input.phoneNumber);
     guest.maskedPhone = this.maskPhone(guest.phoneNumber);
-
-    return this.guestRepository.save(guest);
   }
 
   private async getRequiredStay(session: AdminSessionContext, stayId: string) {
     const stay = await this.stayRepository.findOne({
       where: { publicId: stayId, hotelId: session.hotelId },
       relations: { guest: true },
+      withDeleted: true,
     });
 
     if (!stay) {
