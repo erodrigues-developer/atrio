@@ -39,6 +39,7 @@ import { AdminServicesService } from './services/admin-services.service';
 import { AdminStaysService } from './services/admin-stays.service';
 import { AuditService } from './services/audit.service';
 import { PasswordService } from './services/password.service';
+import { ConciergeModule } from '../concierge/concierge.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { PasswordService } from './services/password.service';
       Hotel,
     ]),
     AuthModule,
+    ConciergeModule,
     StorageModule,
   ],
   controllers: [

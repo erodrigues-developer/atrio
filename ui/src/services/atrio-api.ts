@@ -25,6 +25,7 @@ export type VerifyStayAccessResponse = {
     id: string;
     hotelName: string;
     roomNumber: string;
+    checkInTime: string;
     checkOutTime: string;
   };
 };
@@ -33,6 +34,7 @@ export type DashboardResponse = {
   stay: {
     hotelName: string;
     roomNumber: string;
+    checkInTime: string;
     checkOutTime: string;
   };
   featuredExperience: {
@@ -66,6 +68,7 @@ export type StaySummaryResponse = {
   checkOutDate: string;
   checkInLabel: string;
   checkOutLabel: string;
+  checkInTime: string;
   checkOutTime: string;
   summaries: {
     requests: string;
@@ -252,7 +255,7 @@ export type ConciergeMessagesResponse = {
 
 export type CreateConciergeMessageResponse = {
   message: ConciergeMessageResponse;
-  reply: ConciergeMessageResponse;
+  reply: ConciergeMessageResponse | null;
 };
 
 export function identifyStayAccess(input: {

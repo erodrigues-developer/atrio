@@ -66,8 +66,8 @@ export function StaysTable({
   const columns = [
     { title: 'Quarto', dataIndex: 'roomNumber', key: 'roomNumber' },
     { title: 'Hóspede', key: 'guest', render: (_: unknown, stay: AdminStay) => `${stay.guest.firstName} ${stay.guest.lastName}` },
-    { title: 'Check-in', dataIndex: 'checkInDate', key: 'checkInDate', render: (value: string) => formatStayDate(value) },
-    { title: 'Check-out', dataIndex: 'checkOutDate', key: 'checkOutDate', render: (value: string) => formatStayDate(value) },
+    { title: 'Check-in', dataIndex: 'checkInDate', key: 'checkInDate', render: (value: string, stay: AdminStay) => `${formatStayDate(value)} · ${stay.checkInTime}` },
+    { title: 'Check-out', dataIndex: 'checkOutDate', key: 'checkOutDate', render: (value: string, stay: AdminStay) => `${formatStayDate(value)} · ${stay.checkOutTime}` },
     { title: 'Status', dataIndex: 'status', key: 'status', render: (value: string) => <Tag color={stayStatusColor(value)}>{shortStayStatus(value)}</Tag> },
     { title: 'Nº acessos ao App', key: 'app', align: 'center' as const, render: (_: unknown, stay: AdminStay) => stay.activeGuestSessions },
     {
@@ -100,8 +100,8 @@ export function StaysTable({
           subtitle={`${stay.guest.firstName} ${stay.guest.lastName}`}
           title={`Quarto ${stay.roomNumber}`}
         >
-          <MobileRecordField label="Check-in" value={formatStayDate(stay.checkInDate)} />
-          <MobileRecordField label="Check-out" value={formatStayDate(stay.checkOutDate)} />
+          <MobileRecordField label="Check-in" value={`${formatStayDate(stay.checkInDate)} · ${stay.checkInTime}`} />
+          <MobileRecordField label="Check-out" value={`${formatStayDate(stay.checkOutDate)} · ${stay.checkOutTime}`} />
           <MobileRecordField label="Acessos ao app" value={stay.activeGuestSessions} />
         </MobileRecordCard>
       ))}

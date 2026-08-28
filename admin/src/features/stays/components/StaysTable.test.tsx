@@ -10,6 +10,7 @@ const stay: AdminStay = {
   status: 'scheduled',
   statusLabel: 'Agendada',
   checkInDate: '2030-01-01',
+  checkInTime: '14:00',
   checkOutDate: '2030-01-03',
   checkOutTime: '12:00',
   consumptionEnabled: true,

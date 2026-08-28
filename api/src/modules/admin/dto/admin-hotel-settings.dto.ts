@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsString, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class UpdateAdminHotelWifiDto {
   @ApiProperty()
@@ -11,6 +11,16 @@ export class UpdateAdminHotelWifiDto {
   @IsString()
   @MaxLength(150)
   wifiPassword!: string;
+}
+
+export class UpdateAdminHotelOperationHoursDto {
+  @ApiProperty({ example: '14:00' })
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  checkInTime!: string;
+
+  @ApiProperty({ example: '12:00' })
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  checkOutTime!: string;
 }
 
 export class CreateAdminHotelUsefulInfoDto {
@@ -33,3 +43,5 @@ export class CreateAdminHotelUsefulInfoDto {
   @Min(1)
   position!: number;
 }
+
+export class UpdateAdminHotelUsefulInfoDto extends CreateAdminHotelUsefulInfoDto {}

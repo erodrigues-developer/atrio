@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors, Version } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors, Version } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentAdminSession } from 'src/common/decorators/current-admin-session.decorator';
 import { AdminAccessTokenGuard } from 'src/common/guards/admin-access-token.guard';
 import { AdminSessionContext } from 'src/common/interfaces/admin-session-context.interface';
-import { CreateAdminHotelUsefulInfoDto, UpdateAdminHotelWifiDto } from '../dto/admin-hotel-settings.dto';
+import { CreateAdminHotelUsefulInfoDto, UpdateAdminHotelOperationHoursDto, UpdateAdminHotelUsefulInfoDto, UpdateAdminHotelWifiDto } from '../dto/admin-hotel-settings.dto';
 import { AdminMediaService } from '../services/admin-media.service';
 
 const mediaBody = {
@@ -39,10 +39,38 @@ export class AdminHotelSettingsController {
     return this.adminMediaService.updateHotelWifi(session, body);
   }
 
+  @Patch('operation-hours')
+  @Version('1')
+  async updateOperationHours(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Body() body: UpdateAdminHotelOperationHoursDto,
+  ) {
+    return this.adminMediaService.updateHotelOperationHours(session, body);
+  }
+
   @Post('useful-info')
   @Version('1')
   async createUsefulInfo(@CurrentAdminSession() session: AdminSessionContext, @Body() body: CreateAdminHotelUsefulInfoDto) {
     return this.adminMediaService.createHotelUsefulInfo(session, body);
+  }
+
+  @Patch('useful-info/:infoId')
+  @Version('1')
+  async updateUsefulInfo(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('infoId') infoId: string,
+    @Body() body: UpdateAdminHotelUsefulInfoDto,
+  ) {
+    return this.adminMediaService.updateHotelUsefulInfo(session, infoId, body);
+  }
+
+  @Delete('useful-info/:infoId')
+  @Version('1')
+  async deleteUsefulInfo(
+    @CurrentAdminSession() session: AdminSessionContext,
+    @Param('infoId') infoId: string,
+  ) {
+    return this.adminMediaService.deleteHotelUsefulInfo(session, infoId);
   }
 
   @Post('logo')

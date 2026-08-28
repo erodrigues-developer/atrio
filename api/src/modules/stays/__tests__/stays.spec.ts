@@ -14,6 +14,7 @@ describe('stays module', () => {
     statusLabel: 'Hospedagem ativa',
     checkInDate: '2026-06-10',
     checkOutDate: '2026-06-15',
+    checkInTime: '14:00',
     checkOutTime: '12:00',
     wifiNetwork: 'network',
     wifiPassword: 'password',
@@ -23,6 +24,8 @@ describe('stays module', () => {
       name: 'Copacabana Palace',
       wifiNetwork: 'network',
       wifiPassword: 'password',
+      checkInTime: '14:00',
+      checkOutTime: '12:00',
     },
     guest: { firstName: 'Everton', lastName: 'Rodrigues' },
   };
@@ -33,10 +36,12 @@ describe('stays module', () => {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       getOne: jest.fn().mockResolvedValue(stay),
     };
     const findOne = jest.fn().mockResolvedValue(stay);
-    const find = jest.fn().mockResolvedValue([{ publicId: 'info' }]);
+    const find = jest.fn().mockResolvedValue([{ publicId: 'info', title: 'Info', description: 'Description' }]);
     const repository = new StayRepository(
       {
         createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
@@ -52,13 +57,13 @@ describe('stays module', () => {
     );
     expect(await repository.findById('stay_001')).toBe(stay);
     expect(await repository.listUsefulInfo('stay_001', 'stay')).toEqual([
-      { publicId: 'info' },
+      { publicId: 'info', title: 'Info', description: 'Description' },
     ]);
     expect(
       await repository.listHotelUsefulInfo('copacabana-palace', 'stay'),
-    ).toEqual([{ publicId: 'info' }]);
+    ).toEqual([{ publicId: 'info', title: 'Info', description: 'Description' }]);
     expect(await repository.listConsumptionItems('stay_001')).toEqual([
-      { publicId: 'info' },
+      { publicId: 'info', title: 'Info', description: 'Description' },
     ]);
   });
 

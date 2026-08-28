@@ -7,6 +7,7 @@ import { ConciergeMessage } from 'src/modules/concierge/entities/concierge-messa
 import { Stay } from 'src/modules/stays/entities/stay.entity';
 import { Brackets, Repository } from 'typeorm';
 import { AuditService } from './audit.service';
+import { ConciergeRealtimeService } from 'src/modules/concierge/services/concierge-realtime.service';
 
 @Injectable()
 export class AdminConciergeService {
@@ -16,6 +17,7 @@ export class AdminConciergeService {
     @InjectRepository(Stay)
     private readonly stayRepository: Repository<Stay>,
     private readonly auditService: AuditService,
+    private readonly realtimeService: ConciergeRealtimeService,
   ) {}
 
   async listConversations(session: AdminSessionContext, query: { search?: string }) {
@@ -88,6 +90,16 @@ export class AdminConciergeService {
       resourceType: 'concierge_message',
       resourceId: saved.publicId,
       summary: `${session.email} replied to concierge conversation ${stayId}.`,
+    });
+
+    this.realtimeService.publishMessage({
+      id: saved.publicId,
+      hotelId: session.hotelId,
+      stayId,
+      sender: saved.sender,
+      text: saved.text,
+      source: saved.source,
+      createdAt: saved.createdAt.toISOString(),
     });
 
     return this.mapMessage(saved);

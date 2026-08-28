@@ -30,4 +30,8 @@ export class ConciergeMessageRepository {
   async findById(messageId: string): Promise<ConciergeMessage | null> {
     return this.repository.findOne({ where: { publicId: messageId } });
   }
+
+  async hasGuestMessage(stayId: string): Promise<boolean> {
+    return this.repository.exists({ where: { stayId, sender: 'guest' } });
+  }
 }

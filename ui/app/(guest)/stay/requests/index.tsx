@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { ScrollView } from 'react-native';
@@ -16,18 +17,19 @@ import { buildRequestDetails, loadRequests, useRequests } from '@/src/stores/req
 import { useSession } from '@/src/stores/session.store';
 
 export default function StayRequestsScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const session = useSession();
   const requestsState = useRequests();
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
-    loadRequests(session.stayId).catch(() => undefined);
-  }, [session?.stayId]);
+    loadRequests(session.stayId, { force: true }).catch(() => undefined);
+  }, [isFocused, session?.stayId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));

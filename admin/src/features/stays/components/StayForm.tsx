@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Checkbox, DatePicker, Input, Select as AntSelect, TimePicker } from 'antd';
+import { Checkbox, DatePicker, Input, Select as AntSelect } from 'antd';
 import { CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Controller, useForm, useWatch } from 'react-hook-form';
@@ -18,6 +18,7 @@ export function StayModal({
   layer = 'primary',
   onCancel,
   onSaved,
+  operationHours,
   stay,
 }: {
   accessToken: string;
@@ -25,6 +26,7 @@ export function StayModal({
   layer?: 'primary' | 'secondary';
   onCancel: () => void;
   onSaved: () => void;
+  operationHours?: { checkInTime: string; checkOutTime: string } | undefined;
   stay?: AdminStay;
 }) {
   return (
@@ -35,7 +37,7 @@ export function StayModal({
       title={stay ? 'Editar estadia' : 'Nova estadia'}
       width={600}
     >
-      <StayForm accessToken={accessToken} guests={guests} onCancel={onCancel} onSaved={onSaved} {...(stay ? { stay } : {})} />
+      <StayForm accessToken={accessToken} guests={guests} onCancel={onCancel} onSaved={onSaved} operationHours={operationHours} {...(stay ? { stay } : {})} />
     </Modal>
   );
 }
@@ -45,12 +47,14 @@ function StayForm({
   guests,
   onCancel,
   onSaved,
+  operationHours,
   stay,
 }: {
   accessToken: string;
   guests: AdminGuest[];
   onCancel: () => void;
   onSaved: () => void;
+  operationHours?: { checkInTime: string; checkOutTime: string } | undefined;
   stay?: AdminStay;
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -71,7 +75,6 @@ function StayForm({
       roomNumber: stay?.roomNumber ?? '',
       checkInDate: stay?.checkInDate ?? today,
       checkOutDate: stay?.checkOutDate ?? today,
-      checkOutTime: stay?.checkOutTime ?? '12:00',
       consumptionView: stay?.consumptionView ?? 'ready',
     },
   });
@@ -83,7 +86,6 @@ function StayForm({
       roomNumber: values.roomNumber.trim(),
       checkInDate: values.checkInDate,
       checkOutDate: values.checkOutDate,
-      checkOutTime: values.checkOutTime,
       consumptionEnabled: true,
       consumptionView: values.consumptionView,
     };
@@ -158,22 +160,11 @@ function StayForm({
       <label>Quarto<Input {...register('roomNumber')} aria-invalid={Boolean(errors.roomNumber)} /></label>
       <FieldError message={errors.roomNumber?.message} />
 
-      <label>Horário de saída
-        <Controller
-          control={control}
-          name="checkOutTime"
-          render={({ field }) => (
-            <TimePicker
-              format="HH:mm"
-              onChange={(value) => field.onChange(value?.format('HH:mm') ?? '')}
-              prefix={<ClockCircleOutlined />}
-              suffixIcon={null}
-              value={field.value ? dayjs(field.value, 'HH:mm') : null}
-            />
-          )}
-        />
-        <FieldError message={errors.checkOutTime?.message} />
-      </label>
+      <div className="stay-form-operation-hours stay-form-wide">
+        <ClockCircleOutlined />
+        <span>Horários do hotel (informativos)</span>
+        <strong>Check-in {stay?.checkInTime ?? operationHours?.checkInTime ?? '14:00'} · Check-out {stay?.checkOutTime ?? operationHours?.checkOutTime ?? '12:00'}</strong>
+      </div>
 
       <label>Check-in
         <Controller

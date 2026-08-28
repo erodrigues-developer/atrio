@@ -11,8 +11,11 @@ describe('auth module', () => {
     guestId: 'guest_001',
     hotelId: 'copacabana-palace',
     roomNumber: '304',
+    status: 'active',
+    checkInDate: '2000-01-01',
+    checkOutDate: '2100-01-01',
     checkOutTime: '12:00',
-    hotel: { name: 'Copacabana Palace' },
+    hotel: { name: 'Copacabana Palace', checkInTime: '14:00', checkOutTime: '12:00', timezone: 'America/Sao_Paulo' },
     guest: { firstName: 'Everton', lastName: 'Rodrigues', maskedPhone: '(31) *****-1234' },
   };
 

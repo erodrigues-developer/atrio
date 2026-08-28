@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { Seeder, SeederFactoryManager } from 'typeorm-extension';
 import UniqueSeeder from './unique.seeder';
+import { localDateKey } from 'src/common/utils/stay-access-window.util';
 import { AdminUser } from 'src/modules/admin/entities/admin-user.entity';
 import { ConciergeMessage } from 'src/modules/concierge/entities/concierge-message.entity';
 import { ExperienceAvailabilitySlot } from 'src/modules/experiences/entities/experience-availability-slot.entity';
@@ -15,7 +16,6 @@ import { Guest } from 'src/modules/stays/entities/guest.entity';
 import { HotelUsefulInfo } from 'src/modules/stays/entities/hotel-useful-info.entity';
 import { Hotel } from 'src/modules/stays/entities/hotel.entity';
 import { Stay } from 'src/modules/stays/entities/stay.entity';
-import { StayUsefulInfo } from 'src/modules/stays/entities/stay-useful-info.entity';
 import {
   seedAvailabilitySlots,
   seedCollections,
@@ -30,7 +30,6 @@ import {
   seedReservations,
   seedServices,
   seedStay,
-  seedStayUsefulInfo,
 } from './data/ui-mock-seed.data';
 
 type SeedWithPublicId = {
@@ -80,16 +79,15 @@ export default class InitialSeeder extends UniqueSeeder implements Seeder {
         updatedAt: new Date(),
       });
       await dataSource.getRepository(Guest).save(toEntitySeed(seedGuest));
+      const seedNow = new Date();
+      const seedCheckout = new Date(seedNow);
+      seedCheckout.setUTCDate(seedCheckout.getUTCDate() + 3);
       await dataSource.getRepository(Stay).save({
         ...toEntitySeed(seedStay),
+        checkInDate: localDateKey(seedNow, seedHotel.timezone),
+        checkOutDate: localDateKey(seedCheckout, seedHotel.timezone),
         consumptionView: seedStay.consumptionView as 'ready' | 'empty' | 'unavailable',
       });
-      await dataSource.getRepository(StayUsefulInfo).save(
-        seedStayUsefulInfo.map((item) => ({
-          ...toEntitySeed(item),
-          scope: item.scope as 'dashboard' | 'stay',
-        })),
-      );
       await dataSource.getRepository(HotelUsefulInfo).save(
         seedHotelUsefulInfo.map((item) => ({
           ...toEntitySeed(item),

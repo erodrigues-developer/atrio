@@ -134,12 +134,6 @@ export async function createReservation(
 }
 
 export async function fetchReservationById(stayId: string, reservationId: string) {
-  const existingReservation = state.items.find((item) => item.id === reservationId);
-
-  if (existingReservation) {
-    return existingReservation;
-  }
-
   const reservation = mapReservation(await getReservation(stayId, reservationId));
 
   setState({

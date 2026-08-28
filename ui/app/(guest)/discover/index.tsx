@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView } from 'react-native';
@@ -26,12 +27,14 @@ function mapExperienceItem(item: ExperienceCollectionResponse['items'][number]) 
 }
 
 export default function DiscoverScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const [collections, setCollections] = useState<ExperienceCollectionResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isFocused) return;
     let isMounted = true;
 
     listExperienceCollections()
@@ -57,7 +60,7 @@ export default function DiscoverScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isFocused]);
 
   const featuredCollection = collections.find((collection) => collection.featured);
   const editorialCollections = collections.filter((collection) => !collection.featured);

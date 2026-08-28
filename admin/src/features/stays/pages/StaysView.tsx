@@ -3,7 +3,7 @@ import { Button, Input, Select as AntSelect, Typography } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  cancelStay, checkInStay, checkOutStay, listGuests, listStays, resendStayAccess, type AdminStay,
+  cancelStay, checkInStay, checkOutStay, getHotelSettings, listGuests, listStays, resendStayAccess, type AdminStay,
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal } from '@/shared/components/Modal';
@@ -47,6 +47,10 @@ export function StaysView({ accessToken, cacheScope }: { accessToken: string; ca
   const guestsQuery = useQuery({
     queryKey: adminQueryKeys.guestList(cacheScope, { page: 1, pageSize: 100, purpose: 'stay-form' }),
     queryFn: () => listGuests(accessToken, { page: 1, pageSize: 100 }),
+  });
+  const settingsQuery = useQuery({
+    queryKey: adminQueryKeys.settings(cacheScope),
+    queryFn: () => getHotelSettings(accessToken),
   });
   const stays = staysQuery.data?.items ?? [];
   const guests = guestsQuery.data?.items ?? [];
@@ -217,6 +221,7 @@ export function StaysView({ accessToken, cacheScope }: { accessToken: string; ca
         <StayModal
           accessToken={accessToken}
           guests={guests}
+          operationHours={settingsQuery.data ? { checkInTime: settingsQuery.data.checkInTime, checkOutTime: settingsQuery.data.checkOutTime } : undefined}
           onCancel={() => setIsCreateOpen(false)}
           onSaved={() => {
             setIsCreateOpen(false);

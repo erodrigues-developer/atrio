@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import {
   Bell,
   CalendarCheck,
@@ -10,12 +11,11 @@ import {
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { XStack, YStack } from 'tamagui';
 
 import { Screen } from '@/src/design-system/components/Screen';
 import { Text } from '@/src/design-system/components/Text';
-import { ConciergeInputBar, conciergeInputBarHeight } from '@/src/design-system/product/ConciergeInputBar';
+import { ConciergeInputBar } from '@/src/design-system/product/ConciergeInputBar';
 import { ConciergeMessageBubble } from '@/src/design-system/product/ConciergeMessageBubble';
 import { QuickSuggestionChip } from '@/src/design-system/product/QuickSuggestionChip';
 import { colors } from '@/src/design-system/tokens/colors';
@@ -25,7 +25,8 @@ import {
   listConciergeMessages,
   type ConciergeMessageResponse,
 } from '@/src/services/atrio-api';
-import { useSession } from '@/src/stores/session.store';
+import { connectGuestConcierge, type ConciergeRealtimeMessage } from '@/src/services/concierge-realtime';
+import { getAccessToken, useSession } from '@/src/stores/session.store';
 
 const suggestionIcons: Record<string, LucideIcon> = {
   help: CircleHelp,
@@ -40,22 +41,33 @@ function mapMessage(message: ConciergeMessageResponse) {
     id: message.id,
     sender: message.sender,
     text: message.text,
+    createdAt: message.createdAt,
   };
 }
 
+type ConciergeMessage = ReturnType<typeof mapMessage>;
+
+function mergeMessages(current: ConciergeMessage[], incoming: ConciergeMessage[]) {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  incoming.forEach((message) => byId.set(message.id, message));
+  return [...byId.values()].sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+}
+
+function mapRealtimeMessage(message: ConciergeRealtimeMessage): ConciergeMessage {
+  return { id: message.id, sender: message.sender, text: message.text, createdAt: message.createdAt };
+}
+
 export default function ConciergeScreen() {
+  const isFocused = useIsFocused();
   const session = useSession();
   const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView | null>(null);
-  const [messages, setMessages] = useState<ReturnType<typeof mapMessage>[]>([]);
+  const [messages, setMessages] = useState<ConciergeMessage[]>([]);
   const [quickSuggestions, setQuickSuggestions] = useState<
     { id: string; label: string; icon: string }[]
   >([]);
   const [draftMessage, setDraftMessage] = useState('');
-  const [footerHeight, setFooterHeight] = useState(conciergeInputBarHeight + spacing.xl);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const reservedConversationBottomSpace = footerHeight + tabBarHeight + insets.bottom + spacing.lg;
 
   function scrollToConversationEnd(animated = true) {
     requestAnimationFrame(() => {
@@ -64,7 +76,7 @@ export default function ConciergeScreen() {
   }
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
@@ -76,7 +88,7 @@ export default function ConciergeScreen() {
           return;
         }
 
-        setMessages(response.messages.map(mapMessage));
+        setMessages((current) => mergeMessages(current, response.messages.map(mapMessage)));
         setQuickSuggestions(response.quickSuggestions);
       })
       .catch((error) => {
@@ -90,7 +102,31 @@ export default function ConciergeScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.stayId]);
+  }, [isFocused, session?.stayId]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!isFocused || !session?.stayId || !token) return;
+
+    const socket = connectGuestConcierge(token);
+    const onMessage = (message: ConciergeRealtimeMessage) => {
+      if (message.stayId !== session.stayId) return;
+      setMessages((current) => mergeMessages(current, [mapRealtimeMessage(message)]));
+      setErrorMessage(null);
+    };
+    const onSocketError = (payload: { message?: string }) => {
+      if (payload.message) setErrorMessage(payload.message);
+    };
+
+    socket.on('concierge:message', onMessage);
+    socket.on('concierge:error', onSocketError);
+
+    return () => {
+      socket.off('concierge:message', onMessage);
+      socket.off('concierge:error', onSocketError);
+      socket.disconnect();
+    };
+  }, [isFocused, session?.stayId]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -104,7 +140,7 @@ export default function ConciergeScreen() {
 
   useEffect(() => {
     scrollToConversationEnd(true);
-  }, [messages.length, footerHeight]);
+  }, [messages.length]);
 
   async function sendMessage(text: string, source?: string) {
     if (!session?.stayId) {
@@ -113,11 +149,10 @@ export default function ConciergeScreen() {
 
     try {
       const response = await createConciergeMessage(session.stayId, { text, source });
-      setMessages((currentMessages) => [
-        ...currentMessages,
+      setMessages((currentMessages) => mergeMessages(currentMessages, [
         mapMessage(response.message),
-        mapMessage(response.reply),
-      ]);
+        ...(response.reply ? [mapMessage(response.reply)] : []),
+      ]));
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(
@@ -151,18 +186,19 @@ export default function ConciergeScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}>
-        <YStack flex={1}>
+        <YStack flex={1} paddingBottom={tabBarHeight}>
           <ScrollView
             contentContainerStyle={{
               paddingTop: spacing.lg,
               paddingHorizontal: spacing.xxl,
-              paddingBottom: reservedConversationBottomSpace,
+              paddingBottom: spacing.xl,
             }}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollToConversationEnd(true)}
             ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}>
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}>
             <YStack gap={spacing.xxl}>
               <YStack gap={spacing.sm}>
                 <Text letterSpacing={-0.5} variant="title1">
@@ -209,17 +245,6 @@ export default function ConciergeScreen() {
             backgroundColor={colors.background}
             borderTopColor={colors.borderSoft}
             borderTopWidth={1}
-            bottom={0}
-            left={0}
-            onLayout={(event) => {
-              const nextHeight = event.nativeEvent.layout.height;
-
-              if (Math.abs(nextHeight - footerHeight) > 1) {
-                setFooterHeight(nextHeight);
-              }
-            }}
-            position="absolute"
-            right={0}
             zIndex={1}>
             <YStack
               backgroundColor={colors.background}

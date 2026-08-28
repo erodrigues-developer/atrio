@@ -32,6 +32,7 @@ import { AddServicePublishing1718300000018 } from '../database/migrations/171830
 import { AddInternalNoteToStayRequests1718300000019 } from '../database/migrations/1718300000019-AddInternalNoteToStayRequests';
 import { AddExperiencePublishing1718300000020 } from '../database/migrations/1718300000020-AddExperiencePublishing';
 import { AddHotelGuestSettings1718300000022 } from '../database/migrations/1718300000022-AddHotelGuestSettings';
+import { AddHotelStayTimesAndUsefulInfoUniqueness1718300000024 } from '../database/migrations/1718300000024-AddHotelStayTimesAndUsefulInfoUniqueness';
 import { seedAvailabilitySlots, seedCollections, seedCollectionItems, seedConciergeMessages, seedConsumptionItems, seedExperiences, seedGuest, seedHotel, seedHotelUsefulInfo, seedRequests, seedReservations, seedServices, seedStay, seedStayUsefulInfo } from '../database/seeds/data/ui-mock-seed.data';
 import InitialSeeder from '../database/seeds/initial.seeder';
 import UniqueSeeder from '../database/seeds/unique.seeder';
@@ -160,6 +161,7 @@ describe('smoke imports', () => {
     expect(AddInternalNoteToStayRequests1718300000019).toBeDefined();
     expect(AddExperiencePublishing1718300000020).toBeDefined();
     expect(AddHotelGuestSettings1718300000022).toBeDefined();
+    expect(AddHotelStayTimesAndUsefulInfoUniqueness1718300000024).toBeDefined();
     expect(seedHotel.id).toBe('copacabana-palace');
     expect(seedGuest.id).toBe('guest_001');
     expect(seedStay.id).toBe('stay_001');

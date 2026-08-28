@@ -1,7 +1,10 @@
-import { type ReactNode, useEffect, useState } from 'react';
-import { Button, Empty, Input, Select as AntSelect, Skeleton, Tag, Typography, Upload } from 'antd';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Button, Empty, Input, Select as AntSelect, Skeleton, Tag, Tooltip, Typography, Upload } from 'antd';
 import {
   BankOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
   InfoCircleOutlined,
   PictureOutlined,
   PlusOutlined,
@@ -13,16 +16,23 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createHotelUsefulInfo,
+  deleteHotelUsefulInfo,
   getHotelSettings,
+  updateHotelOperationHours,
+  updateHotelUsefulInfo,
   updateHotelWifi,
   uploadHotelHeroImage,
   uploadHotelLogo,
+  type HotelUsefulInfo,
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Toast } from '@/shared/components/Toast';
+import { ConfirmActionModal } from '@/shared/components/Modal';
 import {
+  operationHoursFormSchema,
   usefulInfoFormSchema,
   wifiFormSchema,
+  type OperationHoursFormValues,
   type UsefulInfoFormValues,
   type WifiFormValues,
 } from '../schemas/settings-form-schemas';
@@ -31,7 +41,10 @@ type SettingsViewProps = { accessToken: string; cacheScope: string };
 
 export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
   const queryClient = useQueryClient();
+  const infoFormElementRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [editingInfo, setEditingInfo] = useState<HotelUsefulInfo | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<HotelUsefulInfo | null>(null);
   const settingsQuery = useQuery({
     queryKey: adminQueryKeys.settings(cacheScope),
     queryFn: () => getHotelSettings(accessToken),
@@ -44,8 +57,15 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
     resolver: zodResolver(usefulInfoFormSchema),
     defaultValues: { scope: 'stay', title: '', description: '' },
   });
+  const operationHoursForm = useForm<OperationHoursFormValues>({
+    resolver: zodResolver(operationHoursFormSchema),
+    defaultValues: { checkInTime: '14:00', checkOutTime: '12:00' },
+  });
 
   const resetWifiForm = wifiForm.reset;
+  const resetOperationHoursForm = operationHoursForm.reset;
+  const resetInfoForm = infoForm.reset;
+  const focusInfoField = infoForm.setFocus;
 
   useEffect(() => {
     if (settingsQuery.data) {
@@ -53,8 +73,26 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
         wifiNetwork: settingsQuery.data.wifiNetwork,
         wifiPassword: settingsQuery.data.wifiPassword,
       });
+      resetOperationHoursForm({
+        checkInTime: settingsQuery.data.checkInTime,
+        checkOutTime: settingsQuery.data.checkOutTime,
+      });
     }
-  }, [settingsQuery.data, resetWifiForm]);
+  }, [settingsQuery.data, resetOperationHoursForm, resetWifiForm]);
+
+  useEffect(() => {
+    if (!editingInfo) return;
+
+    resetInfoForm({
+      scope: editingInfo.scope,
+      title: editingInfo.title,
+      description: editingInfo.description,
+    });
+    window.requestAnimationFrame(() => {
+      infoFormElementRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      focusInfoField('title');
+    });
+  }, [editingInfo, focusInfoField, resetInfoForm]);
 
   const wifiMutation = useMutation({
     mutationFn: (values: WifiFormValues) => updateHotelWifi(accessToken, values),
@@ -64,14 +102,41 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
       setMessage('Wi-Fi do hotel atualizado.');
     },
   });
+  const operationHoursMutation = useMutation({
+    mutationFn: (values: OperationHoursFormValues) => updateHotelOperationHours(accessToken, values),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(adminQueryKeys.settings(cacheScope), settings);
+      operationHoursForm.reset({ checkInTime: settings.checkInTime, checkOutTime: settings.checkOutTime });
+      setMessage('Horários operacionais do hotel atualizados.');
+    },
+  });
   const infoMutation = useMutation({
-    mutationFn: (values: UsefulInfoFormValues) => createHotelUsefulInfo(accessToken, {
-      ...values,
-      position: (settingsQuery.data?.usefulInfo.length ?? 0) + 1,
-    }),
+    mutationFn: (values: UsefulInfoFormValues) => {
+      const payload = {
+        ...values,
+        position: editingInfo?.position ?? ((settingsQuery.data?.usefulInfo.filter((item) => item.scope === values.scope).length ?? 0) + 1),
+      };
+      return editingInfo
+        ? updateHotelUsefulInfo(accessToken, editingInfo.id, payload)
+        : createHotelUsefulInfo(accessToken, payload);
+    },
     onSuccess: async () => {
+      const wasEditing = Boolean(editingInfo);
+      setEditingInfo(null);
       infoForm.reset({ scope: 'stay', title: '', description: '' });
-      setMessage('Informação do hotel adicionada.');
+      setMessage(wasEditing ? 'Informação para hóspedes atualizada.' : 'Informação do hotel adicionada.');
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.settings(cacheScope) });
+    },
+  });
+  const deleteInfoMutation = useMutation({
+    mutationFn: (infoId: string) => deleteHotelUsefulInfo(accessToken, infoId),
+    onSuccess: async () => {
+      if (editingInfo?.id === deleteCandidate?.id) {
+        setEditingInfo(null);
+        infoForm.reset({ scope: 'stay', title: '', description: '' });
+      }
+      setDeleteCandidate(null);
+      setMessage('Informação para hóspedes excluída.');
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.settings(cacheScope) });
     },
   });
@@ -84,13 +149,15 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
       setMessage('Identidade visual do hotel atualizada.');
     },
   });
-  const error = settingsQuery.error ?? wifiMutation.error ?? infoMutation.error ?? mediaMutation.error;
+  const error = settingsQuery.error ?? wifiMutation.error ?? operationHoursMutation.error ?? infoMutation.error ?? deleteInfoMutation.error ?? mediaMutation.error;
   const settings = settingsQuery.data;
 
   function closeFeedback() {
     setMessage(null);
     wifiMutation.reset();
+    operationHoursMutation.reset();
     infoMutation.reset();
+    deleteInfoMutation.reset();
     mediaMutation.reset();
   }
 
@@ -195,6 +262,29 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
               </form>
             </section>
 
+            <section className="premium-surface settings-card settings-hours-card">
+              <SettingsSectionHeading
+                description="Horários operacionais mostrados de forma informativa nas estadias. O acesso ao app segue os dias locais da hospedagem."
+                icon={<ClockCircleOutlined />}
+                title="Check-in e check-out"
+              />
+              <form className="settings-wifi-form" noValidate onSubmit={operationHoursForm.handleSubmit((values) => operationHoursMutation.mutate(values))}>
+                <label>
+                  Horário de check-in
+                  <Input {...operationHoursForm.register('checkInTime')} aria-invalid={Boolean(operationHoursForm.formState.errors.checkInTime)} type="time" />
+                </label>
+                <FieldError message={operationHoursForm.formState.errors.checkInTime?.message} />
+                <label>
+                  Horário de check-out
+                  <Input {...operationHoursForm.register('checkOutTime')} aria-invalid={Boolean(operationHoursForm.formState.errors.checkOutTime)} type="time" />
+                </label>
+                <FieldError message={operationHoursForm.formState.errors.checkOutTime?.message} />
+                <footer className="settings-card-footer">
+                  <Button htmlType="submit" loading={operationHoursMutation.isPending} type="primary">Salvar horários</Button>
+                </footer>
+              </form>
+            </section>
+
             <section className="premium-surface settings-card settings-info-card">
               <SettingsSectionHeading
                 description="Conteúdos úteis exibidos no dashboard ou durante a estadia."
@@ -212,13 +302,34 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
                         <strong>{item.title}</strong>
                         <p>{item.description}</p>
                       </div>
-                      <Tag>{item.scope === 'dashboard' ? 'Hoje' : 'Estadia'}</Tag>
+                      <div className="settings-info-item-actions">
+                        <Tag>{item.scope === 'dashboard' ? 'Hoje' : 'Estadia'}</Tag>
+                        <Tooltip title="Editar informação">
+                          <Button
+                            aria-label={`Editar ${item.title}`}
+                            icon={<EditOutlined />}
+                            onClick={() => setEditingInfo(item)}
+                            size="small"
+                            type="text"
+                          />
+                        </Tooltip>
+                        <Tooltip title="Excluir informação">
+                          <Button
+                            aria-label={`Excluir ${item.title}`}
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => setDeleteCandidate(item)}
+                            size="small"
+                            type="text"
+                          />
+                        </Tooltip>
+                      </div>
                     </article>
                   ))}
                 </div>
 
-                <form className="settings-info-form" noValidate onSubmit={infoForm.handleSubmit((values) => infoMutation.mutate(values))}>
-                  <Typography.Title level={3}>Adicionar informação</Typography.Title>
+                <form className="settings-info-form" noValidate onSubmit={infoForm.handleSubmit((values) => infoMutation.mutate(values))} ref={infoFormElementRef}>
+                  <Typography.Title level={3}>{editingInfo ? 'Editar informação' : 'Adicionar informação'}</Typography.Title>
                   <label>
                     Exibição
                     <Controller
@@ -228,8 +339,8 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
                         <AntSelect
                           {...field}
                           options={[
-                            { label: 'Hoje', value: 'dashboard' },
-                            { label: 'Durante a estadia', value: 'stay' },
+                            { label: 'Tela Hoje', value: 'dashboard' },
+                            { label: 'Estadia · Regras e informações úteis', value: 'stay' },
                           ]}
                         />
                       )}
@@ -237,29 +348,61 @@ export function SettingsView({ accessToken, cacheScope }: SettingsViewProps) {
                   </label>
                   <label>
                     Título
-                    <Input
-                      {...infoForm.register('title')}
-                      aria-invalid={Boolean(infoForm.formState.errors.title)}
-                      placeholder="Horário do café da manhã"
+                    <Controller
+                      control={infoForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          aria-invalid={Boolean(infoForm.formState.errors.title)}
+                          placeholder="Horário do café da manhã"
+                        />
+                      )}
                     />
                   </label>
                   <FieldError message={infoForm.formState.errors.title?.message} />
                   <label>
                     Descrição
-                    <Input.TextArea
-                      {...infoForm.register('description')}
-                      aria-invalid={Boolean(infoForm.formState.errors.description)}
-                      placeholder="Servido das 06:30 às 10:30 no restaurante do térreo."
-                      rows={4}
+                    <Controller
+                      control={infoForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <Input.TextArea
+                          {...field}
+                          aria-invalid={Boolean(infoForm.formState.errors.description)}
+                          placeholder="Servido das 06:30 às 10:30 no restaurante do térreo."
+                          rows={4}
+                        />
+                      )}
                     />
                   </label>
                   <FieldError message={infoForm.formState.errors.description?.message} />
-                  <Button icon={<PlusOutlined />} htmlType="submit" loading={infoMutation.isPending} type="primary">Adicionar informação</Button>
+                  <div className="settings-info-form-actions">
+                    {editingInfo ? (
+                      <Button onClick={() => {
+                        setEditingInfo(null);
+                        infoForm.reset({ scope: 'stay', title: '', description: '' });
+                      }}>Cancelar edição</Button>
+                    ) : null}
+                    <Button icon={editingInfo ? <EditOutlined /> : <PlusOutlined />} htmlType="submit" loading={infoMutation.isPending} type="primary">
+                      {editingInfo ? 'Salvar alterações' : 'Adicionar informação'}
+                    </Button>
+                  </div>
                 </form>
               </div>
             </section>
           </div>
         </>
+      ) : null}
+      {deleteCandidate ? (
+        <ConfirmActionModal
+          confirmLabel="Excluir informação"
+          message={`A informação “${deleteCandidate.title}” deixará de ser exibida aos hóspedes.`}
+          onCancel={() => setDeleteCandidate(null)}
+          onConfirm={() => deleteInfoMutation.mutate(deleteCandidate.id)}
+          title="Excluir informação?"
+          tone="danger"
+        />
       ) : null}
     </div>
   );

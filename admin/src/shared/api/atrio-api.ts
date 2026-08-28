@@ -29,6 +29,9 @@ export type AdminHotelSettings = {
   heroImageUrl: string | null;
   wifiNetwork: string;
   wifiPassword: string;
+  checkInTime: string;
+  checkOutTime: string;
+  timezone: string;
   usefulInfo: HotelUsefulInfo[];
 };
 
@@ -118,6 +121,7 @@ export type AdminStay = {
   statusLabel: string;
   checkInDate: string;
   checkOutDate: string;
+  checkInTime: string;
   checkOutTime: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
@@ -155,7 +159,6 @@ export type CreateStayPayload = {
   roomNumber: string;
   checkInDate: string;
   checkOutDate: string;
-  checkOutTime: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
 };
@@ -165,7 +168,6 @@ export type UpdateStayPayload = {
   roomNumber: string;
   checkInDate: string;
   checkOutDate: string;
-  checkOutTime: string;
   consumptionEnabled: boolean;
   consumptionView: 'ready' | 'empty' | 'unavailable';
 };
@@ -325,7 +327,11 @@ function responseSchemaFor(path: string, method = 'GET'): z.ZodType<unknown> {
   if (/\/admin\/concierge\/conversations\/[^/]+\/messages$/.test(pathname)) return method === 'GET' ? z.array(messageSchema) : messageSchema;
   if (pathname === '/admin/hotels/current') return hotelSettingsSchema;
   if (pathname === '/admin/hotels/current/wifi') return hotelSettingsSchema;
+  if (pathname === '/admin/hotels/current/operation-hours') return hotelSettingsSchema;
   if (pathname === '/admin/hotels/current/useful-info') return usefulInfoSchema;
+  if (/\/admin\/hotels\/current\/useful-info\/[^/]+$/.test(pathname)) {
+    return method === 'DELETE' ? idSchema : usefulInfoSchema;
+  }
 
   throw new Error(`Contrato de resposta não configurado para ${method} ${pathname}`);
 }
@@ -797,11 +803,38 @@ export function updateHotelWifi(accessToken: string, payload: { wifiNetwork: str
   });
 }
 
+export function updateHotelOperationHours(accessToken: string, payload: { checkInTime: string; checkOutTime: string }) {
+  return request<AdminHotelSettings>('/admin/hotels/current/operation-hours', {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createHotelUsefulInfo(accessToken: string, payload: Omit<HotelUsefulInfo, 'id'>) {
   return request<HotelUsefulInfo>('/admin/hotels/current/useful-info', {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateHotelUsefulInfo(
+  accessToken: string,
+  infoId: string,
+  payload: Omit<HotelUsefulInfo, 'id'>,
+) {
+  return request<HotelUsefulInfo>(`/admin/hotels/current/useful-info/${infoId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteHotelUsefulInfo(accessToken: string, infoId: string) {
+  return request<{ id: string }>(`/admin/hotels/current/useful-info/${infoId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
 

@@ -24,6 +24,15 @@ export class Hotel {
   @Column({ name: 'wifi_password', type: 'varchar', length: 150, nullable: true })
   wifiPassword!: string | null;
 
+  @Column({ name: 'check_in_time', type: 'varchar', length: 5, default: '14:00' })
+  checkInTime!: string;
+
+  @Column({ name: 'check_out_time', type: 'varchar', length: 5, default: '12:00' })
+  checkOutTime!: string;
+
+  @Column({ type: 'varchar', length: 80, default: 'America/Sao_Paulo' })
+  timezone!: string;
+
   @OneToMany(() => Stay, (stay) => stay.hotel)
   stays!: Stay[];
 }

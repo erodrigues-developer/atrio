@@ -8,6 +8,7 @@ import { StayRepository } from 'src/modules/stays/repositories/stay.repository';
 import { Stay } from 'src/modules/stays/entities/stay.entity';
 import { GuestSession } from '../entities/guest-session.entity';
 import { GuestSessionRepository } from '../repositories/guest-session.repository';
+import { isStayAppAccessible } from 'src/common/utils/stay-access-window.util';
 
 type StayAccessChallenge = {
   challengeId: string;
@@ -47,6 +48,8 @@ export class AuthService {
     if (!stay) {
       throw new ApiException(404, 'STAY_NOT_FOUND', 'Stay not found for the provided guest details.');
     }
+
+    this.assertStayAppAccess(stay);
 
     const challenge = this.buildChallenge(stay);
     const ttlSeconds = this.configService.get<number>('auth.challengeTtlSeconds') ?? 300;
@@ -101,6 +104,9 @@ export class AuthService {
       throw new ApiException(404, 'STAY_NOT_FOUND', 'Stay was not found.');
     }
 
+
+    this.assertStayAppAccess(stay);
+
     const challenge = this.buildChallenge(stay);
     const ttlSeconds = this.configService.get<number>('auth.challengeTtlSeconds') ?? 300;
 
@@ -127,6 +133,9 @@ export class AuthService {
     if (!stay) {
       throw new ApiException(404, 'STAY_NOT_FOUND', 'Stay no longer exists.');
     }
+
+
+    this.assertStayAppAccess(stay);
 
     const session = new GuestSession();
     session.publicId = buildResourceId('session');
@@ -158,7 +167,8 @@ export class AuthService {
         id: stay.publicId,
         hotelName: stay.hotel.name,
         roomNumber: stay.roomNumber,
-        checkOutTime: stay.checkOutTime,
+        checkInTime: stay.hotel.checkInTime,
+        checkOutTime: stay.hotel.checkOutTime,
       },
     };
   }
@@ -186,6 +196,9 @@ export class AuthService {
     if (!stay) {
       throw new ApiException(401, 'UNAUTHORIZED', 'Associated stay could not be loaded.');
     }
+
+
+    this.assertStayAppAccess(stay, 401);
 
     return {
       accessToken,
@@ -220,6 +233,16 @@ export class AuthService {
       expiresAt: expiresAt.toISOString(),
       resendAvailableAt: resendAvailableAt.toISOString(),
     };
+  }
+
+  private assertStayAppAccess(stay: Stay, statusCode: 401 | 403 = 403): void {
+    if (!isStayAppAccessible(stay)) {
+      throw new ApiException(
+        statusCode,
+        statusCode === 401 ? 'STAY_ACCESS_EXPIRED' : 'STAY_ACCESS_NOT_ACTIVE',
+        'O acesso ao aplicativo está disponível somente durante os dias da estadia.',
+      );
+    }
   }
 
   private async getChallenge(challengeId: string): Promise<StayAccessChallenge> {

@@ -9,7 +9,6 @@ export const stayFormSchema = z.object({
   roomNumber: z.string().trim().min(1, 'Informe o quarto.'),
   checkInDate: z.string().min(1, 'Informe a data de check-in.'),
   checkOutDate: z.string().min(1, 'Informe a data de check-out.'),
-  checkOutTime: z.string().min(1, 'Informe o horário de saída.'),
   consumptionView: z.enum(['ready', 'empty', 'unavailable']),
 }).superRefine((data, context) => {
   if (data.checkOutDate < data.checkInDate) {

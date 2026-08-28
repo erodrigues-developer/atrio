@@ -19,6 +19,7 @@ import {
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Toast } from '@/shared/components/Toast';
+import { connectAdminConcierge, type ConciergeRealtimeMessage } from '@/shared/api/concierge-realtime';
 
 type ConversationFilter = 'all' | 'unread' | 'active';
 
@@ -30,18 +31,19 @@ type ConciergeViewProps = {
 
 export function ConciergeView({ accessToken, cacheScope, onNavigate }: ConciergeViewProps) {
   const queryClient = useQueryClient();
-  const threadEndRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
   const [selectedStayId, setSelectedStayId] = useState('');
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [reply, setReply] = useState('');
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   const conversationsQuery = useQuery({
     queryKey: adminQueryKeys.conversations(cacheScope, appliedSearch),
     queryFn: () => listConciergeConversations(accessToken, appliedSearch),
-    refetchInterval: 15_000,
+    refetchInterval: isRealtimeConnected ? false : 15_000,
   });
   const conversations = conversationsQuery.data ?? [];
   const unreadCount = conversations.filter(isAwaitingHotel).length;
@@ -58,7 +60,7 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
     queryKey: adminQueryKeys.messages(cacheScope, activeStayId),
     queryFn: () => listConciergeMessages(accessToken, activeStayId),
     enabled: Boolean(activeStayId),
-    refetchInterval: 10_000,
+    refetchInterval: isRealtimeConnected ? false : 10_000,
   });
   const messages = messagesQuery.data ?? [];
 
@@ -75,8 +77,46 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
   const error = conversationsQuery.error ?? messagesQuery.error ?? replyMutation.error;
 
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTo({ behavior: 'smooth', top: thread.scrollHeight });
   }, [activeStayId, messages.length]);
+
+  useEffect(() => {
+    const socket = connectAdminConcierge(accessToken);
+    const onConnect = () => setIsRealtimeConnected(true);
+    const onDisconnect = () => setIsRealtimeConnected(false);
+    const onMessage = (message: ConciergeRealtimeMessage) => {
+      const mappedMessage: ConciergeMessage = {
+        id: message.id,
+        stayId: message.stayId,
+        sender: message.sender,
+        text: message.text,
+        source: message.source,
+        createdAt: message.createdAt,
+      };
+      queryClient.setQueryData<ConciergeMessage[]>(
+        adminQueryKeys.messages(cacheScope, message.stayId),
+        (current = []) => {
+          const byId = new Map(current.map((item) => [item.id, item]));
+          byId.set(mappedMessage.id, mappedMessage);
+          return [...byId.values()].sort((first, second) => first.createdAt.localeCompare(second.createdAt));
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.concierge(cacheScope) });
+    };
+
+    socket.on('disconnect', onDisconnect);
+    socket.on('concierge:ready', onConnect);
+    socket.on('concierge:message', onMessage);
+
+    return () => {
+      socket.off('disconnect', onDisconnect);
+      socket.off('concierge:ready', onConnect);
+      socket.off('concierge:message', onMessage);
+      socket.disconnect();
+    };
+  }, [accessToken, cacheScope, queryClient]);
 
   function applySearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,6 +144,9 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
           <Typography.Title level={1}>Concierge</Typography.Title>
           <p>Gerencie as conversas com hóspedes em tempo real.</p>
         </div>
+        <Tag color={isRealtimeConnected ? 'success' : 'default'}>
+          {isRealtimeConnected ? 'Tempo real conectado' : 'Reconectando chat'}
+        </Tag>
       </header>
 
       {error ? <Toast tone="error" message={error.message} onClose={() => void conversationsQuery.refetch()} /> : null}
@@ -201,7 +244,7 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
                 </div>
               </header>
 
-              <div className="concierge-chat-thread" aria-live="polite">
+              <div className="concierge-chat-thread" aria-live="polite" ref={threadRef}>
                 {messagesQuery.isLoading ? <div className="concierge-thread-loading"><Spin /><span>Carregando mensagens...</span></div> : null}
                 {!messagesQuery.isLoading && messages.length === 0 ? (
                   <Empty description="Envie a primeira mensagem desta conversa." image={Empty.PRESENTED_IMAGE_SIMPLE} />
@@ -218,7 +261,6 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
                     </article>
                   </Fragment>
                 ))}
-                <div ref={threadEndRef} />
               </div>
 
               <form className="concierge-composer" onSubmit={handleReply}>

@@ -39,7 +39,8 @@ export class StaysService {
       checkOutDate: stay.checkOutDate,
       checkInLabel: formatShortDate(new Date(`${stay.checkInDate}T00:00:00.000Z`)),
       checkOutLabel: formatShortDate(new Date(`${stay.checkOutDate}T00:00:00.000Z`)),
-      checkOutTime: stay.checkOutTime,
+      checkInTime: stay.hotel.checkInTime,
+      checkOutTime: stay.hotel.checkOutTime,
       summaries: {
         requests: `${requestsCount} em andamento`,
         reservations: `${reservationsCount} solicitada`,
@@ -80,7 +81,8 @@ export class StaysService {
       stay: {
         hotelName: stay.hotel.name,
         roomNumber: stay.roomNumber,
-        checkOutTime: stay.checkOutTime,
+        checkInTime: stay.hotel.checkInTime,
+        checkOutTime: stay.hotel.checkOutTime,
       },
       featuredExperience: featuredExperience[0],
       requests,

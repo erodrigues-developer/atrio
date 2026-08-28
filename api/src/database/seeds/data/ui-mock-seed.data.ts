@@ -3,6 +3,9 @@ export const seedHotel = {
   name: 'Copacabana Palace',
   wifiNetwork: 'Copacabana Palace Guest',
   wifiPassword: 'copacabana',
+  checkInTime: '14:00',
+  checkOutTime: '12:00',
+  timezone: 'America/Sao_Paulo',
 };
 
 export const seedGuest = {
@@ -22,6 +25,7 @@ export const seedStay = {
   statusLabel: 'Hospedagem ativa',
   checkInDate: '2026-06-10',
   checkOutDate: '2026-06-15',
+  checkInTime: '14:00',
   checkOutTime: '12:00',
   wifiNetwork: 'Copacabana Palace Guest',
   wifiPassword: 'copacabana',

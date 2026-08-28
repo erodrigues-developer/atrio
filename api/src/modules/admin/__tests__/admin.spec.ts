@@ -465,6 +465,11 @@ describe('admin module', () => {
     };
     const hotelUsefulInfoRepository = {
       find: jest.fn().mockResolvedValue([usefulInfo]),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      }),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
     const consumptionItemRepository = {
@@ -547,7 +552,6 @@ describe('admin module', () => {
       roomNumber: '305',
       checkInDate: '2026-08-14',
       checkOutDate: '2026-08-18',
-      checkOutTime: '12:00',
       status: 'scheduled',
       consumptionEnabled: true,
       consumptionView: 'ready',
@@ -561,7 +565,6 @@ describe('admin module', () => {
         roomNumber: '305',
         checkInDate: '2026-08-14',
         checkOutDate: '2026-08-18',
-        checkOutTime: '12:00',
         status: 'scheduled',
         consumptionEnabled: true,
         consumptionView: 'ready',
@@ -573,7 +576,6 @@ describe('admin module', () => {
         roomNumber: '305',
         checkInDate: '2026-08-14',
         checkOutDate: '2026-08-18',
-        checkOutTime: '12:00',
         status: 'scheduled',
         consumptionEnabled: true,
         consumptionView: 'ready',

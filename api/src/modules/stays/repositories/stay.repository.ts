@@ -32,6 +32,12 @@ export class StayRepository {
       .where('stay.hotelId = :hotelId', { hotelId })
       .andWhere('stay.roomNumber = :roomNumber', { roomNumber })
       .andWhere('LOWER(guest.lastName) = LOWER(:lastName)', { lastName })
+      .orderBy(`CASE
+        WHEN stay.status IN ('scheduled', 'active')
+          AND stay.checkInDate <= (CURRENT_TIMESTAMP AT TIME ZONE hotel.timezone)::date
+          AND stay.checkOutDate >= (CURRENT_TIMESTAMP AT TIME ZONE hotel.timezone)::date
+        THEN 0 ELSE 1 END`, 'ASC')
+      .addOrderBy('stay.checkInDate', 'DESC')
       .getOne();
   }
 
@@ -60,9 +66,17 @@ export class StayRepository {
     hotelId: string,
     scope: 'dashboard' | 'stay',
   ): Promise<HotelUsefulInfo[]> {
-    return this.hotelUsefulInfoRepository.find({
+    const items = await this.hotelUsefulInfoRepository.find({
       where: { hotelId, scope },
       order: { position: 'ASC' },
+    });
+    const seen = new Set<string>();
+
+    return items.filter((item) => {
+      const key = `${item.title.trim().toLocaleLowerCase('pt-BR')}\u0000${item.description.trim().toLocaleLowerCase('pt-BR')}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
 

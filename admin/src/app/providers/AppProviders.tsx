@@ -10,9 +10,10 @@ export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
-        refetchOnWindowFocus: false,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: true,
         retry: 1,
-        staleTime: 30_000,
+        staleTime: 0,
       },
       mutations: { retry: false },
     },

@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
 import {
   Bath,
@@ -36,12 +37,14 @@ const serviceIcons: Record<string, LucideIcon> = {
 };
 
 export default function ServicesScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isFocused) return;
     let isMounted = true;
 
     listServices()
@@ -67,7 +70,7 @@ export default function ServicesScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isFocused]);
 
   return (
     <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>

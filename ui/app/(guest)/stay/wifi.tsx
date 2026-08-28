@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Copy, Info, Wifi } from 'lucide-react-native';
@@ -20,6 +21,7 @@ import { useSession } from '@/src/stores/session.store';
 const COPY_FEEDBACK_DURATION_MS = 2400;
 
 export default function WifiScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const session = useSession();
   const [wifi, setWifi] = useState<WifiResponse | null>(null);
@@ -29,7 +31,7 @@ export default function WifiScreen() {
   const params = useLocalSearchParams<{ returnTo?: string | string[] }>();
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
@@ -52,7 +54,7 @@ export default function WifiScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.stayId]);
+  }, [isFocused, session?.stayId]);
 
   useEffect(() => {
     return () => {

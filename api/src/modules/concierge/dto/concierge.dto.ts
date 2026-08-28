@@ -65,6 +65,6 @@ export class CreateConciergeMessageResponseDto {
   @ApiProperty({ type: ConciergeMessageDto })
   message!: ConciergeMessageDto;
 
-  @ApiProperty({ type: ConciergeMessageDto })
-  reply!: ConciergeMessageDto;
+  @ApiProperty({ type: ConciergeMessageDto, nullable: true })
+  reply!: ConciergeMessageDto | null;
 }

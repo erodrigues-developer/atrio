@@ -134,12 +134,6 @@ export async function createRequest(
 }
 
 export async function fetchRequestById(stayId: string, requestId: string) {
-  const existingRequest = state.items.find((item) => item.id === requestId);
-
-  if (existingRequest) {
-    return existingRequest;
-  }
-
   const request = mapRequest(await getStayRequest(stayId, requestId));
 
   setState({

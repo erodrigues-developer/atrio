@@ -33,7 +33,10 @@ export class Stay {
   @Column({ name: 'check_out_date', type: 'date' })
   checkOutDate!: string;
 
-  @Column({ name: 'check_out_time', type: 'varchar', length: 10 })
+  @Column({ name: 'check_in_time', type: 'varchar', length: 5, default: '14:00' })
+  checkInTime!: string;
+
+  @Column({ name: 'check_out_time', type: 'varchar', length: 5 })
   checkOutTime!: string;
 
   @Column({ name: 'wifi_network', type: 'varchar', length: 150 })

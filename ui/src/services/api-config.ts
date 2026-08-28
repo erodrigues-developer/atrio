@@ -35,4 +35,6 @@ export const API_BASE_URL = normalizeApiBaseUrl(
   process.env.EXPO_PUBLIC_API_BASE_URL ?? getDefaultApiBaseUrl(),
 );
 
+export const REALTIME_BASE_URL = API_BASE_URL.replace(/\/v1\/?$/, '');
+
 export const DEFAULT_HOTEL_ID = process.env.EXPO_PUBLIC_HOTEL_ID ?? 'copacabana-palace';

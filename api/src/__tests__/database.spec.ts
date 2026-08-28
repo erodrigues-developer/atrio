@@ -24,6 +24,7 @@ import { AddServicePublishing1718300000018 } from '../database/migrations/171830
 import { AddInternalNoteToStayRequests1718300000019 } from '../database/migrations/1718300000019-AddInternalNoteToStayRequests';
 import { AddExperiencePublishing1718300000020 } from '../database/migrations/1718300000020-AddExperiencePublishing';
 import { AddHotelGuestSettings1718300000022 } from '../database/migrations/1718300000022-AddHotelGuestSettings';
+import { AddHotelStayTimesAndUsefulInfoUniqueness1718300000024 } from '../database/migrations/1718300000024-AddHotelStayTimesAndUsefulInfoUniqueness';
 import InitialSeeder from '../database/seeds/initial.seeder';
 import UniqueSeeder from '../database/seeds/unique.seeder';
 
@@ -73,6 +74,7 @@ describe('database setup', () => {
       new AddInternalNoteToStayRequests1718300000019(),
       new AddExperiencePublishing1718300000020(),
       new AddHotelGuestSettings1718300000022(),
+      new AddHotelStayTimesAndUsefulInfoUniqueness1718300000024(),
     ];
 
     for (const migration of incrementalMigrations) {

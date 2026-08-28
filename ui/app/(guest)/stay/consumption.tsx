@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Info, Shirt, Sparkles, Utensils } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
@@ -27,6 +28,7 @@ const consumptionIcons: Record<string, typeof Utensils> = {
 };
 
 export default function ConsumptionScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const session = useSession();
@@ -34,7 +36,7 @@ export default function ConsumptionScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
@@ -57,7 +59,7 @@ export default function ConsumptionScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.stayId]);
+  }, [isFocused, session?.stayId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));

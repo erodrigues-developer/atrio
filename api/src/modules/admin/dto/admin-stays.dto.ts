@@ -147,11 +147,6 @@ export class CreateAdminStayDto {
   @IsDateString()
   checkOutDate!: string;
 
-  @ApiProperty({ example: '12:00' })
-  @IsString()
-  @MaxLength(10)
-  checkOutTime!: string;
-
   @ApiProperty({ example: 'active' })
   @IsOptional()
   @IsIn(['scheduled', 'active', 'checked_out', 'cancelled'])
@@ -185,11 +180,6 @@ export class UpdateAdminStayDto {
   @IsDateString()
   checkOutDate!: string;
 
-  @ApiProperty({ example: '12:00' })
-  @IsString()
-  @MaxLength(10)
-  checkOutTime!: string;
-
   @ApiProperty()
   @IsBoolean()
   consumptionEnabled!: boolean;
@@ -220,6 +210,9 @@ export class AdminStayResponseDto {
 
   @ApiProperty()
   checkOutDate!: string;
+
+  @ApiProperty()
+  checkInTime!: string;
 
   @ApiProperty()
   checkOutTime!: string;

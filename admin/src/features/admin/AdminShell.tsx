@@ -1,9 +1,9 @@
 import { Dispatch, lazy, SetStateAction, Suspense, useEffect, useMemo, useState } from 'react';
-import { Button, Dropdown, Input, Menu, Typography } from 'antd';
+import { Button, Dropdown, Menu, Typography } from 'antd';
 import {
   ApartmentOutlined, BankOutlined, BellOutlined, CalendarOutlined, CloseOutlined, DownOutlined, DownloadOutlined,
   HomeOutlined, LeftOutlined, LogoutOutlined, MailOutlined, MessageOutlined, QuestionCircleOutlined,
-  MenuOutlined, SearchOutlined, SettingOutlined, StarOutlined, TeamOutlined, UnorderedListOutlined,
+  MenuOutlined, SettingOutlined, StarOutlined, TeamOutlined, UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -117,20 +117,12 @@ export function AdminShell({
         />
         <div className="sidebar-footer">
           <Button block className="collapse-menu-button" icon={<LeftOutlined />} type="text">Recolher menu</Button>
-          <div className="help-card">
-            <QuestionCircleOutlined />
-            <div>
-              <strong>Precisa de ajuda?</strong>
-              <p>Acesse nossa central de ajuda</p>
-            </div>
-          </div>
         </div>
       </aside>
       {isMobileMenuOpen ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setIsMobileMenuOpen(false)} type="button" /> : null}
       <section className="workspace">
         <header className="topbar">
           <Button aria-label="Abrir menu" className="topbar-menu-button" icon={<MenuOutlined />} onClick={() => setIsMobileMenuOpen(true)} title="Abrir menu" type="text" />
-          <div className="global-search"><Input prefix={<SearchOutlined />} placeholder="Buscar no sistema..." /></div>
           <div className="account">
             <Button aria-label="Notificações" className="topbar-icon-button" icon={<BellOutlined />} title="Notificações" type="text" />
             <Button aria-label="Mensagens" className="topbar-icon-button" icon={<MailOutlined />} title="Mensagens" type="text" />

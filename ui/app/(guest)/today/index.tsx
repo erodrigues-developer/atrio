@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
 import {
   Bell,
@@ -174,6 +175,7 @@ function SectionBlock({ children, description, title }: SectionBlockProps) {
 }
 
 export default function TodayScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const session = useSession();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
@@ -181,7 +183,7 @@ export default function TodayScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
@@ -212,7 +214,7 @@ export default function TodayScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.stayId]);
+  }, [isFocused, session?.stayId]);
 
   const visibleReservations =
     dashboard?.reservations.filter(

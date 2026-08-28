@@ -9,7 +9,7 @@ import { HotelUsefulInfo } from 'src/modules/stays/entities/hotel-useful-info.en
 import { Hotel } from 'src/modules/stays/entities/hotel.entity';
 import { StorageService } from 'src/modules/storage/services/storage.service';
 import { Repository } from 'typeorm';
-import { CreateAdminHotelUsefulInfoDto, UpdateAdminHotelWifiDto } from '../dto/admin-hotel-settings.dto';
+import { CreateAdminHotelUsefulInfoDto, UpdateAdminHotelOperationHoursDto, UpdateAdminHotelUsefulInfoDto, UpdateAdminHotelWifiDto } from '../dto/admin-hotel-settings.dto';
 import { AuditService } from './audit.service';
 
 @Injectable()
@@ -41,18 +41,64 @@ export class AdminMediaService {
     return this.mapHotel(saved, await this.listUsefulInfo(saved.publicId));
   }
 
+  async updateHotelOperationHours(session: AdminSessionContext, input: UpdateAdminHotelOperationHoursDto) {
+    const hotel = await this.getRequiredHotel(session.hotelId);
+    hotel.checkInTime = input.checkInTime;
+    hotel.checkOutTime = input.checkOutTime;
+    const saved = await this.hotelRepository.save(hotel);
+    await this.record(session, 'hotel.operation_hours.update', 'hotel', hotel.publicId, 'updated hotel operation hours');
+    return this.mapHotel(saved, await this.listUsefulInfo(saved.publicId));
+  }
+
   async createHotelUsefulInfo(session: AdminSessionContext, input: CreateAdminHotelUsefulInfoDto) {
     await this.getRequiredHotel(session.hotelId);
+    const duplicate = await this.hotelUsefulInfoRepository
+      .createQueryBuilder('info')
+      .where('info.hotelId = :hotelId', { hotelId: session.hotelId })
+      .andWhere('info.scope = :scope', { scope: input.scope })
+      .andWhere('LOWER(BTRIM(info.title)) = LOWER(BTRIM(:title))', { title: input.title })
+      .andWhere('LOWER(BTRIM(info.description)) = LOWER(BTRIM(:description))', { description: input.description })
+      .getOne();
+    if (duplicate) {
+      throw new ApiException(409, 'USEFUL_INFO_ALREADY_EXISTS', 'Esta informação já está cadastrada para os hóspedes.');
+    }
     const item = new HotelUsefulInfo();
     item.publicId = buildResourceId('info');
     item.hotelId = session.hotelId;
     item.scope = input.scope;
-    item.title = input.title;
-    item.description = input.description;
+    item.title = input.title.trim();
+    item.description = input.description.trim();
     item.position = input.position;
     const saved = await this.hotelUsefulInfoRepository.save(item);
     await this.record(session, 'hotel.useful_info.create', 'hotel_useful_info', saved.publicId, 'created hotel useful info');
     return this.mapUsefulInfo(saved);
+  }
+
+  async updateHotelUsefulInfo(
+    session: AdminSessionContext,
+    infoId: string,
+    input: UpdateAdminHotelUsefulInfoDto,
+  ) {
+    const item = await this.getRequiredUsefulInfo(session.hotelId, infoId);
+    const duplicate = await this.findDuplicateUsefulInfo(session.hotelId, input, infoId);
+    if (duplicate) {
+      throw new ApiException(409, 'USEFUL_INFO_ALREADY_EXISTS', 'Esta informação já está cadastrada para os hóspedes.');
+    }
+
+    item.scope = input.scope;
+    item.title = input.title.trim();
+    item.description = input.description.trim();
+    item.position = input.position;
+    const saved = await this.hotelUsefulInfoRepository.save(item);
+    await this.record(session, 'hotel.useful_info.update', 'hotel_useful_info', saved.publicId, 'updated hotel useful info');
+    return this.mapUsefulInfo(saved);
+  }
+
+  async deleteHotelUsefulInfo(session: AdminSessionContext, infoId: string) {
+    const item = await this.getRequiredUsefulInfo(session.hotelId, infoId);
+    await this.hotelUsefulInfoRepository.remove(item);
+    await this.record(session, 'hotel.useful_info.delete', 'hotel_useful_info', item.publicId, 'deleted hotel useful info');
+    return { id: item.publicId };
   }
 
   async uploadHotelImage(session: AdminSessionContext, kind: 'logo' | 'hero-image', file: { buffer: Buffer; mimetype?: string; originalname?: string }) {
@@ -133,6 +179,29 @@ export class AdminMediaService {
     return hotel;
   }
 
+  private async getRequiredUsefulInfo(hotelId: string, infoId: string) {
+    const item = await this.hotelUsefulInfoRepository.findOne({ where: { publicId: infoId, hotelId } });
+    if (!item) {
+      throw new ApiException(404, 'USEFUL_INFO_NOT_FOUND', 'A informação para hóspedes não foi encontrada.');
+    }
+    return item;
+  }
+
+  private findDuplicateUsefulInfo(
+    hotelId: string,
+    input: CreateAdminHotelUsefulInfoDto,
+    excludedId?: string,
+  ) {
+    const builder = this.hotelUsefulInfoRepository
+      .createQueryBuilder('info')
+      .where('info.hotelId = :hotelId', { hotelId })
+      .andWhere('info.scope = :scope', { scope: input.scope })
+      .andWhere('LOWER(BTRIM(info.title)) = LOWER(BTRIM(:title))', { title: input.title })
+      .andWhere('LOWER(BTRIM(info.description)) = LOWER(BTRIM(:description))', { description: input.description });
+    if (excludedId) builder.andWhere('info.publicId <> :excludedId', { excludedId });
+    return builder.getOne();
+  }
+
   private async listUsefulInfo(hotelId: string) {
     const items = await this.hotelUsefulInfoRepository.find({
       where: { hotelId },
@@ -149,6 +218,9 @@ export class AdminMediaService {
       heroImageUrl: hotel.heroImageUrl,
       wifiNetwork: hotel.wifiNetwork ?? '',
       wifiPassword: hotel.wifiPassword ?? '',
+      checkInTime: hotel.checkInTime,
+      checkOutTime: hotel.checkOutTime,
+      timezone: hotel.timezone,
       usefulInfo,
     };
   }

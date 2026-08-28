@@ -156,6 +156,7 @@ export class AdminStaysService {
       .createQueryBuilder('stay')
       .withDeleted()
       .leftJoinAndSelect('stay.guest', 'guest')
+      .leftJoinAndSelect('stay.hotel', 'hotel')
       .where('stay.hotelId = :hotelId', { hotelId: session.hotelId })
       .orderBy('stay.checkInDate', 'DESC')
       .addOrderBy('stay.roomNumber', 'ASC')
@@ -227,7 +228,8 @@ export class AdminStaysService {
     stay.statusLabel = this.statusLabel(stay.status);
     stay.checkInDate = input.checkInDate;
     stay.checkOutDate = input.checkOutDate;
-    stay.checkOutTime = input.checkOutTime;
+    stay.checkInTime = hotel.checkInTime;
+    stay.checkOutTime = hotel.checkOutTime;
     stay.wifiNetwork = hotel.wifiNetwork ?? '';
     stay.wifiPassword = hotel.wifiPassword ?? '';
     stay.consumptionEnabled = input.consumptionEnabled;
@@ -235,6 +237,7 @@ export class AdminStaysService {
 
     const savedStay = await this.stayRepository.save(stay);
     savedStay.guest = guest;
+    savedStay.hotel = hotel;
 
     await this.auditService.record({
       hotelId: session.hotelId,
@@ -271,7 +274,8 @@ export class AdminStaysService {
     stay.roomNumber = input.roomNumber;
     stay.checkInDate = input.checkInDate;
     stay.checkOutDate = input.checkOutDate;
-    stay.checkOutTime = input.checkOutTime;
+    stay.checkInTime = stay.hotel.checkInTime;
+    stay.checkOutTime = stay.hotel.checkOutTime;
     stay.consumptionEnabled = input.consumptionEnabled;
     stay.consumptionView = input.consumptionView;
 
@@ -460,12 +464,22 @@ export class AdminStaysService {
     input: CreateAdminStayUsefulInfoDto,
   ) {
     await this.getRequiredStay(session, stayId);
+    const duplicate = await this.hotelUsefulInfoRepository
+      .createQueryBuilder('info')
+      .where('info.hotelId = :hotelId', { hotelId: session.hotelId })
+      .andWhere('info.scope = :scope', { scope: input.scope })
+      .andWhere('LOWER(BTRIM(info.title)) = LOWER(BTRIM(:title))', { title: input.title })
+      .andWhere('LOWER(BTRIM(info.description)) = LOWER(BTRIM(:description))', { description: input.description })
+      .getOne();
+    if (duplicate) {
+      throw new ApiException(409, 'USEFUL_INFO_ALREADY_EXISTS', 'Esta informação já está cadastrada para os hóspedes.');
+    }
     const item = new HotelUsefulInfo();
     item.publicId = buildResourceId('info');
     item.hotelId = session.hotelId;
     item.scope = input.scope;
-    item.title = input.title;
-    item.description = input.description;
+    item.title = input.title.trim();
+    item.description = input.description.trim();
     item.position = input.position;
 
     const savedItem = await this.hotelUsefulInfoRepository.save(item);
@@ -648,7 +662,7 @@ export class AdminStaysService {
   private async getRequiredStay(session: AdminSessionContext, stayId: string) {
     const stay = await this.stayRepository.findOne({
       where: { publicId: stayId, hotelId: session.hotelId },
-      relations: { guest: true },
+      relations: { guest: true, hotel: true },
       withDeleted: true,
     });
 
@@ -688,7 +702,8 @@ export class AdminStaysService {
       statusLabel: stay.statusLabel,
       checkInDate: stay.checkInDate,
       checkOutDate: stay.checkOutDate,
-      checkOutTime: stay.checkOutTime,
+      checkInTime: stay.hotel?.checkInTime ?? stay.checkInTime,
+      checkOutTime: stay.hotel?.checkOutTime ?? stay.checkOutTime,
       consumptionEnabled: stay.consumptionEnabled,
       consumptionView: stay.consumptionView,
       guest: this.mapGuest(stay.guest),

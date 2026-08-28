@@ -1,4 +1,5 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
 import {
   Bell,
@@ -42,6 +43,7 @@ function formatCurrency(amountCents: number, currency: string) {
 }
 
 export default function StayScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const session = useSession();
   const [stay, setStay] = useState<StaySummaryResponse | null>(null);
@@ -50,7 +52,7 @@ export default function StayScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.stayId) {
+    if (!isFocused || !session?.stayId) {
       return;
     }
 
@@ -82,7 +84,7 @@ export default function StayScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.stayId]);
+  }, [isFocused, session?.stayId]);
 
   const consumptionSummaryLabel =
     consumption?.enabled && consumption.view === 'ready'
@@ -176,6 +178,7 @@ export default function StayScreen() {
               roomNumber: stay.roomNumber,
               statusLabel: stay.statusLabel,
               checkInLabel: stay.checkInLabel,
+              checkInTimeLabel: stay.checkInTime,
               checkOutLabel: stay.checkOutLabel,
               checkOutTimeLabel: stay.checkOutTime,
               summaries: stay.summaries,

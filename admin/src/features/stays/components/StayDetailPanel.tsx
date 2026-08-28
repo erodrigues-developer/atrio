@@ -182,7 +182,7 @@ export function StayDetailPanel({
         </header>
         <section className="stay-summary-grid">
           <article className="stay-summary-card"><span>Nome do hóspede</span><strong>{guestName}</strong><small><UserOutlined /> {stay.guest.maskedPhone}</small></article>
-          <article className="stay-summary-card"><span>Data do check-in</span><strong><CalendarOutlined /> {formatStayDate(stay.checkInDate)}</strong><small><ClockCircleOutlined /> Estadia programada</small></article>
+          <article className="stay-summary-card"><span>Data do check-in</span><strong><CalendarOutlined /> {formatStayDate(stay.checkInDate)}</strong><small><ClockCircleOutlined /> A partir das {stay.checkInTime}</small></article>
           <article className="stay-summary-card"><span>Data do check-out</span><strong><CalendarOutlined /> {formatStayDate(stay.checkOutDate)}</strong><small><ClockCircleOutlined /> {stay.checkOutTime}</small></article>
           <article className="stay-summary-card"><span>Nº de acessos ao app</span><strong><MobileOutlined /> {stay.activeGuestSessions} {stay.activeGuestSessions === 1 ? 'acesso' : 'acessos'}</strong><small>{formatStayPeriod(stay.checkInDate, stay.checkOutDate)}</small></article>
         </section>

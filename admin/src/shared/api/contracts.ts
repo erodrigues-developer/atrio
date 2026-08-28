@@ -52,7 +52,7 @@ export const guestSchema = z.object({
 
 export const staySchema = z.object({
   id: z.string(), hotelId: z.string(), roomNumber: z.string(), status: z.string(), statusLabel: z.string(),
-  checkInDate: z.string(), checkOutDate: z.string(), checkOutTime: z.string(), consumptionEnabled: z.boolean(),
+  checkInDate: z.string(), checkOutDate: z.string(), checkInTime: z.string(), checkOutTime: z.string(), consumptionEnabled: z.boolean(),
   consumptionView: z.enum(['ready', 'empty', 'unavailable']), guest: guestSchema, activeGuestSessions: z.number(),
 });
 
@@ -135,7 +135,8 @@ export const messageSchema = z.object({
 
 export const hotelSettingsSchema = z.object({
   id: z.string(), name: z.string(), logoUrl: nullableText, heroImageUrl: nullableText,
-  wifiNetwork: z.string(), wifiPassword: z.string(), usefulInfo: z.array(usefulInfoSchema),
+  wifiNetwork: z.string(), wifiPassword: z.string(), checkInTime: z.string(), checkOutTime: z.string(),
+  timezone: z.string(), usefulInfo: z.array(usefulInfoSchema),
 });
 
 export const okSchema = z.object({ ok: z.boolean() });
