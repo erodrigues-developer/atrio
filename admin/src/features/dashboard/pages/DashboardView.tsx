@@ -14,6 +14,7 @@ import {
 import { isAdminView, type AdminView } from '@/app/router/admin-routes';
 import { updateAdminRequestStatus, type Dashboard } from '../api';
 import { ConfirmActionModal } from '@/shared/components/Modal';
+import { MobileRecordCard, MobileRecordField, MobileRecordList } from '@/shared/components/PremiumManagement';
 import {
   canCancelRequest, formatDate, formatDuration, formatShortSchedule, formatTodayLabel, movementLabel,
   nextRequestAction, requestActionConfirmLabel, requestActionTitle, requestStatusLabel,
@@ -256,6 +257,33 @@ function RequestPriorityList({
           rowKey="id"
         />
       )}
+      <MobileRecordList
+        emptyContent={<Empty description="Nenhuma solicitação aberta." image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+        hasItems={items.length > 0}
+        isLoading={false}
+      >
+        {items.map((item) => {
+          const nextAction = nextRequestAction(item.status);
+          return (
+            <MobileRecordCard
+              actions={<>
+                <Button onClick={() => onNavigate('requests')}>Ver detalhes</Button>
+                {nextAction ? <Button onClick={() => setStatusCandidate({ item, status: nextAction.status })} type="primary">{nextAction.label}</Button> : null}
+                {canCancelRequest(item.status) ? <Button danger onClick={() => setStatusCandidate({ item, status: 'cancelled' })}>Cancelar</Button> : null}
+              </>}
+              badge={<Tag>{item.statusLabel}</Tag>}
+              key={item.id}
+              onSelect={() => onNavigate('requests')}
+              subtitle={formatDate(item.createdAt)}
+              title={item.title}
+            >
+              <MobileRecordField label="Hóspede" value={item.guestName ?? 'Hóspede'} />
+              <MobileRecordField label="Quarto" value={item.roomNumber} />
+              <MobileRecordField label="Espera" value={formatDuration(item.waitMinutes)} />
+            </MobileRecordCard>
+          );
+        })}
+      </MobileRecordList>
       {statusCandidate ? (
         <ConfirmActionModal
           confirmLabel={requestActionConfirmLabel(statusCandidate.status)}

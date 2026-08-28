@@ -1,6 +1,7 @@
 import { FormEvent, Fragment, useEffect, useRef, useState } from 'react';
 import { Avatar, Badge, Button, Dropdown, Empty, Input, Spin, Tag, Typography } from 'antd';
 import {
+  ArrowLeftOutlined,
   CheckOutlined,
   EllipsisOutlined,
   PaperClipOutlined,
@@ -35,6 +36,7 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
   const [appliedSearch, setAppliedSearch] = useState('');
   const [filter, setFilter] = useState<ConversationFilter>('all');
   const [reply, setReply] = useState('');
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
   const conversationsQuery = useQuery({
     queryKey: adminQueryKeys.conversations(cacheScope, appliedSearch),
@@ -79,12 +81,14 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
   function applySearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSelectedStayId('');
+    setIsMobileChatOpen(false);
     setAppliedSearch(search.trim());
   }
 
   function changeFilter(nextFilter: ConversationFilter) {
     setFilter(nextFilter);
     setSelectedStayId('');
+    setIsMobileChatOpen(false);
   }
 
   function handleReply(event: FormEvent<HTMLFormElement>) {
@@ -94,7 +98,7 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
   }
 
   return (
-    <div className="concierge-page">
+    <div className={`concierge-page${isMobileChatOpen ? ' mobile-chat-open' : ''}`}>
       <header className="page-heading concierge-page-heading">
         <div>
           <Typography.Title level={1}>Concierge</Typography.Title>
@@ -137,7 +141,10 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
                   aria-current={conversation.stayId === activeStayId ? 'true' : undefined}
                   className={`concierge-conversation ${conversation.stayId === activeStayId ? 'active' : ''}`}
                   key={conversation.stayId}
-                  onClick={() => setSelectedStayId(conversation.stayId)}
+                  onClick={() => {
+                    setSelectedStayId(conversation.stayId);
+                    setIsMobileChatOpen(true);
+                  }}
                   type="button"
                 >
                   <Avatar className={`concierge-avatar tone-${index % 5}`}>{getInitials(conversation.guestName)}</Avatar>
@@ -160,6 +167,14 @@ export function ConciergeView({ accessToken, cacheScope, onNavigate }: Concierge
           {activeConversation ? (
             <>
               <header className="concierge-chat-header">
+                <Button
+                  aria-label="Voltar às conversas"
+                  className="concierge-mobile-back"
+                  icon={<ArrowLeftOutlined />}
+                  onClick={() => setIsMobileChatOpen(false)}
+                  title="Voltar às conversas"
+                  type="text"
+                />
                 <Avatar className="concierge-avatar tone-0" size={48}>{getInitials(activeConversation.guestName)}</Avatar>
                 <div className="concierge-chat-identity">
                   <strong>{activeConversation.guestName}</strong>

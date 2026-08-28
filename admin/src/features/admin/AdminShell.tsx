@@ -1,9 +1,9 @@
-import { Dispatch, lazy, SetStateAction, Suspense, useEffect, useMemo } from 'react';
+import { Dispatch, lazy, SetStateAction, Suspense, useEffect, useMemo, useState } from 'react';
 import { Button, Dropdown, Input, Menu, Typography } from 'antd';
 import {
-  ApartmentOutlined, BankOutlined, BellOutlined, CalendarOutlined, DownOutlined, DownloadOutlined,
+  ApartmentOutlined, BankOutlined, BellOutlined, CalendarOutlined, CloseOutlined, DownOutlined, DownloadOutlined,
   HomeOutlined, LeftOutlined, LogoutOutlined, MailOutlined, MessageOutlined, QuestionCircleOutlined,
-  SearchOutlined, SettingOutlined, StarOutlined, TeamOutlined, UnorderedListOutlined,
+  MenuOutlined, SearchOutlined, SettingOutlined, StarOutlined, TeamOutlined, UnorderedListOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +35,7 @@ export function AdminShell({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const activeView = viewFromPath(location.pathname);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dashboardQuery = useQuery({
     queryKey: adminQueryKeys.dashboard(session.admin.hotel.id),
     queryFn: () => getDashboard(session.accessToken),
@@ -65,7 +66,23 @@ export function AdminShell({
     }
   }, [location.pathname, navigate]);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMobileMenuOpen]);
+
   function navigateToView(view: AdminView) {
+    setIsMobileMenuOpen(false);
     navigate(pathForView(view));
   }
 
@@ -77,14 +94,17 @@ export function AdminShell({
 
   return (
     <main className="admin-shell">
-      <aside className="sidebar">
-        <a className="brand" href={pathForView('dashboard')} onClick={(event) => { event.preventDefault(); navigateToView('dashboard'); }}>
-          <span className="brand-mark"><BankOutlined /></span>
-          <div>
-            <strong>Atrio</strong>
-            <span>HOSPITALIDADE</span>
-          </div>
-        </a>
+      <aside aria-label="Menu principal" className={`sidebar${isMobileMenuOpen ? ' mobile-open' : ''}`}>
+        <div className="sidebar-brand-row">
+          <a className="brand" href={pathForView('dashboard')} onClick={(event) => { event.preventDefault(); navigateToView('dashboard'); }}>
+            <span className="brand-mark"><BankOutlined /></span>
+            <div>
+              <strong>Atrio</strong>
+              <span>HOSPITALIDADE</span>
+            </div>
+          </a>
+          <Button aria-label="Fechar menu" className="sidebar-close-button" icon={<CloseOutlined />} onClick={() => setIsMobileMenuOpen(false)} title="Fechar menu" type="text" />
+        </div>
         <Menu
           items={menuItems.flatMap((item) => {
             if (!item.view) return [];
@@ -106,8 +126,10 @@ export function AdminShell({
           </div>
         </div>
       </aside>
+      {isMobileMenuOpen ? <button aria-label="Fechar menu" className="sidebar-backdrop" onClick={() => setIsMobileMenuOpen(false)} type="button" /> : null}
       <section className="workspace">
         <header className="topbar">
+          <Button aria-label="Abrir menu" className="topbar-menu-button" icon={<MenuOutlined />} onClick={() => setIsMobileMenuOpen(true)} title="Abrir menu" type="text" />
           <div className="global-search"><Input prefix={<SearchOutlined />} placeholder="Buscar no sistema..." /></div>
           <div className="account">
             <Button aria-label="Notificações" className="topbar-icon-button" icon={<BellOutlined />} title="Notificações" type="text" />

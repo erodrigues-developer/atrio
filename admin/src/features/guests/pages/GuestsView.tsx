@@ -14,6 +14,7 @@ import { createGuest, deleteGuest, listGuests, updateGuest, type AdminGuest } fr
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { Toast } from '@/shared/components/Toast';
+import { MobileRecordCard, MobileRecordField, MobileRecordList } from '@/shared/components/PremiumManagement';
 import { guestFormSchema, type GuestFormValues } from '../schemas/guest-form-schema';
 
 type GuestsViewProps = {
@@ -202,6 +203,7 @@ function GuestsTable({
   onSelect: (guest: AdminGuest) => void;
 }) {
   return (
+    <>
     <Table
       className="guests-table"
       columns={[
@@ -242,6 +244,26 @@ function GuestsTable({
       rowKey="id"
       scroll={{ x: 760 }}
     />
+    <MobileRecordList emptyContent={emptyContent} hasItems={guests.length > 0} isLoading={isLoading}>
+      {guests.map((guest) => (
+        <MobileRecordCard
+          actions={<>
+            <Button icon={<EyeOutlined />} onClick={() => onSelect(guest)}>Ver detalhes</Button>
+            <Button icon={<EditOutlined />} onClick={() => onEdit(guest)}>Editar</Button>
+            <Button danger icon={<DeleteOutlined />} onClick={() => onDelete(guest)}>Excluir</Button>
+          </>}
+          badge={<Tag icon={<SafetyCertificateOutlined />} color="blue">Protegido</Tag>}
+          key={guest.id}
+          onSelect={() => onSelect(guest)}
+          subtitle={guest.maskedPhone}
+          title={`${guest.firstName} ${guest.lastName}`}
+        >
+          <MobileRecordField label="Telefone" value={guest.phoneNumber} />
+          <MobileRecordField label="Contato protegido" value={guest.maskedPhone} />
+        </MobileRecordCard>
+      ))}
+    </MobileRecordList>
+    </>
   );
 }
 

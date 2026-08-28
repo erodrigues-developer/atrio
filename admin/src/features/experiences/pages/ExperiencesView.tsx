@@ -20,7 +20,9 @@ import {
 } from '../api';
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal, ModalFooter } from '@/shared/components/Modal';
-import { ManagementEmptyState, ManagementPagination } from '@/shared/components/PremiumManagement';
+import {
+  ManagementEmptyState, ManagementPagination, MobileRecordCard, MobileRecordField, MobileRecordList,
+} from '@/shared/components/PremiumManagement';
 import { Toast } from '@/shared/components/Toast';
 import {
   collectionFormSchema, experienceFormSchema, type CollectionFormValues, type ExperienceFormValues,
@@ -198,14 +200,31 @@ export function ExperiencesView({ accessToken, cacheScope }: { accessToken: stri
 }
 
 function ExperiencesTable({ emptyContent, experiences, isLoading, onSelect }: { emptyContent: ReactNode; experiences: AdminExperience[]; isLoading: boolean; onSelect: (experience: AdminExperience) => void }) {
-  return <Table className="premium-data-table" columns={[
+  return <><Table className="premium-data-table" columns={[
     { title: 'Experiência', key: 'title', render: (_: unknown, experience: AdminExperience) => <div className="experience-table-primary"><img alt="" src={experience.imageUrl} /><div><strong>{experience.title}</strong><span>{experience.locationLabel || 'Local não informado'}</span></div></div> },
     { title: 'Categoria', dataIndex: 'category', key: 'category' },
     { title: 'Preço', dataIndex: 'priceLabel', key: 'priceLabel' },
     { title: 'Quando', dataIndex: 'timeLabel', key: 'timeLabel' },
     { title: 'Status', key: 'status', render: (_: unknown, experience: AdminExperience) => <Tag color={experience.published ? 'success' : 'default'}>{experience.published ? 'Publicada' : 'Rascunho'}</Tag> },
     { title: 'Ações', key: 'actions', width: 96, render: (_: unknown, experience: AdminExperience) => <div className="premium-table-actions" onClick={(event) => event.stopPropagation()}><Button aria-label={`Ver detalhes de ${experience.title}`} icon={<EyeOutlined />} onClick={() => onSelect(experience)} title={`Ver detalhes de ${experience.title}`} type="text" /></div> },
-  ]} dataSource={experiences} loading={isLoading} locale={{ emptyText: emptyContent }} onRow={(experience) => clickableRow(`Ver detalhes de ${experience.title}`, () => onSelect(experience))} pagination={false} rowClassName="clickable-row" rowKey="id" scroll={{ x: 900 }} />;
+  ]} dataSource={experiences} loading={isLoading} locale={{ emptyText: emptyContent }} onRow={(experience) => clickableRow(`Ver detalhes de ${experience.title}`, () => onSelect(experience))} pagination={false} rowClassName="clickable-row" rowKey="id" scroll={{ x: 900 }} />
+  <MobileRecordList emptyContent={emptyContent} hasItems={experiences.length > 0} isLoading={isLoading}>
+    {experiences.map((experience) => (
+      <MobileRecordCard
+        actions={<Button icon={<EyeOutlined />} onClick={() => onSelect(experience)}>Ver detalhes</Button>}
+        badge={<Tag color={experience.published ? 'success' : 'default'}>{experience.published ? 'Publicada' : 'Rascunho'}</Tag>}
+        image={<img alt="" src={experience.imageUrl} />}
+        key={experience.id}
+        onSelect={() => onSelect(experience)}
+        subtitle={experience.locationLabel || 'Local não informado'}
+        title={experience.title}
+      >
+        <MobileRecordField label="Categoria" value={experience.category} />
+        <MobileRecordField label="Preço" value={experience.priceLabel} />
+        <MobileRecordField label="Quando" value={experience.timeLabel} />
+      </MobileRecordCard>
+    ))}
+  </MobileRecordList></>;
 }
 
 function ExperienceDetailModal({ experience, isLoadingSlots, onAddSlot, onClose, onSlotAction, onUpload, slots }: { experience: AdminExperience; isLoadingSlots: boolean; onAddSlot: () => void; onClose: () => void; onSlotAction: (slot: AdminExperienceSlot) => void; onUpload: (file: File) => void; slots: AdminExperienceSlot[] }) {
@@ -214,7 +233,7 @@ function ExperienceDetailModal({ experience, isLoadingSlots, onAddSlot, onClose,
     <div className="experience-detail-hero-image"><img alt={experience.title} src={experience.imageUrl} /><p>{experience.description}</p></div>
     <section className="premium-summary-grid"><article className="premium-summary-card"><span>Categoria</span><strong><StarOutlined /> {experience.category}</strong><small>Tipo de experiência</small></article><article className="premium-summary-card"><span>Local</span><strong><EnvironmentOutlined /> {experience.locationLabel || 'Não informado'}</strong><small>{experience.timeLabel}</small></article><article className="premium-summary-card"><span>Preço</span><strong>{experience.priceLabel}</strong><small>{experience.published ? 'Disponível aos hóspedes' : 'Salva como rascunho'}</small></article></section>
     {experience.included.length ? <section className="premium-copy-panel"><div><span>Itens incluídos</span><p>{experience.included.join(' · ')}</p></div></section> : null}
-    <section className="premium-embedded-panel"><header><Typography.Title level={3}>Horários disponíveis</Typography.Title><Button icon={<PlusOutlined />} onClick={onAddSlot} size="small">Novo horário</Button></header><Table columns={[{ title: 'Data', dataIndex: 'dateLabel', key: 'dateLabel' }, { title: 'Horário', dataIndex: 'time', key: 'time' }, { title: 'Status', key: 'status', render: (_: unknown, slot: AdminExperienceSlot) => <Tag color={slot.isAvailable ? 'success' : 'default'}>{slot.isAvailable ? 'Disponível' : 'Bloqueado'}</Tag> }, { title: 'Ações', key: 'actions', align: 'right', render: (_: unknown, slot: AdminExperienceSlot) => <Button danger={slot.isAvailable} onClick={() => onSlotAction(slot)} size="small" type="text">{slot.isAvailable ? 'Bloquear' : 'Reabrir'}</Button> }]} dataSource={slots} loading={isLoadingSlots} locale={{ emptyText: 'Nenhum horário cadastrado.' }} pagination={false} rowKey="id" scroll={{ x: 560 }} size="small" /></section>
+    <ExperienceSlotsPanel isLoading={isLoadingSlots} onAdd={onAddSlot} onAction={onSlotAction} slots={slots} />
   </div></Modal>;
 }
 
@@ -236,10 +255,24 @@ function CollectionsModal({ collections, experiences, onCancel, onCreate, onLink
   const { control, formState: { errors, isSubmitting }, handleSubmit, register } = useForm<CollectionFormValues>({ resolver: zodResolver(collectionFormSchema), defaultValues: collectionDefaults });
   const [link, setLink] = useState({ collectionId: '', experienceId: '', position: 1 });
   return <Modal title="Coleções de experiências" onClose={onCancel} size="large"><div className="collections-modal-content">
-    <section className="premium-embedded-panel"><header><Typography.Title level={3}>Coleções cadastradas</Typography.Title></header><Table columns={[{ title: 'Coleção', dataIndex: 'title', key: 'title' }, { title: 'Status', key: 'status', render: (_: unknown, collection: AdminExperienceCollection) => <Tag color={collection.published ? 'success' : 'default'}>{collection.published ? 'Publicada' : 'Rascunho'}</Tag> }, { title: 'Destaque', key: 'featured', render: (_: unknown, collection: AdminExperienceCollection) => collection.featured ? 'Sim' : 'Não' }, { title: 'Mídia', key: 'media', align: 'right', render: (_: unknown, collection: AdminExperienceCollection) => <Upload accept="image/*" beforeUpload={(file) => { onUpload(collection.id, file); return false; }} showUploadList={false}><Button icon={<UploadOutlined />} size="small">Enviar imagem</Button></Upload> }]} dataSource={collections} locale={{ emptyText: 'Nenhuma coleção cadastrada.' }} pagination={false} rowKey="id" scroll={{ x: 620 }} size="small" /></section>
+    <CollectionsList collections={collections} onUpload={onUpload} />
     <div className="collections-forms-grid"><form className="collection-compact-form" noValidate onSubmit={handleSubmit(onCreate)}><Typography.Title level={3}>Nova coleção</Typography.Title><label>Título<Input {...register('title')} aria-invalid={Boolean(errors.title)} /><FieldError message={errors.title?.message} /></label><label>Descrição<Input {...register('description')} aria-invalid={Boolean(errors.description)} /><FieldError message={errors.description?.message} /></label><label>URL da imagem<Input {...register('imageUrl')} aria-invalid={Boolean(errors.imageUrl)} /><FieldError message={errors.imageUrl?.message} /></label><div className="collection-checks"><label><Controller control={control} name="featured" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />Destaque</label><label><Controller control={control} name="published" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />Publicada</label></div><Button htmlType="submit" loading={isSubmitting} type="primary">Cadastrar coleção</Button></form>
     <form className="collection-compact-form" onSubmit={(event) => { event.preventDefault(); void onLink(link.collectionId, link.experienceId, link.position); }}><Typography.Title level={3}>Vincular experiência</Typography.Title><label>Coleção<AntSelect onChange={(value) => setLink({ ...link, collectionId: value ?? '' })} options={collections.map((item) => ({ label: item.title, value: item.id }))} placeholder="Selecione" value={link.collectionId || null} /></label><label>Experiência<AntSelect onChange={(value) => setLink({ ...link, experienceId: value ?? '' })} options={experiences.map((item) => ({ label: item.title, value: item.id }))} placeholder="Selecione" value={link.experienceId || null} /></label><label>Posição<Input min={1} onChange={(event) => setLink({ ...link, position: Math.max(1, Number(event.target.value)) })} type="number" value={link.position} /></label><Button disabled={!link.collectionId || !link.experienceId} htmlType="submit">Vincular à coleção</Button></form></div>
   </div></Modal>;
+}
+
+function ExperienceSlotsPanel({ isLoading, onAction, onAdd, slots }: { isLoading: boolean; onAction: (slot: AdminExperienceSlot) => void; onAdd: () => void; slots: AdminExperienceSlot[] }) {
+  return <section className="premium-embedded-panel"><header><Typography.Title level={3}>Horários disponíveis</Typography.Title><Button icon={<PlusOutlined />} onClick={onAdd} size="small">Novo horário</Button></header>
+    <Table columns={[{ title: 'Data', dataIndex: 'dateLabel', key: 'dateLabel' }, { title: 'Horário', dataIndex: 'time', key: 'time' }, { title: 'Status', key: 'status', render: (_: unknown, slot: AdminExperienceSlot) => <Tag color={slot.isAvailable ? 'success' : 'default'}>{slot.isAvailable ? 'Disponível' : 'Bloqueado'}</Tag> }, { title: 'Ações', key: 'actions', align: 'right', render: (_: unknown, slot: AdminExperienceSlot) => <Button danger={slot.isAvailable} onClick={() => onAction(slot)} size="small" type="text">{slot.isAvailable ? 'Bloquear' : 'Reabrir'}</Button> }]} dataSource={slots} loading={isLoading} locale={{ emptyText: 'Nenhum horário cadastrado.' }} pagination={false} rowKey="id" scroll={{ x: 560 }} size="small" />
+    <MobileRecordList emptyContent="Nenhum horário cadastrado." hasItems={slots.length > 0} isLoading={isLoading}>{slots.map((slot) => <MobileRecordCard actions={<Button danger={slot.isAvailable} onClick={() => onAction(slot)}>{slot.isAvailable ? 'Bloquear' : 'Reabrir'}</Button>} badge={<Tag color={slot.isAvailable ? 'success' : 'default'}>{slot.isAvailable ? 'Disponível' : 'Bloqueado'}</Tag>} key={slot.id} subtitle={slot.time} title={slot.dateLabel}><MobileRecordField label="Horário" value={slot.time} /></MobileRecordCard>)}</MobileRecordList>
+  </section>;
+}
+
+function CollectionsList({ collections, onUpload }: { collections: AdminExperienceCollection[]; onUpload: (collectionId: string, file: File) => void }) {
+  return <section className="premium-embedded-panel"><header><Typography.Title level={3}>Coleções cadastradas</Typography.Title></header>
+    <Table columns={[{ title: 'Coleção', dataIndex: 'title', key: 'title' }, { title: 'Status', key: 'status', render: (_: unknown, collection: AdminExperienceCollection) => <Tag color={collection.published ? 'success' : 'default'}>{collection.published ? 'Publicada' : 'Rascunho'}</Tag> }, { title: 'Destaque', key: 'featured', render: (_: unknown, collection: AdminExperienceCollection) => collection.featured ? 'Sim' : 'Não' }, { title: 'Mídia', key: 'media', align: 'right', render: (_: unknown, collection: AdminExperienceCollection) => <Upload accept="image/*" beforeUpload={(file) => { onUpload(collection.id, file); return false; }} showUploadList={false}><Button icon={<UploadOutlined />} size="small">Enviar imagem</Button></Upload> }]} dataSource={collections} locale={{ emptyText: 'Nenhuma coleção cadastrada.' }} pagination={false} rowKey="id" scroll={{ x: 620 }} size="small" />
+    <MobileRecordList emptyContent="Nenhuma coleção cadastrada." hasItems={collections.length > 0} isLoading={false}>{collections.map((collection) => <MobileRecordCard actions={<Upload accept="image/*" beforeUpload={(file) => { onUpload(collection.id, file); return false; }} showUploadList={false}><Button icon={<UploadOutlined />}>Enviar imagem</Button></Upload>} badge={<Tag color={collection.published ? 'success' : 'default'}>{collection.published ? 'Publicada' : 'Rascunho'}</Tag>} key={collection.id} subtitle={collection.featured ? 'Em destaque' : 'Coleção padrão'} title={collection.title}><MobileRecordField label="Destaque" value={collection.featured ? 'Sim' : 'Não'} /></MobileRecordCard>)}</MobileRecordList>
+  </section>;
 }
 
 function SlotFormModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (startsAt: string) => Promise<void> }) {

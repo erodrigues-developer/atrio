@@ -4,6 +4,7 @@ import { DeleteOutlined, EyeOutlined, PlusOutlined, SendOutlined } from '@ant-de
 import staysEmptyImage from '@/assets/stays-empty.png';
 import { type AdminStay } from '../api';
 import { Modal } from '@/shared/components/Modal';
+import { MobileRecordCard, MobileRecordField, MobileRecordList } from '@/shared/components/PremiumManagement';
 import {
   formatStayDate, shortStayStatus, stayStatusColor, stayWorkflowConfirmLabel,
   stayWorkflowMessage, stayWorkflowTitle,
@@ -85,6 +86,26 @@ export function StaysTable({
   return (
     <>
     <Table className="stays-table" columns={columns} dataSource={stays} loading={isLoading} locale={{ emptyText: emptyContent }} onRow={(stay) => ({ onClick: () => onSelect(stay) })} pagination={false} rowClassName="clickable-row" rowKey="id" />
+    <MobileRecordList emptyContent={emptyContent} hasItems={stays.length > 0} isLoading={isLoading}>
+      {stays.map((stay) => (
+        <MobileRecordCard
+          actions={<>
+            <Button icon={<EyeOutlined />} onClick={() => onSelect(stay)}>Ver detalhes</Button>
+            <Button disabled={!['scheduled', 'active'].includes(stay.status)} icon={<SendOutlined />} onClick={() => setWorkflowCandidate({ action: 'resend', stay })}>Reenviar</Button>
+            <Button danger disabled={stay.status !== 'scheduled'} icon={<DeleteOutlined />} onClick={() => setWorkflowCandidate({ action: 'cancel', stay })}>Cancelar</Button>
+          </>}
+          badge={<Tag color={stayStatusColor(stay.status)}>{shortStayStatus(stay.status)}</Tag>}
+          key={stay.id}
+          onSelect={() => onSelect(stay)}
+          subtitle={`${stay.guest.firstName} ${stay.guest.lastName}`}
+          title={`Quarto ${stay.roomNumber}`}
+        >
+          <MobileRecordField label="Check-in" value={formatStayDate(stay.checkInDate)} />
+          <MobileRecordField label="Check-out" value={formatStayDate(stay.checkOutDate)} />
+          <MobileRecordField label="Acessos ao app" value={stay.activeGuestSessions} />
+        </MobileRecordCard>
+      ))}
+    </MobileRecordList>
     {workflowCandidate ? (
       <Modal title={stayWorkflowTitle(workflowCandidate.action)} onClose={() => setWorkflowCandidate(null)} size="compact">
         <p className="muted-text">

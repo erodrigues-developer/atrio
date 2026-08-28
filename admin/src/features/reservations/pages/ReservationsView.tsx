@@ -15,7 +15,9 @@ import {
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { formatDate, reservationStatusLabel } from '@/shared/lib/presentation';
 import { Modal, ModalFooter } from '@/shared/components/Modal';
-import { ManagementEmptyState, ManagementPagination } from '@/shared/components/PremiumManagement';
+import {
+  ManagementEmptyState, ManagementPagination, MobileRecordCard, MobileRecordField, MobileRecordList,
+} from '@/shared/components/PremiumManagement';
 import { Toast } from '@/shared/components/Toast';
 import { reservationFormSchema, type ReservationFormValues } from '../schemas/reservation-form-schema';
 
@@ -108,13 +110,28 @@ export function ReservationsView({ accessToken, cacheScope }: ReservationsViewPr
 }
 
 function ReservationsTable({ emptyContent, isLoading, onSelect, onStatusChange, reservations }: { emptyContent: ReactNode; isLoading: boolean; onSelect: (reservation: AdminReservation) => void; onStatusChange: (reservation: AdminReservation, status: string) => void; reservations: AdminReservation[] }) {
-  return <Table className="premium-data-table" columns={[
+  return <><Table className="premium-data-table" columns={[
     { title: 'Experiência', key: 'title', render: (_: unknown, reservation: AdminReservation) => <div className="premium-table-primary"><strong>{reservation.title}</strong><span>{formatDate(reservation.scheduledAt)}</span></div> },
     { title: 'Quarto', dataIndex: 'roomNumber', key: 'roomNumber' },
     { title: 'Hóspede', dataIndex: 'guestName', key: 'guestName' },
     { title: 'Status', key: 'status', render: (_: unknown, reservation: AdminReservation) => <Tag color={reservationStatusColor(reservation.status)}>{reservation.statusLabel}</Tag> },
     { title: 'Ações', key: 'actions', width: 148, render: (_: unknown, reservation: AdminReservation) => <ReservationRowActions onSelect={onSelect} onStatusChange={onStatusChange} reservation={reservation} /> },
-  ]} dataSource={reservations} loading={isLoading} locale={{ emptyText: emptyContent }} onRow={(reservation) => clickableRow(`Ver detalhes da reserva de ${reservation.title}`, () => onSelect(reservation))} pagination={false} rowClassName="clickable-row" rowKey="id" scroll={{ x: 820 }} />;
+  ]} dataSource={reservations} loading={isLoading} locale={{ emptyText: emptyContent }} onRow={(reservation) => clickableRow(`Ver detalhes da reserva de ${reservation.title}`, () => onSelect(reservation))} pagination={false} rowClassName="clickable-row" rowKey="id" scroll={{ x: 820 }} />
+  <MobileRecordList emptyContent={emptyContent} hasItems={reservations.length > 0} isLoading={isLoading}>
+    {reservations.map((reservation) => (
+      <MobileRecordCard
+        actions={<ReservationRowActions onSelect={onSelect} onStatusChange={onStatusChange} reservation={reservation} />}
+        badge={<Tag color={reservationStatusColor(reservation.status)}>{reservation.statusLabel}</Tag>}
+        key={reservation.id}
+        onSelect={() => onSelect(reservation)}
+        subtitle={formatDate(reservation.scheduledAt)}
+        title={reservation.title}
+      >
+        <MobileRecordField label="Hóspede" value={reservation.guestName} />
+        <MobileRecordField label="Quarto" value={reservation.roomNumber} />
+      </MobileRecordCard>
+    ))}
+  </MobileRecordList></>;
 }
 
 function ReservationRowActions({ onSelect, onStatusChange, reservation }: { onSelect: (reservation: AdminReservation) => void; onStatusChange: (reservation: AdminReservation, status: string) => void; reservation: AdminReservation }) {

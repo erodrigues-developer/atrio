@@ -12,7 +12,9 @@ import {
   canCancelRequest, formatDate, nextRequestAction, requestActionTitle, requestStatusLabel,
 } from '@/shared/lib/presentation';
 import { Modal } from '@/shared/components/Modal';
-import { ManagementEmptyState, ManagementPagination } from '@/shared/components/PremiumManagement';
+import {
+  ManagementEmptyState, ManagementPagination, MobileRecordCard, MobileRecordField, MobileRecordList,
+} from '@/shared/components/PremiumManagement';
 import { Toast } from '@/shared/components/Toast';
 
 type RequestsViewProps = {
@@ -178,6 +180,7 @@ function RequestsTable({
   requests: ServiceRequest[];
 }) {
   return (
+    <>
     <Table
       className="premium-data-table"
       columns={[
@@ -209,6 +212,30 @@ function RequestsTable({
       rowKey="id"
       scroll={{ x: 980 }}
     />
+    <MobileRecordList emptyContent={emptyContent} hasItems={requests.length > 0} isLoading={isLoading}>
+      {requests.map((request) => {
+        const nextAction = nextRequestAction(request.status);
+        return (
+          <MobileRecordCard
+            actions={<>
+              <Button icon={<EyeOutlined />} onClick={() => onSelect(request)}>Ver detalhes</Button>
+              {nextAction ? <Button icon={<ArrowRightOutlined />} onClick={() => onStatusChange(request, nextAction.status)}>{nextAction.label}</Button> : null}
+              {canCancelRequest(request.status) ? <Button danger icon={<CloseCircleOutlined />} onClick={() => onStatusChange(request, 'cancelled')}>Cancelar</Button> : null}
+            </>}
+            badge={<Tag color={requestStatusColor(request.status)}>{request.statusLabel}</Tag>}
+            key={request.id}
+            onSelect={() => onSelect(request)}
+            subtitle={formatDate(request.createdAt)}
+            title={request.title}
+          >
+            <MobileRecordField label="Hóspede" value={request.guestName} />
+            <MobileRecordField label="Quarto" value={request.roomNumber} />
+            <MobileRecordField label="Observação" value={request.note || request.internalNote || '—'} />
+          </MobileRecordCard>
+        );
+      })}
+    </MobileRecordList>
+    </>
   );
 }
 

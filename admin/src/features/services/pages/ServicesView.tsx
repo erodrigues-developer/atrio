@@ -17,6 +17,7 @@ import {
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { Toast } from '@/shared/components/Toast';
+import { MobileRecordCard, MobileRecordField, MobileRecordList } from '@/shared/components/PremiumManagement';
 import { serviceFormSchema, type ServiceFormValues } from '../schemas/service-form-schema';
 
 type ServicesViewProps = {
@@ -240,6 +241,7 @@ function ServicesTable({
   services: ServiceDefinition[];
 }) {
   return (
+    <>
     <Table
       className="services-table"
       columns={[
@@ -296,6 +298,26 @@ function ServicesTable({
       rowKey="id"
       scroll={{ x: 840 }}
     />
+    <MobileRecordList emptyContent={emptyContent} hasItems={services.length > 0} isLoading={isLoading}>
+      {services.map((service) => (
+        <MobileRecordCard
+          actions={<>
+            <Button icon={<EyeOutlined />} onClick={() => onSelect(service)}>Ver detalhes</Button>
+            <Button icon={<EditOutlined />} onClick={() => onEdit(service)}>Editar</Button>
+            <Button danger={service.published} icon={service.published ? <StopOutlined /> : <UploadOutlined />} onClick={() => onPublish(service)}>{service.published ? 'Despublicar' : 'Publicar'}</Button>
+          </>}
+          badge={<Tag color={service.published ? 'success' : 'default'}>{service.published ? 'Publicado' : 'Rascunho'}</Tag>}
+          key={service.id}
+          onSelect={() => onSelect(service)}
+          subtitle={service.description}
+          title={service.title}
+        >
+          <MobileRecordField label="Atendimento" value={serviceFulfillmentLabel(service.fulfillmentType)} />
+          <MobileRecordField label="Formulário" value={`${service.requestSchema.fields.length} ${service.requestSchema.fields.length === 1 ? 'campo' : 'campos'}`} />
+        </MobileRecordCard>
+      ))}
+    </MobileRecordList>
+    </>
   );
 }
 
@@ -394,6 +416,10 @@ function ServiceDetailModal({
 }
 
 function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>> }) {
+  const fieldRecords: Array<Record<string, unknown> & { _key: string }> = fields.map((field, index) => ({
+    ...field,
+    _key: `${textValue(field.name, 'field')}-${index}`,
+  }));
   return (
     <section className="service-fields-panel">
       <header><Typography.Title level={3}>Campos do formulário</Typography.Title></header>
@@ -404,13 +430,21 @@ function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>>
           { title: 'Tipo', key: 'type', render: (_: unknown, field: Record<string, unknown>) => field.type === 'number' ? 'Número' : 'Texto' },
           { title: 'Obrigatório', key: 'required', render: (_: unknown, field: Record<string, unknown>) => field.required ? 'Sim' : 'Não' },
         ]}
-        dataSource={fields.map((field, index) => ({ ...field, _key: `${textValue(field.name, 'field')}-${index}` }))}
+        dataSource={fieldRecords}
         locale={{ emptyText: 'Nenhum campo configurado.' }}
         pagination={false}
         rowKey="_key"
         scroll={{ x: 560 }}
         size="small"
       />
+      <MobileRecordList emptyContent="Nenhum campo configurado." hasItems={fieldRecords.length > 0} isLoading={false}>
+        {fieldRecords.map((field) => (
+          <MobileRecordCard key={String(field._key)} title={textValue(field.label, 'Campo sem label')} subtitle={textValue(field.name, '—')}>
+            <MobileRecordField label="Tipo" value={field.type === 'number' ? 'Número' : 'Texto'} />
+            <MobileRecordField label="Obrigatório" value={field.required ? 'Sim' : 'Não'} />
+          </MobileRecordCard>
+        ))}
+      </MobileRecordList>
     </section>
   );
 }
