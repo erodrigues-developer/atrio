@@ -7,7 +7,7 @@ import {
   MessageCircle,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Text as NativeText } from 'react-native';
+import { Text as NativeText, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { YStack } from 'tamagui';
 
@@ -15,13 +15,12 @@ import { StayContextBar } from '@/src/design-system/product/StayContextBar';
 import { colors } from '@/src/design-system/tokens/colors';
 import { spacing } from '@/src/design-system/tokens/spacing';
 import { stayMock } from '@/src/mocks/stay.mock';
-import { useSession } from '@/src/stores/session.store';
+import { useHasHydratedSession, useSession } from '@/src/stores/session.store';
 
 const TAB_ICON_SIZE = 22;
 const TAB_ICON_STROKE_WIDTH = 1.9;
 const TAB_BAR_BASE_HEIGHT = 64;
 const TAB_BAR_MIN_BOTTOM_PADDING = 12;
-const TAB_BAR_MAX_BOTTOM_PADDING = 20;
 
 type GuestTabConfig = {
   accessibilityLabel: string;
@@ -80,25 +79,30 @@ const hiddenGuestRoutes = [
 
 export default function GuestLayout() {
   const session = useSession();
+  const hasHydratedSession = useHasHydratedSession();
   const insets = useSafeAreaInsets();
-  const tabBarBottomPadding = Math.min(
-    Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING),
-    TAB_BAR_MAX_BOTTOM_PADDING,
-  );
+  const tabBarBottomPadding = Math.max(insets.bottom, TAB_BAR_MIN_BOTTOM_PADDING);
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + tabBarBottomPadding;
+  const roomNumber = session?.roomNumber ?? stayMock.roomNumber;
+  const hotelName = session?.hotelName ?? stayMock.hotelName;
+  const checkOutTime = session?.checkOutTime ?? stayMock.checkOutTimeLabel;
+
+  if (!hasHydratedSession) {
+    return null;
+  }
 
   if (!session?.isAuthenticated) {
     return <Redirect href="/(onboarding)/welcome" />;
   }
 
   return (
-    <YStack backgroundColor={colors.background} flex={1}>
+    <YStack backgroundColor={colors.surface} flex={1}>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
         <StayContextBar
-          checkOutTime={stayMock.checkOutTimeLabel}
-          hotelName={stayMock.hotelName}
+          checkOutTime={checkOutTime}
+          hotelName={hotelName}
           onPress={() => router.navigate('/(guest)/stay')}
-          roomNumber={stayMock.roomNumber}
+          roomNumber={roomNumber}
         />
       </SafeAreaView>
 
@@ -111,12 +115,14 @@ export default function GuestLayout() {
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.textMuted,
           tabBarHideOnKeyboard: false,
+          tabBarBackground: () => <View style={{ flex: 1, backgroundColor: colors.surface }} />,
           tabBarIconStyle: {
             marginBottom: 2,
           },
           tabBarItemStyle: {
             height: 56,
             justifyContent: 'center',
+            paddingHorizontal: 0,
             paddingTop: spacing.xs,
           },
           tabBarLabelStyle: {
@@ -130,9 +136,13 @@ export default function GuestLayout() {
             backgroundColor: colors.surface,
             borderTopColor: colors.borderSoft,
             borderTopWidth: 1,
+            bottom: 0,
             height: tabBarHeight,
+            left: 0,
             paddingTop: 10,
             paddingBottom: tabBarBottomPadding,
+            position: 'absolute',
+            right: 0,
           },
         }}>
         {guestTabs.map(({ accessibilityLabel, href, icon: Icon, label, name }) => (
@@ -154,18 +164,17 @@ export default function GuestLayout() {
               ),
               tabBarLabel: ({ color }) => (
                 <NativeText
-                  adjustsFontSizeToFit
+                  allowFontScaling={false}
                   maxFontSizeMultiplier={1}
-                  minimumFontScale={0.85}
                   numberOfLines={1}
                   style={{
                     color,
-                    fontSize: 12,
+                    fontSize: label === 'Experiências' ? 10 : 12,
                     fontWeight: '500',
                     lineHeight: 16,
                     marginTop: 1,
                     textAlign: 'center',
-                    width: 72,
+                    width: '100%',
                   }}>
                   {label}
                 </NativeText>

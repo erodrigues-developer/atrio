@@ -35,8 +35,8 @@ export const defaultConciergeReply =
   'Recebemos sua mensagem. A equipe do hotel irá acompanhar e responder em breve.';
 
 export function buildInitialConciergeMessages(
-  guestName = guestMock.firstName,
-  hotelName = stayMock.hotelName,
+  guestName: string = guestMock.firstName,
+  hotelName: string = stayMock.hotelName,
 ): ConciergeMessage[] {
   const trimmedGuestName = guestName.trim();
   const salutation = trimmedGuestName ? `Boa tarde, ${trimmedGuestName}.` : 'Boa tarde.';

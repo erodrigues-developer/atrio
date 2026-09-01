@@ -1,6 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -14,105 +14,111 @@ import { Card } from '@/src/design-system/components/Card';
 import { resolveReturnTo } from '@/src/navigation/return-to';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { stayMock } from '@/src/mocks/stay.mock';
-import { servicesMock, type ServiceType } from '@/src/mocks/services.mock';
+import { getService, type ServiceResponse } from '@/src/services/atrio-api';
 import { createRequest } from '@/src/stores/requests.store';
 import { useSession } from '@/src/stores/session.store';
 
-type RequestContent = {
-  conciergeMessage?: string;
-  description: string;
-  title: string;
-};
+type RequestField = ServiceResponse['requestSchema']['fields'][number];
 
-const towelsRequestContent: RequestContent = {
-  title: 'Toalhas extras',
-  description: 'Quantas unidades deseja receber no quarto?',
-};
-
-const requestContentByType: Partial<Record<ServiceType, RequestContent>> = {
-  towels: towelsRequestContent,
-  cleaning: {
-    title: 'Limpeza',
-    description: 'Este serviço será concluído em uma próxima etapa do app.',
-  },
-};
-
-function getFallbackContent(type?: ServiceType, serviceTitle?: string): RequestContent {
-  if (type && requestContentByType[type]) {
-    return requestContentByType[type] as RequestContent;
-  }
-
-  if (serviceTitle) {
-    return {
-      title: serviceTitle,
-      description: 'Este serviço será concluído em uma próxima etapa do app.',
-    };
-  }
-
-  return {
-    title: 'Solicitação',
-    description: 'Este serviço será concluído em uma próxima etapa do app.',
-  };
+function isQuantityField(field: RequestField) {
+  return field.name === 'quantity' || field.type === 'number';
 }
 
-function getPlaceholderContent(type?: ServiceType, serviceTitle?: string): RequestContent {
-  const fallbackContent = getFallbackContent(type, serviceTitle);
-
-  return {
-    ...fallbackContent,
-    conciergeMessage:
-      'Enquanto isso, você pode falar com o concierge para solicitar apoio da equipe do hotel.',
-  };
+function isNoteField(field: RequestField) {
+  return field.name === 'note' || field.type === 'string';
 }
 
 export default function ServiceRequestScreen() {
   const { returnTo, type } = useLocalSearchParams<{ returnTo?: string | string[]; type?: string }>();
   const session = useSession();
-  const service = servicesMock.find((item) => item.id === (type as ServiceType | undefined));
   const tabBarHeight = useBottomTabBarHeight();
-  const roomNumber = session?.roomNumber ?? stayMock.roomNumber;
+  const [service, setService] = useState<ServiceResponse | null>(null);
   const [quantity, setQuantity] = useState(2);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const typedService = type as ServiceType | undefined;
-  const isTowels = typedService === 'towels';
-  const content = isTowels ? towelsRequestContent : getFallbackContent(typedService, service?.title);
-  const placeholderContent = getPlaceholderContent(typedService, service?.title);
+  useEffect(() => {
+    if (!type) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getService(type)
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setService(response);
+        const quantityField = response.requestSchema.fields.find(isQuantityField);
+
+        if (quantityField?.defaultValue) {
+          setQuantity(quantityField.defaultValue);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar este servico.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [type]);
+
+  const quantityField = service?.requestSchema.fields.find(isQuantityField);
+  const noteField = service?.requestSchema.fields.find(isNoteField);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/services'));
   }
 
   async function handleSubmit() {
-    if (!isTowels || isSubmitting) {
+    if (!session?.stayId || !service || !type || isSubmitting) {
+      return;
+    }
+
+    if (noteField?.required && !note.trim()) {
+      setErrorMessage('Preencha os detalhes solicitados antes de continuar.');
       return;
     }
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
-    await new Promise((resolve) => setTimeout(resolve, 650));
+    try {
+      const createdRequest = await createRequest(session.stayId, {
+        serviceId: type,
+        quantity: quantityField ? quantity : undefined,
+        note: note.trim() || undefined,
+      });
 
-    const requestedAt = new Intl.DateTimeFormat('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date());
+      router.push({
+        pathname: '/(guest)/services/request/[type]/confirmation',
+        params: {
+          type,
+          requestId: createdRequest.id,
+        },
+      } as Href);
+    } catch (error) {
+      setIsSubmitting(false);
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Nao foi possivel enviar a solicitacao.',
+      );
+    }
+  }
 
-    createRequest({
-      createdAt: `Solicitado às ${requestedAt}`,
-      note: note.trim(),
-      quantity,
-      roomNumber,
-      status: 'Recebido',
-      statusType: 'received',
-      timeLabel: `Solicitado às ${requestedAt}`,
-      title: towelsRequestContent.title,
-      type: 'towels',
-    });
+  function getNotePlaceholder(field?: RequestField) {
+    if (field?.label) {
+      return `Ex: ${field.label}`;
+    }
 
-    setIsSubmitting(false);
-    router.push(`/(guest)/services/request/towels/confirmation` as Href);
+    return 'Descreva os detalhes, se necessário';
   }
 
   return (
@@ -139,42 +145,52 @@ export default function ServiceRequestScreen() {
 
             <YStack gap={spacing.sm}>
               <Text letterSpacing={-0.5} variant="title1">
-                {isTowels ? content.title : placeholderContent.title}
+                {service?.title ?? 'Solicitação'}
               </Text>
               <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-                {isTowels ? content.description : placeholderContent.description}
+                {service?.description ?? errorMessage ?? 'Estamos carregando os detalhes do serviço.'}
               </Text>
             </YStack>
 
-            {isTowels ? (
+            {service ? (
               <>
-                <YStack gap={spacing.md}>
-                  <Text variant="bodyMedium">Quantidade</Text>
-                  <QuantitySelector
-                    disabled={isSubmitting}
-                    max={10}
-                    min={1}
-                    onChange={setQuantity}
-                    value={quantity}
-                  />
-                </YStack>
+                {quantityField ? (
+                  <YStack gap={spacing.md}>
+                    <Text variant="bodyMedium">{quantityField.label ?? 'Quantidade'}</Text>
+                    <QuantitySelector
+                      disabled={isSubmitting}
+                      max={quantityField.max ?? 10}
+                      min={quantityField.min ?? 1}
+                      onChange={setQuantity}
+                      value={quantity}
+                    />
+                  </YStack>
+                ) : null}
 
-                <YStack gap={spacing.md}>
-                  <Text variant="bodyMedium">Observação opcional</Text>
-                  <TextArea
-                    disabled={isSubmitting}
-                    onChangeText={setNote}
-                    placeholder="Ex: deixar na porta, se possível"
-                    returnKeyType="done"
-                    value={note}
-                  />
-                </YStack>
+                {noteField ? (
+                  <YStack gap={spacing.md}>
+                    <Text variant="bodyMedium">{noteField.label ?? 'Observação'}</Text>
+                    <TextArea
+                      disabled={isSubmitting}
+                      onChangeText={setNote}
+                      placeholder={getNotePlaceholder(noteField)}
+                      returnKeyType="done"
+                      value={note}
+                    />
+                  </YStack>
+                ) : null}
 
                 <Card backgroundToken="surfaceSoft" borderRadius={radius.md} gap={spacing.sm} padding={spacing.lg}>
                   <Text colorToken="textSecondary" variant="bodySmall">
-                    A equipe do hotel receberá sua solicitação para o quarto {roomNumber}.
+                    A equipe do hotel receberá sua solicitação para o quarto {session?.roomNumber}.
                   </Text>
                 </Card>
+
+                {errorMessage ? (
+                  <Text colorToken="danger" variant="bodySmall">
+                    {errorMessage}
+                  </Text>
+                ) : null}
 
                 <Button disabled={isSubmitting} onPress={handleSubmit}>
                   <Text colorToken="textInverse" variant="bodyMedium">
@@ -183,22 +199,11 @@ export default function ServiceRequestScreen() {
                 </Button>
               </>
             ) : (
-              <>
-                <Card backgroundToken="surfaceSoft" borderRadius={radius.md} gap={spacing.md} padding={spacing.xl}>
-                  <Text colorToken="textSecondary" variant="body">
-                    {placeholderContent.conciergeMessage}
-                  </Text>
-                </Card>
-
-                <YStack gap={spacing.sm}>
-                  <Button onPress={() => router.push('/(guest)/concierge')}>Falar com o concierge</Button>
-                  <Button onPress={() => router.push('/(guest)/services')} variant="ghost">
-                    <Text colorToken="textSecondary" variant="bodyMedium">
-                      Voltar para Serviços
-                    </Text>
-                  </Button>
-                </YStack>
-              </>
+              <Card backgroundToken="surfaceSoft" borderRadius={radius.md} gap={spacing.md} padding={spacing.xl}>
+                <Text colorToken="textSecondary" variant="body">
+                  {errorMessage ?? 'Carregando os detalhes do serviço...'}
+                </Text>
+              </Card>
             )}
           </YStack>
         </ScrollView>

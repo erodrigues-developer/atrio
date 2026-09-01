@@ -1,5 +1,7 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -11,13 +13,23 @@ import { Text } from '@/src/design-system/components/Text';
 import { RequestStatusCard } from '@/src/design-system/product/RequestStatusCard';
 import { resolveReturnTo } from '@/src/navigation/return-to';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getRequestDetails } from '@/src/mocks/requests.mock';
-import { useRequests } from '@/src/stores/requests.store';
+import { buildRequestDetails, loadRequests, useRequests } from '@/src/stores/requests.store';
+import { useSession } from '@/src/stores/session.store';
 
 export default function StayRequestsScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
-  const requests = useRequests();
+  const session = useSession();
+  const requestsState = useRequests();
+
+  useEffect(() => {
+    if (!isFocused || !session?.stayId) {
+      return;
+    }
+
+    loadRequests(session.stayId, { force: true }).catch(() => undefined);
+  }, [isFocused, session?.stayId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/stay'));
@@ -44,11 +56,19 @@ export default function StayRequestsScreen() {
             </Text>
           </YStack>
 
-          {requests.length > 0 ? (
+          {requestsState.errorMessage ? (
+            <Card gap={spacing.lg} padding={spacing.xl}>
+              <Text colorToken="textSecondary" variant="bodySmall">
+                {requestsState.errorMessage}
+              </Text>
+            </Card>
+          ) : null}
+
+          {requestsState.items.length > 0 ? (
             <YStack gap={spacing.md}>
-              {requests.map((request) => (
+              {requestsState.items.map((request) => (
                 <RequestStatusCard
-                  details={getRequestDetails(request)}
+                  details={buildRequestDetails(request)}
                   key={request.id}
                   status={request.status}
                   statusType={request.statusType}

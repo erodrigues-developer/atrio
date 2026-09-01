@@ -48,7 +48,7 @@ export function StaySummaryCard({ stay }: { stay: StayMock }) {
 
       <YStack borderTopColor={colors.borderSoft} borderTopWidth={1} gap={spacing.lg} paddingTop={spacing.lg}>
         <XStack gap={spacing.lg}>
-          <StayDetailColumn label="Check-in" value={stay.checkInLabel} />
+          <StayDetailColumn label="Check-in" value={`${stay.checkInLabel}, a partir das ${stay.checkInTimeLabel}`} />
           <StayDetailColumn
             label="Check-out"
             value={`${stay.checkOutLabel}, até ${stay.checkOutTimeLabel}`}

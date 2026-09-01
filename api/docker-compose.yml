@@ -1,0 +1,72 @@
+version: "3.9"
+services:
+  api:
+    container_name: atrio_api
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+    command: sh -c "npm run migrate && npm run seed && npm run start:dev"
+    ports:
+      - 3101:3000
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/docs >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      atrio_api_network:
+        ipv4_address: 172.61.0.10
+  redis:
+    container_name: atrio_redis
+    build:
+      context: .
+      dockerfile: ./docker/redis/Dockerfile
+    ports:
+      - 6382:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      atrio_api_network:
+        ipv4_address: 172.61.0.11
+  postgres:
+    container_name: atrio_postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - 5437:5432
+    volumes:
+      - atrio_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atrio"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      atrio_api_network:
+        ipv4_address: 172.61.0.12
+networks:
+  atrio_api_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.61.0.0/24
+          gateway: 172.61.0.1
+volumes:
+  atrio_postgres_data:

@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { CircleCheckBig } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { YStack } from 'tamagui';
 
 import { Button } from '@/src/design-system/components/Button';
@@ -9,12 +10,40 @@ import { Text } from '@/src/design-system/components/Text';
 import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { useRequests } from '@/src/stores/requests.store';
+import { fetchRequestById } from '@/src/stores/requests.store';
+import { useSession } from '@/src/stores/session.store';
 
 export default function ServiceRequestConfirmationScreen() {
-  const { type } = useLocalSearchParams<{ type?: string }>();
-  const requests = useRequests();
-  const latestRequest = requests.find((request) => request.type === type);
+  const { requestId } = useLocalSearchParams<{ requestId?: string }>();
+  const session = useSession();
+  const [request, setRequest] = useState<Awaited<ReturnType<typeof fetchRequestById>> | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session?.stayId || !requestId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    fetchRequestById(session.stayId, requestId)
+      .then((response) => {
+        if (isMounted) {
+          setRequest(response);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar a solicitacao.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [requestId, session?.stayId]);
 
   return (
     <Screen safeAreaEdges={['bottom']}>
@@ -41,21 +70,25 @@ export default function ServiceRequestConfirmationScreen() {
             </YStack>
           </YStack>
 
-          {latestRequest ? (
+          {request ? (
             <Card backgroundToken="surfaceSoft" gap={spacing.sm} padding={spacing.xl}>
-              <Text variant="bodyMedium">{latestRequest.title}</Text>
+              <Text variant="bodyMedium">{request.title}</Text>
               <Text colorToken="textSecondary" variant="bodySmall">
-                Quarto {latestRequest.roomNumber}
+                Quarto {request.roomNumber}
               </Text>
-              {latestRequest.quantity ? (
+              {request.quantity ? (
                 <Text colorToken="textSecondary" variant="bodySmall">
-                  Quantidade: {latestRequest.quantity}
+                  Quantidade: {request.quantity}
                 </Text>
               ) : null}
               <Text colorToken="textSecondary" variant="bodySmall">
-                {latestRequest.timeLabel}
+                {request.timeLabel}
               </Text>
             </Card>
+          ) : errorMessage ? (
+            <Text colorToken="textSecondary" variant="bodySmall">
+              {errorMessage}
+            </Text>
           ) : null}
         </YStack>
 

@@ -6,6 +6,7 @@ export type StayInfoItem = {
 
 export type StayMock = {
   checkInLabel: string;
+  checkInTimeLabel: string;
   checkOutLabel: string;
   checkOutTimeLabel: string;
   hotelName: string;
@@ -29,6 +30,7 @@ export const stayMock: StayMock = {
   roomNumber: '304',
   statusLabel: 'Hospedagem ativa',
   checkInLabel: '10 jun',
+  checkInTimeLabel: '14:00',
   checkOutLabel: '15 jun',
   checkOutTimeLabel: '12:00',
   wifi: {

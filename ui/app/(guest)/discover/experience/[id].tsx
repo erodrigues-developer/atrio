@@ -1,5 +1,6 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
@@ -12,9 +13,10 @@ import { ExperienceInfoGrid } from '@/src/design-system/product/ExperienceInfoGr
 import { IncludedItem } from '@/src/design-system/product/IncludedItem';
 import { resolveReturnTo } from '@/src/navigation/return-to';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getExperienceById } from '@/src/mocks/experiences.mock';
+import { getExperience, type ExperienceDetailResponse } from '@/src/services/atrio-api';
+import { resolveExperienceImageSource } from '@/src/services/experience-image';
 
-function getBadgeTone(badge?: string) {
+function getBadgeTone(badge?: string | null) {
   if (!badge) {
     return 'accent' as const;
   }
@@ -52,7 +54,8 @@ export default function ExperienceDetailScreen() {
   }>();
   const experienceId = Array.isArray(params.id) ? params.id[0] : params.id;
   const returnTo = Array.isArray(params.returnTo) ? params.returnTo[0] : params.returnTo;
-  const experience = getExperienceById(experienceId);
+  const [experience, setExperience] = useState<ExperienceDetailResponse | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const scheduleHref = {
     pathname: '/(guest)/discover/experience/[id]/schedule',
     params: {
@@ -60,6 +63,32 @@ export default function ExperienceDetailScreen() {
       returnTo,
     },
   } as Href;
+
+  useEffect(() => {
+    if (!experienceId) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getExperience(experienceId)
+      .then((response) => {
+        if (isMounted) {
+          setExperience(response);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Nao foi possivel carregar os detalhes.',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [experienceId]);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/discover'));
@@ -72,7 +101,7 @@ export default function ExperienceDetailScreen() {
           <YStack gap={spacing.md}>
             <Text variant="title1">Experiência não encontrada</Text>
             <Text colorToken="textSecondary" maxWidth="92%" variant="body">
-              Não conseguimos encontrar os detalhes desta experiência no momento.
+              {errorMessage ?? 'Não conseguimos encontrar os detalhes desta experiência no momento.'}
             </Text>
           </YStack>
 
@@ -105,8 +134,13 @@ export default function ExperienceDetailScreen() {
     },
   ];
   const includedItems =
-    experience.included ??
-    ['Atendimento do hotel', 'Orientação da equipe sobre o melhor horário', 'Confirmação conforme disponibilidade'];
+    experience.included.length > 0
+      ? experience.included
+      : [
+          'Atendimento do hotel',
+          'Orientação da equipe sobre o melhor horário',
+          'Confirmação conforme disponibilidade',
+        ];
   const locationDescription =
     experience.locationDescription ??
     'A equipe do hotel orientará o local da experiência no momento da confirmação.';
@@ -124,7 +158,10 @@ export default function ExperienceDetailScreen() {
           }}
           showsVerticalScrollIndicator={false}>
           <YStack gap={spacing.xxxl}>
-            <ExperienceDetailHero imageSource={experience.imageSource} onPressBack={handleGoBack} />
+            <ExperienceDetailHero
+              imageSource={resolveExperienceImageSource(experience.id, experience.imageUrl)}
+              onPressBack={handleGoBack}
+            />
 
             <YStack gap={spacing.xxxl} paddingHorizontal={spacing.xxl}>
               <YStack gap={spacing.lg}>

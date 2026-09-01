@@ -1,17 +1,18 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { router, type Href } from 'expo-router';
 import {
   Bell,
   Building2,
   CalendarCheck,
   Coffee,
-  Clock,
   Info,
   MessageCircle,
   ReceiptText,
   Wifi,
 } from 'lucide-react-native';
-import { ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView } from 'react-native';
 import { YStack } from 'tamagui';
 
 import { Card } from '@/src/design-system/components/Card';
@@ -21,17 +22,108 @@ import { Text } from '@/src/design-system/components/Text';
 import { StayInfoCard } from '@/src/design-system/product/StayInfoCard';
 import { StayNavigationItem } from '@/src/design-system/product/StayNavigationItem';
 import { StaySummaryCard } from '@/src/design-system/product/StaySummaryCard';
+import { colors } from '@/src/design-system/tokens/colors';
 import { radius } from '@/src/design-system/tokens/radius';
 import { spacing } from '@/src/design-system/tokens/spacing';
-import { getConsumptionMock } from '@/src/mocks/consumption.mock';
-import { stayMock } from '@/src/mocks/stay.mock';
+import {
+  getStay,
+  getStayConsumption,
+  type ConsumptionResponse,
+  type StaySummaryResponse,
+} from '@/src/services/atrio-api';
+import { useSession } from '@/src/stores/session.store';
 
-const usefulInfoIcons = [Coffee, Clock, Info, Building2, MessageCircle] as const;
+const usefulInfoIcons = [Coffee, Info, Building2, MessageCircle, Info] as const;
+
+function formatCurrency(amountCents: number, currency: string) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency,
+  }).format(amountCents / 100);
+}
 
 export default function StayScreen() {
+  const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
-  const stay = stayMock;
-  const consumption = getConsumptionMock();
+  const session = useSession();
+  const [stay, setStay] = useState<StaySummaryResponse | null>(null);
+  const [consumption, setConsumption] = useState<ConsumptionResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isFocused || !session?.stayId) {
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    Promise.all([getStay(session.stayId), getStayConsumption(session.stayId)])
+      .then(([stayResponse, consumptionResponse]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setStay(stayResponse);
+        setConsumption(consumptionResponse);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Nao foi possivel carregar os dados da estadia.',
+        );
+        setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFocused, session?.stayId]);
+
+  const consumptionSummaryLabel =
+    consumption?.enabled && consumption.view === 'ready'
+      ? formatCurrency(consumption.totalAmountCents, consumption.currency)
+      : undefined;
+
+  if (isLoading) {
+    return (
+      <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
+        <YStack alignItems="center" flex={1} gap={spacing.lg} justifyContent="center">
+          <ActivityIndicator color={colors.accent} />
+          <Text colorToken="textSecondary" variant="body">
+            Carregando sua estadia...
+          </Text>
+        </YStack>
+      </Screen>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <Screen paddingBottom={0} paddingHorizontal={0} paddingTop={0} safeAreaEdges={['bottom']}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: spacing.lg,
+            paddingHorizontal: spacing.xxl,
+            paddingBottom: tabBarHeight + spacing.xxl,
+          }}
+          showsVerticalScrollIndicator={false}>
+          <Card gap={spacing.sm} padding={spacing.xl}>
+            <Text variant="bodyMedium">Nao foi possivel carregar a estadia.</Text>
+            <Text colorToken="textSecondary" variant="bodySmall">
+              {errorMessage}
+            </Text>
+          </Card>
+        </ScrollView>
+      </Screen>
+    );
+  }
 
   if (!stay) {
     return (
@@ -80,14 +172,26 @@ export default function StayScreen() {
             </Text>
           </YStack>
 
-          <StaySummaryCard stay={stay} />
+          <StaySummaryCard
+            stay={{
+              hotelName: stay.hotelName,
+              roomNumber: stay.roomNumber,
+              statusLabel: stay.statusLabel,
+              checkInLabel: stay.checkInLabel,
+              checkInTimeLabel: stay.checkInTime,
+              checkOutLabel: stay.checkOutLabel,
+              checkOutTimeLabel: stay.checkOutTime,
+              summaries: stay.summaries,
+              usefulInfo: stay.usefulInfo,
+            }}
+          />
 
           <YStack gap={spacing.lg}>
             <SectionHeader title="Acessos rápidos" />
 
             <YStack gap={spacing.md}>
               <StayNavigationItem
-                description="Veja o nome da rede e a senha da hospedagem."
+                description="Veja o nome da rede e a senha do hotel."
                 icon={Wifi}
                 onPress={() =>
                   router.push({
@@ -127,7 +231,7 @@ export default function StayScreen() {
                 summaryLabel={stay.summaries.reservations}
                 title="Minhas reservas"
               />
-              {consumption.enabled ? (
+              {consumption?.enabled ? (
                 <StayNavigationItem
                   description="Acompanhe lançamentos vinculados à sua hospedagem."
                   icon={ReceiptText}
@@ -139,7 +243,7 @@ export default function StayScreen() {
                       },
                     } as Href)
                   }
-                  summaryLabel={consumption.totalLabel}
+                  summaryLabel={consumptionSummaryLabel}
                   title="Consumo"
                 />
               ) : null}
@@ -147,22 +251,30 @@ export default function StayScreen() {
           </YStack>
 
           <YStack gap={spacing.lg}>
-            <SectionHeader title="Regras e informações úteis" />
+            <SectionHeader title="Informações do hotel" />
 
             <Card borderRadius={radius.xl} paddingHorizontal={spacing.xl} paddingVertical={0}>
-              {stay.usefulInfo.map((item, index) => {
-                const Icon = usefulInfoIcons[index] ?? Info;
+              {stay.usefulInfo.length > 0 ? (
+                stay.usefulInfo.map((item, index) => {
+                  const Icon = usefulInfoIcons[index] ?? Info;
 
-                return (
-                  <StayInfoCard
-                    description={item.description}
-                    icon={Icon}
-                    isLast={index === stay.usefulInfo.length - 1}
-                    key={item.id}
-                    title={item.title}
-                  />
-                );
-              })}
+                  return (
+                    <StayInfoCard
+                      description={item.description}
+                      icon={Icon}
+                      isLast={index === stay.usefulInfo.length - 1}
+                      key={item.id}
+                      title={item.title}
+                    />
+                  );
+                })
+              ) : (
+                <YStack paddingVertical={spacing.xl}>
+                  <Text colorToken="textSecondary" variant="body">
+                    Nenhuma informação do hotel disponível no momento.
+                  </Text>
+                </YStack>
+              )}
             </Card>
           </YStack>
         </YStack>
