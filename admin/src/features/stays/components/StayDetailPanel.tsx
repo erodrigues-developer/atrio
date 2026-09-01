@@ -15,11 +15,11 @@ import {
 import { adminQueryKeys } from '@/shared/api/query-keys';
 import { Modal } from '@/shared/components/Modal';
 import {
-  formatDate, formatDecimalInput, formatMoney, formatStayDate, formatStayPeriod,
-  parseCurrencyInput, shortStayStatus, stayStatusColor,
+  formatDate, formatMoney, formatStayDate, formatStayPeriod, shortStayStatus, stayStatusColor,
 } from '@/shared/lib/presentation';
 import { StayModal } from './StayForm';
 import { Toast } from '@/shared/components/Toast';
+import { BrlCurrencyInput } from '@/shared/components/MaskedInput';
 
 export function StayDetailPanel({
   accessToken,
@@ -239,7 +239,7 @@ export function StayDetailPanel({
               <label className="consumption-category">Categoria<AntSelect onChange={(value) => setConsumptionForm({ ...consumptionForm, category: value })} options={['Alimentos e Bebidas', 'Serviços', 'Minibar', 'Lavanderia', 'Outros'].map((value) => ({ label: value, value }))} value={consumptionForm.category} /></label>
               <label className="consumption-item">Item<Input placeholder="Digite o item" value={consumptionForm.title} onChange={(event) => setConsumptionForm({ ...consumptionForm, title: event.target.value })} required /></label>
               <label className="consumption-quantity">Quantidade<div className="consumption-stepper"><Button aria-label="Diminuir quantidade" htmlType="button" icon={<MinusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, consumptionForm.quantity - 1) })} title="Diminuir quantidade" /><InputNumber controls={false} min={1} onChange={(value) => setConsumptionForm({ ...consumptionForm, quantity: Math.max(1, Number(value ?? 1)) })} value={consumptionForm.quantity} /><Button aria-label="Aumentar quantidade" htmlType="button" icon={<PlusOutlined />} onClick={() => setConsumptionForm({ ...consumptionForm, quantity: consumptionForm.quantity + 1 })} title="Aumentar quantidade" /></div></label>
-              <label className="consumption-value">Valor unitário<Input addonBefore="R$" inputMode="numeric" placeholder="0,00" value={formatDecimalInput(consumptionForm.amountCents)} onChange={(event) => setConsumptionForm({ ...consumptionForm, amountCents: parseCurrencyInput(event.target.value) })} required /></label>
+              <label className="consumption-value">Valor unitário<BrlCurrencyInput amountCents={consumptionForm.amountCents} onAmountChange={(amountCents) => setConsumptionForm({ ...consumptionForm, amountCents })} required /></label>
               <label className="consumption-date">Data/hora<DatePicker format="DD/MM/YYYY HH:mm" onChange={(value) => setConsumptionForm({ ...consumptionForm, occurredAt: value?.format('YYYY-MM-DDTHH:mm') ?? '' })} prefix={<CalendarOutlined />} showTime suffixIcon={null} value={consumptionForm.occurredAt ? dayjs(consumptionForm.occurredAt) : null} /></label>
               <label className="consumption-note">Observação (opcional)<Input placeholder="Adicione uma observação sobre o consumo" value={consumptionForm.description} onChange={(event) => setConsumptionForm({ ...consumptionForm, description: event.target.value })} /></label>
             </div>

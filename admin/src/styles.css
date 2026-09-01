@@ -3292,6 +3292,10 @@ td {
   font-size: 18px;
 }
 
+.guest-table-actions .ant-btn-dangerous {
+  color: #ef3340;
+}
+
 .guests-empty-state {
   align-content: center;
   background: #ffffff;
@@ -3825,6 +3829,95 @@ td {
   color: #738099;
   font-size: 11px;
   margin: 0;
+}
+
+.service-fields-builder {
+  display: grid;
+  gap: 14px;
+}
+
+.service-fields-builder > header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.service-fields-builder > header > div {
+  min-width: 0;
+}
+
+.service-fields-builder > header .ant-btn {
+  flex: none;
+}
+
+.service-fields-builder-list {
+  display: grid;
+  gap: 12px;
+}
+
+.service-fields-builder-empty {
+  background: #f7f9fc;
+  border: 1px dashed #ccd6e4;
+  border-radius: 6px;
+  color: #697790;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 16px;
+}
+
+.service-field-editor {
+  background: #f9fafc;
+  border: 1px solid #dce3ed;
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.service-field-editor > header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.service-field-editor > header strong {
+  color: #263550;
+  font-size: 12px;
+}
+
+.service-field-editor > header .ant-btn {
+  color: #ef3340;
+}
+
+.service-field-editor-grid {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.service-field-editor-grid > label:not(.service-form-check) {
+  color: #29364e;
+  display: grid;
+  font-size: 11px;
+  gap: 7px;
+  min-width: 0;
+}
+
+.service-field-editor-grid > label .ant-input,
+.service-field-editor-grid > label .ant-select {
+  width: 100%;
+}
+
+.service-field-editor-grid > label > small {
+  color: #7a879e;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.service-field-editor-grid > .service-form-check {
+  grid-column: 1 / -1;
 }
 
 .service-modal-form > .modal-footer {
@@ -4612,8 +4705,18 @@ td {
   }
 
   .service-summary-grid,
-  .service-modal-form {
+  .service-modal-form,
+  .service-field-editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .service-fields-builder > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .service-fields-builder > header .ant-btn {
+    width: 100%;
   }
 
   .premium-summary-grid,

@@ -11,6 +11,7 @@ import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { shortStayStatus } from '@/shared/lib/presentation';
 import { stayFormSchema, type StayFormValues } from '../schemas/stay-form-schema';
 import { Toast } from '@/shared/components/Toast';
+import { PhoneInput } from '@/shared/components/MaskedInput';
 
 export function StayModal({
   accessToken,
@@ -135,7 +136,22 @@ function StayForm({
           <FieldError message={errors.firstName?.message} />
           <label>Sobrenome<Input {...register('lastName')} aria-invalid={Boolean(errors.lastName)} /></label>
           <FieldError message={errors.lastName?.message} />
-          <label className="stay-form-wide">Telefone<Input {...register('phoneNumber')} aria-invalid={Boolean(errors.phoneNumber)} inputMode="tel" /></label>
+          <label className="stay-form-wide">Telefone
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <PhoneInput
+                  aria-invalid={Boolean(errors.phoneNumber)}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  onValueChange={field.onChange}
+                  ref={field.ref}
+                  value={field.value}
+                />
+              )}
+            />
+          </label>
           <FieldError message={errors.phoneNumber?.message} />
         </>
       ) : (

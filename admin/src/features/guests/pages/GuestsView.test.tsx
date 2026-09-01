@@ -26,6 +26,6 @@ describe('GuestFormModal', () => {
 
     expect(screen.getByLabelText('Nome')).toHaveValue('Everton');
     expect(screen.getByLabelText('Sobrenome')).toHaveValue('Rodrigues');
-    expect(screen.getByLabelText('Telefone')).toHaveValue('+5531999991234');
+    expect(screen.getByLabelText('Telefone')).toHaveValue('(31) 99999-1234');
   });
 });

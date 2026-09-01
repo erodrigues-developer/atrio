@@ -20,6 +20,14 @@ import { useSession } from '@/src/stores/session.store';
 
 type RequestField = ServiceResponse['requestSchema']['fields'][number];
 
+function isQuantityField(field: RequestField) {
+  return field.name === 'quantity' || field.type === 'number';
+}
+
+function isNoteField(field: RequestField) {
+  return field.name === 'note' || field.type === 'string';
+}
+
 export default function ServiceRequestScreen() {
   const { returnTo, type } = useLocalSearchParams<{ returnTo?: string | string[]; type?: string }>();
   const session = useSession();
@@ -44,7 +52,7 @@ export default function ServiceRequestScreen() {
         }
 
         setService(response);
-        const quantityField = response.requestSchema.fields.find((field) => field.name === 'quantity');
+        const quantityField = response.requestSchema.fields.find(isQuantityField);
 
         if (quantityField?.defaultValue) {
           setQuantity(quantityField.defaultValue);
@@ -63,8 +71,8 @@ export default function ServiceRequestScreen() {
     };
   }, [type]);
 
-  const quantityField = service?.requestSchema.fields.find((field) => field.name === 'quantity');
-  const noteField = service?.requestSchema.fields.find((field) => field.name === 'note');
+  const quantityField = service?.requestSchema.fields.find(isQuantityField);
+  const noteField = service?.requestSchema.fields.find(isNoteField);
 
   function handleGoBack() {
     router.replace(resolveReturnTo(returnTo, '/(guest)/services'));

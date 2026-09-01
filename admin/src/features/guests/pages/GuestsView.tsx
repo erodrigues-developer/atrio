@@ -16,6 +16,7 @@ import { Modal, ModalFooter } from '@/shared/components/Modal';
 import { Toast } from '@/shared/components/Toast';
 import { MobileRecordCard, MobileRecordField, MobileRecordList } from '@/shared/components/PremiumManagement';
 import { guestFormSchema, type GuestFormValues } from '../schemas/guest-form-schema';
+import { PhoneInput } from '@/shared/components/MaskedInput';
 
 type GuestsViewProps = {
   accessToken: string;
@@ -210,7 +211,6 @@ function GuestsTable({
         { title: 'Nome', dataIndex: 'firstName', key: 'firstName' },
         { title: 'Sobrenome', dataIndex: 'lastName', key: 'lastName' },
         { title: 'Telefone', dataIndex: 'phoneNumber', key: 'phoneNumber' },
-        { title: 'Contato protegido', dataIndex: 'maskedPhone', key: 'maskedPhone' },
         {
           title: 'Ações',
           key: 'actions',
@@ -381,7 +381,21 @@ export function GuestFormModal({
           <FieldError message={errors.lastName?.message} />
         </label>
         <label className="guest-form-wide">Telefone
-          <Controller control={control} name="phoneNumber" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.phoneNumber)} inputMode="tel" placeholder="Informe o telefone com DDD" />} />
+          <Controller
+            control={control}
+            name="phoneNumber"
+            render={({ field }) => (
+              <PhoneInput
+                aria-invalid={Boolean(errors.phoneNumber)}
+                name={field.name}
+                onBlur={field.onBlur}
+                onValueChange={field.onChange}
+                placeholder="Informe o telefone com DDD"
+                ref={field.ref}
+                value={field.value}
+              />
+            )}
+          />
           <FieldError message={errors.phoneNumber?.message} />
         </label>
         {error ? <Toast message={error.message} onClose={() => undefined} tone="error" /> : null}

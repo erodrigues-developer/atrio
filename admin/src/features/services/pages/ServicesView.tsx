@@ -1,12 +1,12 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   Button, Checkbox, Dropdown, Input, Pagination as AntPagination, Select as AntSelect, Table, Tag, Typography,
 } from 'antd';
 import {
-  AppstoreOutlined, EditOutlined, EyeOutlined, FileTextOutlined, MoreOutlined, PlusOutlined,
+  AppstoreOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, MoreOutlined, PlusOutlined,
   SearchOutlined, StopOutlined, TeamOutlined, UploadOutlined,
 } from '@ant-design/icons';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import servicesEmptyImage from '@/assets/services-empty.webp';
@@ -37,12 +37,14 @@ const defaultValues: ServiceFormValues = {
   description: '',
   icon: 'Package',
   fulfillmentType: 'hotel_staff',
-  fieldName: 'note',
-  fieldLabel: 'Detalhes',
-  fieldType: 'string',
-  fieldRequired: true,
+  fields: [{ kind: 'note', label: 'Detalhes', required: true }],
   published: true,
 };
+
+const SERVICE_FIELD_OPTIONS = [
+  { label: 'Quantidade — seletor com + e −', value: 'quantity' as const },
+  { label: 'Observação — campo de texto', value: 'note' as const },
+];
 
 export function ServicesView({ accessToken, cacheScope }: ServicesViewProps) {
   const queryClient = useQueryClient();
@@ -425,9 +427,9 @@ function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>>
       <header><Typography.Title level={3}>Campos do formulário</Typography.Title></header>
       <Table
         columns={[
-          { title: 'Nome interno', key: 'name', render: (_: unknown, field: Record<string, unknown>) => textValue(field.name, '—') },
-          { title: 'Label para o hóspede', key: 'label', render: (_: unknown, field: Record<string, unknown>) => textValue(field.label, '—') },
-          { title: 'Tipo', key: 'type', render: (_: unknown, field: Record<string, unknown>) => field.type === 'number' ? 'Número' : 'Texto' },
+          { title: 'Campo exibido no app', key: 'component', render: (_: unknown, field: Record<string, unknown>) => serviceFieldLabel(serviceFieldKind(field)) },
+          { title: 'Rótulo para o hóspede', key: 'label', render: (_: unknown, field: Record<string, unknown>) => textValue(field.label, '—') },
+          { title: 'Chave técnica', key: 'name', render: (_: unknown, field: Record<string, unknown>) => textValue(field.name, '—') },
           { title: 'Obrigatório', key: 'required', render: (_: unknown, field: Record<string, unknown>) => field.required ? 'Sim' : 'Não' },
         ]}
         dataSource={fieldRecords}
@@ -439,8 +441,8 @@ function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>>
       />
       <MobileRecordList emptyContent="Nenhum campo configurado." hasItems={fieldRecords.length > 0} isLoading={false}>
         {fieldRecords.map((field) => (
-          <MobileRecordCard key={String(field._key)} title={textValue(field.label, 'Campo sem label')} subtitle={textValue(field.name, '—')}>
-            <MobileRecordField label="Tipo" value={field.type === 'number' ? 'Número' : 'Texto'} />
+          <MobileRecordCard key={String(field._key)} title={textValue(field.label, 'Campo sem rótulo')} subtitle={serviceFieldLabel(serviceFieldKind(field))}>
+            <MobileRecordField label="Chave técnica" value={textValue(field.name, '—')} />
             <MobileRecordField label="Obrigatório" value={field.required ? 'Sim' : 'Não'} />
           </MobileRecordCard>
         ))}
@@ -449,7 +451,7 @@ function ServiceFieldsPanel({ fields }: { fields: Array<Record<string, unknown>>
   );
 }
 
-function ServiceFormModal({
+export function ServiceFormModal({
   error,
   isSubmitting,
   layer,
@@ -468,30 +470,47 @@ function ServiceFormModal({
     control,
     formState: { errors },
     handleSubmit,
-    register,
+    reset,
   } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: service ? serviceFormValues(service) : defaultValues,
   });
 
+  useEffect(() => {
+    reset(service ? serviceFormValues(service) : defaultValues);
+  }, [reset, service]);
+
+  const { append, fields: fieldRows, remove } = useFieldArray({ control, name: 'fields' });
+  const configuredFields = useWatch({ control, name: 'fields' }) ?? [];
+
+  function addField() {
+    const availableKind = SERVICE_FIELD_OPTIONS.find(
+      (option) => !configuredFields.some((field) => field.kind === option.value),
+    )?.value;
+    if (!availableKind) return;
+    append(availableKind === 'quantity'
+      ? { kind: 'quantity', label: 'Quantidade', required: true }
+      : { kind: 'note', label: 'Detalhes', required: false });
+  }
+
   return (
     <Modal className="operational-form-modal service-form-modal" layer={layer} title={service ? 'Editar serviço' : 'Novo serviço'} onClose={onCancel} width={600}>
       <form className="service-modal-form" noValidate onSubmit={handleSubmit(onSubmit)}>
-        {!service ? <label className="service-form-wide">ID opcional<Input {...register('id')} placeholder="Identificador técnico opcional" /></label> : null}
+        {!service ? <label className="service-form-wide">ID opcional<Controller control={control} name="id" render={({ field }) => <Input {...field} placeholder="Identificador técnico opcional" />} /></label> : null}
         <label>Título
-          <Input {...register('title')} aria-invalid={Boolean(errors.title)} autoFocus />
+          <Controller control={control} name="title" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.title)} autoFocus />} />
           <FieldError message={errors.title?.message} />
         </label>
         <label>Ícone
-          <Input {...register('icon')} aria-invalid={Boolean(errors.icon)} />
+          <Controller control={control} name="icon" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.icon)} />} />
           <FieldError message={errors.icon?.message} />
         </label>
         <label className="service-form-wide">Descrição
-          <Input.TextArea {...register('description')} aria-invalid={Boolean(errors.description)} autoSize={{ minRows: 2, maxRows: 4 }} />
+          <Controller control={control} name="description" render={({ field }) => <Input.TextArea {...field} aria-invalid={Boolean(errors.description)} autoSize={{ minRows: 2, maxRows: 4 }} />} />
           <FieldError message={errors.description?.message} />
         </label>
         <label>Atendimento
-          <Input {...register('fulfillmentType')} aria-invalid={Boolean(errors.fulfillmentType)} />
+          <Controller control={control} name="fulfillmentType" render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.fulfillmentType)} />} />
           <FieldError message={errors.fulfillmentType?.message} />
         </label>
         <label className="service-form-check">
@@ -499,26 +518,60 @@ function ServiceFormModal({
           Publicado no catálogo
         </label>
 
-        <div className="service-form-section"><Typography.Title level={3}>Campo do formulário</Typography.Title><p>Defina a informação solicitada ao hóspede.</p></div>
-        <label>Nome interno
-          <Input {...register('fieldName')} aria-invalid={Boolean(errors.fieldName)} />
-          <FieldError message={errors.fieldName?.message} />
-        </label>
-        <label>Label para o hóspede
-          <Input {...register('fieldLabel')} aria-invalid={Boolean(errors.fieldLabel)} />
-          <FieldError message={errors.fieldLabel?.message} />
-        </label>
-        <label>Tipo
-          <Controller
-            control={control}
-            name="fieldType"
-            render={({ field }) => <AntSelect onChange={field.onChange} options={[{ label: 'Texto', value: 'string' }, { label: 'Número', value: 'number' }]} value={field.value} />}
-          />
-        </label>
-        <label className="service-form-check">
-          <Controller control={control} name="fieldRequired" render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />
-          Campo obrigatório
-        </label>
+        <section className="service-form-section service-fields-builder">
+          <header>
+            <div>
+              <Typography.Title level={3}>Campos do formulário no app</Typography.Title>
+              <p>Escolha o componente exibido na tela do serviço. O rótulo é o texto que o hóspede verá acima do campo.</p>
+            </div>
+            <Button disabled={fieldRows.length >= SERVICE_FIELD_OPTIONS.length} icon={<PlusOutlined />} onClick={addField}>Adicionar campo</Button>
+          </header>
+
+          {fieldRows.length === 0 ? (
+            <div className="service-fields-builder-empty">Nenhum campo configurado. O hóspede poderá enviar a solicitação sem preencher informações adicionais.</div>
+          ) : (
+            <div className="service-fields-builder-list">
+              {fieldRows.map((fieldRow, index) => (
+                <article className="service-field-editor" key={fieldRow.id}>
+                  <header>
+                    <strong>Campo {index + 1}</strong>
+                    <Button aria-label={`Excluir campo ${index + 1}`} danger icon={<DeleteOutlined />} onClick={() => remove(index)} title={`Excluir campo ${index + 1}`} type="text" />
+                  </header>
+                  <div className="service-field-editor-grid">
+                    <label>Campo exibido no app
+                      <Controller
+                        control={control}
+                        name={`fields.${index}.kind`}
+                        render={({ field }) => (
+                          <AntSelect
+                            aria-invalid={Boolean(errors.fields?.[index]?.kind)}
+                            onChange={field.onChange}
+                            options={SERVICE_FIELD_OPTIONS.map((option) => ({
+                              ...option,
+                              disabled: configuredFields.some((configuredField, configuredIndex) => configuredIndex !== index && configuredField.kind === option.value),
+                            }))}
+                            value={field.value}
+                          />
+                        )}
+                      />
+                      <small>Define qual componente será renderizado para o hóspede.</small>
+                      <FieldError message={errors.fields?.[index]?.kind?.message} />
+                    </label>
+                    <label>Rótulo exibido ao hóspede
+                      <Controller control={control} name={`fields.${index}.label`} render={({ field }) => <Input {...field} aria-invalid={Boolean(errors.fields?.[index]?.label)} placeholder="Ex.: Quantidade de flores" />} />
+                      <small>Aparece acima do campo no formulário do app.</small>
+                      <FieldError message={errors.fields?.[index]?.label?.message} />
+                    </label>
+                    <label className="service-form-check">
+                      <Controller control={control} name={`fields.${index}.required`} render={({ field }) => <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />} />
+                      Preenchimento obrigatório
+                    </label>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
         {error ? <Toast message={error.message} onClose={() => undefined} tone="error" /> : null}
         <ModalFooter isSubmitting={isSubmitting} onCancel={onCancel} submitLabel={service ? 'Salvar alterações' : 'Cadastrar serviço'} />
       </form>
@@ -534,31 +587,52 @@ function servicePayload(values: ServiceFormValues): Omit<ServiceDefinition, 'id'
     fulfillmentType: values.fulfillmentType,
     published: values.published,
     requestSchema: {
-      fields: [{
-        name: values.fieldName,
-        label: values.fieldLabel,
-        type: values.fieldType,
-        required: values.fieldRequired,
-        ...(values.fieldType === 'string' ? { maxLength: 500 } : {}),
-      }],
+      fields: values.fields.map((field) => field.kind === 'quantity'
+        ? {
+            name: 'quantity',
+            label: field.label,
+            type: 'number',
+            required: field.required,
+            min: 1,
+            max: 10,
+            defaultValue: 1,
+          }
+        : {
+            name: 'note',
+            label: field.label,
+            type: 'string',
+            required: field.required,
+            maxLength: 500,
+          }),
     },
   };
 }
 
 function serviceFormValues(service: ServiceDefinition): ServiceFormValues {
-  const field = service.requestSchema.fields[0] ?? {};
   return {
     id: service.id,
     title: service.title,
     description: service.description,
     icon: service.icon,
     fulfillmentType: service.fulfillmentType,
-    fieldName: textValue(field.name, 'note'),
-    fieldLabel: textValue(field.label, 'Detalhes'),
-    fieldType: field.type === 'number' ? 'number' : 'string',
-    fieldRequired: field.required !== false,
+    fields: service.requestSchema.fields.map((field) => {
+      const kind = serviceFieldKind(field);
+      return {
+        kind,
+        label: textValue(field.label, kind === 'quantity' ? 'Quantidade' : 'Detalhes'),
+        required: field.required !== false,
+      };
+    }),
     published: service.published,
   };
+}
+
+function serviceFieldKind(field: Record<string, unknown>): 'quantity' | 'note' {
+  return field.name === 'quantity' || field.type === 'number' ? 'quantity' : 'note';
+}
+
+function serviceFieldLabel(kind: 'quantity' | 'note') {
+  return kind === 'quantity' ? 'Quantidade — seletor com + e −' : 'Observação — campo de texto';
 }
 
 function serviceFulfillmentLabel(value: string) {
